@@ -15,20 +15,26 @@ enum APIConfiguration {
     static let analyzeEndpoint = "/calories/analyze"
     static let imageCompressionQuality: CGFloat = 0.8
     static let requestTimeoutInterval: TimeInterval = 60
-    static let maxImageSizeBytes = 4 * 1024 * 1024 // 4MB
+    static let maxImageSizeBytes = 4 * 1024 * 1024  // 4MB
 }
 
 protocol FoodAnalysisServiceProtocol {
-    func analyzeFood(image: UIImage) async throws -> FoodAnalysisResult
+    func analyzeFood(image: UIImage, foodHint: String?) async throws -> FoodAnalysisResult
+}
+
+extension FoodAnalysisServiceProtocol {
+    func analyzeFood(image: UIImage) async throws -> FoodAnalysisResult {
+        try await analyzeFood(image: image, foodHint: nil)
+    }
 }
 
 final class CaloriesAPIService: FoodAnalysisServiceProtocol {
-    
+
     private let session: URLSession
     private let authManager: AuthenticationManager
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
-    
+
     init(
         session: URLSession = .shared,
         authManager: AuthenticationManager = .shared
@@ -36,19 +42,25 @@ final class CaloriesAPIService: FoodAnalysisServiceProtocol {
         self.session = session
         self.authManager = authManager
     }
-    
+
     func analyzeFood(
-        image: UIImage
+        image: UIImage,
+        foodHint: String? = nil
     ) async throws -> FoodAnalysisResult {
         let (userId, token) = try getCredentials()
         let base64Image = try encodeImage(image)
-        let request = try buildRequest(base64Image: base64Image, userId: userId, token: token)
-        
+        let request = try buildRequest(
+            base64Image: base64Image,
+            userId: userId,
+            token: token,
+            foodHint: foodHint
+        )
+
         return try await performRequest(request)
     }
-    
+
     // MARK: - Private Helpers
-    
+
     private func getCredentials() throws -> (
         userId: String,
         token: String
@@ -58,45 +70,50 @@ final class CaloriesAPIService: FoodAnalysisServiceProtocol {
         }
         return (userId, token)
     }
-    
+
     private func encodeImage(
         _ image: UIImage
     ) throws -> String {
-        guard let imageData = image.jpegData(compressionQuality: APIConfiguration.imageCompressionQuality) else {
+        guard
+            let imageData = image.jpegData(
+                compressionQuality: APIConfiguration.imageCompressionQuality)
+        else {
             throw FoodAnalysisError.imageProcessingFailed
         }
-        
+
         if imageData.count > APIConfiguration.maxImageSizeBytes {
             throw FoodAnalysisError.imageTooLarge
         }
-        
+
         return imageData.base64EncodedString()
     }
-    
+
     private func buildRequest(
         base64Image: String,
         userId: String,
-        token: String
+        token: String,
+        foodHint: String? = nil
     ) throws -> URLRequest {
-        var urlComponents = URLComponents(string: "\(APIConfiguration.baseURL)\(APIConfiguration.analyzeEndpoint)")
+        var urlComponents = URLComponents(
+            string: "\(APIConfiguration.baseURL)\(APIConfiguration.analyzeEndpoint)")
         urlComponents?.queryItems = [URLQueryItem(name: "user_id", value: userId)]
-        
+
         guard let url = urlComponents?.url else {
             throw FoodAnalysisError.invalidURL
         }
-        
+
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.timeoutInterval = APIConfiguration.requestTimeoutInterval
-        
-        let requestBody = AnalyzeRequest(image: base64Image, userId: userId)
+
+        let requestBody = AnalyzeRequest(image: base64Image, userId: userId, foodHint: foodHint)
         request.httpBody = try encoder.encode(requestBody)
-        
+
         return request
     }
-    
+
     private func performRequest(
         _ request: URLRequest
     ) async throws -> FoodAnalysisResult {
@@ -111,7 +128,7 @@ final class CaloriesAPIService: FoodAnalysisServiceProtocol {
             throw FoodAnalysisError.networkError(error)
         }
     }
-    
+
     private func processResponse(
         data: Data,
         response: URLResponse
@@ -119,23 +136,23 @@ final class CaloriesAPIService: FoodAnalysisServiceProtocol {
         guard let httpResponse = response as? HTTPURLResponse else {
             throw FoodAnalysisError.invalidResponse
         }
-                
+
         try validateHTTPStatus(httpResponse.statusCode, data: data)
-        
+
         let apiResponse = try decoder.decode(AnalyzeResponse.self, from: data)
-        
+
         guard apiResponse.ok, let analysis = apiResponse.analysis else {
             let errorMessage = apiResponse.error ?? "Unknown error"
             throw FoodAnalysisError.serverError(errorMessage)
         }
-        
+
         if !analysis.foodDetected {
             throw FoodAnalysisError.noFoodDetected(analysis.notes)
         }
-        
+
         return mapToResult(analysis)
     }
-    
+
     private func validateHTTPStatus(
         _ statusCode: Int,
         data: Data
@@ -155,20 +172,20 @@ final class CaloriesAPIService: FoodAnalysisServiceProtocol {
             throw FoodAnalysisError.serverError("Unexpected status code: \(statusCode)")
         }
     }
-    
+
     private func mapToResult(
         _ analysis: AnalysisData
     ) -> FoodAnalysisResult {
         let confidenceLevel = analysis.confidence.flatMap { ConfidenceLevel(rawValue: $0) }
         let totalCalories = analysis.totalCalories ?? 0
-        
+
         let resultItems: [FoodItemResult]? = analysis.items?.map { item in
             let macros = calculateItemMacros(
                 itemCalories: item.calories,
                 totalCalories: totalCalories,
                 breakdown: analysis.breakdown
             )
-            
+
             return FoodItemResult(
                 name: item.name,
                 calories: item.calories,
@@ -178,7 +195,7 @@ final class CaloriesAPIService: FoodAnalysisServiceProtocol {
                 fatG: macros.fat
             )
         }
-        
+
         return FoodAnalysisResult(
             foodDetected: analysis.foodDetected,
             mealName: analysis.foodName,
@@ -189,7 +206,7 @@ final class CaloriesAPIService: FoodAnalysisServiceProtocol {
             notes: analysis.notes
         )
     }
-    
+
     private func calculateItemMacros(
         itemCalories: Int,
         totalCalories: Int,
@@ -200,11 +217,11 @@ final class CaloriesAPIService: FoodAnalysisServiceProtocol {
             let calories = Double(itemCalories)
             return (
                 protein: calories * 0.15 / 4,  // 4 cal per gram of protein
-                carbs: calories * 0.50 / 4,    // 4 cal per gram of carbs
-                fat: calories * 0.35 / 9       // 9 cal per gram of fat
+                carbs: calories * 0.50 / 4,  // 4 cal per gram of carbs
+                fat: calories * 0.35 / 9  // 9 cal per gram of fat
             )
         }
-        
+
         // Distribute macros proportionally based on calories
         let ratio = Double(itemCalories) / Double(totalCalories)
         return (

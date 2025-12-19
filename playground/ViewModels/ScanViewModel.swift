@@ -5,8 +5,8 @@
 //  CalAI Clone - View model for scan and analysis functionality
 //
 
-import SwiftUI
 import AVFoundation
+import SwiftUI
 
 /// View model for camera, photo scanning, and meal analysis
 @MainActor
@@ -16,30 +16,30 @@ final class ScanViewModel {
     private let repository: MealRepository
     private let analysisService: FoodAnalysisServiceProtocol
     private let imageStorage: ImageStorage
-    
+
     // MARK: - Image Selection State
     var selectedImage: UIImage?
     var showingImagePicker = false
     var showingCamera = false
     var cameraPermissionStatus: AVAuthorizationStatus = .notDetermined
     var photoLibraryPermissionGranted = false
-    
+
     // MARK: - Analysis State
     var isAnalyzing = false
     var analysisProgress: Double = 0
     var pendingMeal: Meal?
     var pendingImage: UIImage?
     var showingResults = false
-    
+
     // MARK: - No Food Detected State
     var showingNoFoodDetected = false
     var noFoodDetectedMessage: String?
-    
+
     // MARK: - Error State
     var error: ScanError?
     var showingError = false
     var errorMessage: String?
-    
+
     init(
         repository: MealRepository,
         analysisService: FoodAnalysisServiceProtocol,
@@ -50,23 +50,23 @@ final class ScanViewModel {
         self.imageStorage = imageStorage
         checkCameraPermission()
     }
-    
+
     // MARK: - Permissions
-    
+
     func checkCameraPermission() {
         cameraPermissionStatus = AVCaptureDevice.authorizationStatus(for: .video)
     }
-    
+
     func requestCameraPermission() async {
         let granted = await AVCaptureDevice.requestAccess(for: .video)
         cameraPermissionStatus = granted ? .authorized : .denied
     }
-    
+
     // MARK: - Camera Actions
-    
+
     func openCamera() async {
         checkCameraPermission()
-        
+
         switch cameraPermissionStatus {
         case .notDetermined:
             await requestCameraPermission()
@@ -82,41 +82,41 @@ final class ScanViewModel {
             break
         }
     }
-    
+
     func openPhotoLibrary() {
         showingImagePicker = true
     }
-    
+
     // MARK: - Image Selection
-    
+
     func handleSelectedImage(_ image: UIImage?) {
         guard let image = image else {
             error = .imageSelectionFailed
             showingError = true
             return
         }
-        
+
         selectedImage = image
         // Reset no food detected state when selecting new image
         showingNoFoodDetected = false
         noFoodDetectedMessage = nil
         HapticManager.shared.impact(.light)
     }
-    
+
     func clearSelection() {
         selectedImage = nil
         showingNoFoodDetected = false
         noFoodDetectedMessage = nil
     }
-    
+
     // MARK: - Meal Analysis
-    
-    func analyzeImage(_ image: UIImage) async {
+
+    func analyzeImage(_ image: UIImage, foodHint: String? = nil) async {
         isAnalyzing = true
         analysisProgress = 0
         showingNoFoodDetected = false
         noFoodDetectedMessage = nil
-        
+
         // Simulate progress for better UX
         let progressTask = Task {
             for i in 1...8 {
@@ -128,12 +128,12 @@ final class ScanViewModel {
                 }
             }
         }
-        
+
         do {
-            let response = try await analysisService.analyzeFood(image: image)
+            let response = try await analysisService.analyzeFood(image: image, foodHint: foodHint)
             progressTask.cancel()
             analysisProgress = 1.0
-            
+
             // Check if food was detected
             guard response.foodDetected, let meal = response.toMeal() else {
                 isAnalyzing = false
@@ -142,19 +142,19 @@ final class ScanViewModel {
                 HapticManager.shared.notification(.warning)
                 return
             }
-            
+
             // Save image and get URL
             let imageURL = try imageStorage.saveImage(image, for: meal.id)
             meal.photoURL = imageURL.absoluteString
-            
+
             pendingMeal = meal
             pendingImage = image
             showingResults = true
-            
+
             HapticManager.shared.notification(.success)
         } catch let foodError as FoodAnalysisError {
             progressTask.cancel()
-            
+
             // Handle no food detected specifically
             if foodError.isNoFoodDetected {
                 showingNoFoodDetected = true
@@ -173,23 +173,39 @@ final class ScanViewModel {
             self.showingError = true
             HapticManager.shared.notification(.error)
         }
-        
+
         isAnalyzing = false
     }
-    
+
+    /// Re-analyze the current image with a food hint to fix incorrect results
+    /// - Parameter foodHint: A description of what the food actually is (e.g., "This is a chicken caesar salad")
+    func analyzeWithHint(_ foodHint: String) async {
+        guard let image = pendingImage ?? selectedImage else {
+            error = .imageSelectionFailed
+            showingError = true
+            return
+        }
+
+        // Close results view before re-analyzing
+        showingResults = false
+        pendingMeal = nil
+
+        await analyzeImage(image, foodHint: foodHint)
+    }
+
     // MARK: - Meal Management
-    
+
     func savePendingMeal() async -> Bool {
         guard let meal = pendingMeal else { return false }
-        
+
         do {
             try repository.saveMeal(meal)
-            
+
             pendingMeal = nil
             pendingImage = nil
             showingResults = false
             selectedImage = nil
-            
+
             HapticManager.shared.notification(.success)
             return true
         } catch {
@@ -199,9 +215,9 @@ final class ScanViewModel {
             return false
         }
     }
-    
+
     // MARK: - Reset
-    
+
     func reset() {
         selectedImage = nil
         pendingMeal = nil
@@ -212,7 +228,7 @@ final class ScanViewModel {
         showingNoFoodDetected = false
         noFoodDetectedMessage = nil
     }
-    
+
     /// Retry analysis with the current selected image
     func retryAnalysis() {
         guard let image = selectedImage else { return }
@@ -222,9 +238,9 @@ final class ScanViewModel {
             await analyzeImage(image)
         }
     }
-    
+
     // MARK: - Private Helpers
-    
+
     private func mapToScanError(_ foodError: FoodAnalysisError) -> ScanError {
         switch foodError {
         case .authenticationFailed, .missingCredentials:
@@ -249,7 +265,7 @@ enum ScanError: LocalizedError {
     case networkError
     case authenticationRequired
     case noFoodDetected
-    
+
     var errorDescription: String? {
         switch self {
         case .cameraPermissionDenied:
@@ -268,7 +284,7 @@ enum ScanError: LocalizedError {
             return "No food detected in the image. Please try with a clearer photo."
         }
     }
-    
+
     var recoverySuggestion: String? {
         switch self {
         case .cameraPermissionDenied:
