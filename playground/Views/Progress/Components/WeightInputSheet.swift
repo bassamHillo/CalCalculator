@@ -18,7 +18,7 @@ struct WeightInputSheet: View {
     
     var body: some View {
         NavigationStack {
-            VStack(spacing: 32) {
+            VStack(spacing: 20) {
                 Spacer()
                 
                 // Icon
