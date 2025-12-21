@@ -1,0 +1,170 @@
+//
+//  LoginView.swift
+//  playground
+//
+//  Created by OpenCode on 21/12/2025.
+//
+
+import SwiftUI
+
+struct LoginView: View {
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var isAnimating = false
+    
+    var onGetStarted: () -> Void
+    var onSignIn: () -> Void
+    
+    var body: some View {
+        ZStack {
+            // Background gradient
+            LinearGradient(
+                colors: [
+                    Color.accentColor.opacity(0.1),
+                    Color.accentColor.opacity(0.05),
+                    Color.clear
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+            
+            VStack(spacing: 0) {
+                Spacer()
+                
+                // Logo and branding section
+                VStack(spacing: 20) {
+                    // App icon/logo
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color.accentColor,
+                                        Color.accentColor.opacity(0.7)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 120, height: 120)
+                            .shadow(color: Color.accentColor.opacity(0.3), radius: 20, x: 0, y: 10)
+                        
+                        Image(systemName: "fork.knife.circle.fill")
+                            .font(.system(size: 60))
+                            .foregroundStyle(.white)
+                    }
+                    .scaleEffect(isAnimating ? 1.0 : 0.8)
+                    .animation(.spring(response: 0.6, dampingFraction: 0.7), value: isAnimating)
+                    
+                    VStack(spacing: 8) {
+                        Text("CalCalculator")
+                            .font(.system(size: 32, weight: .bold, design: .rounded))
+                            .foregroundColor(colorScheme == .dark ? .white : .primary)
+                        
+                        Text("Track your nutrition with ease")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .opacity(isAnimating ? 1 : 0)
+                    .offset(y: isAnimating ? 0 : 20)
+                    .animation(.easeOut(duration: 0.6).delay(0.2), value: isAnimating)
+                }
+                .padding(.bottom, 60)
+                
+                Spacer()
+                
+                // Action buttons section
+                VStack(spacing: 16) {
+                    // Primary button - Get Started
+                    Button(action: onGetStarted) {
+                        HStack(spacing: 12) {
+                            Text("Get Started")
+                                .font(.system(size: 18, weight: .semibold))
+                            
+                            Image(systemName: "arrow.right.circle.fill")
+                                .font(.system(size: 20))
+                        }
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 56)
+                        .background(
+                            LinearGradient(
+                                colors: [
+                                    Color.accentColor,
+                                    Color.accentColor.opacity(0.8)
+                                ],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .cornerRadius(16)
+                        .shadow(color: Color.accentColor.opacity(0.3), radius: 10, x: 0, y: 5)
+                    }
+                    .buttonStyle(ScaleButtonStyle())
+                    .opacity(isAnimating ? 1 : 0)
+                    .offset(y: isAnimating ? 0 : 20)
+                    .animation(.easeOut(duration: 0.5).delay(0.4), value: isAnimating)
+                    
+                    // Secondary button - Sign In
+                    Button(action: onSignIn) {
+                        HStack(spacing: 8) {
+                            Text("Already have an account?")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.secondary)
+                            
+                            Text("Sign In")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(.accentColor)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 56)
+                        .background(
+                            colorScheme == .dark 
+                                ? Color.gray.opacity(0.15)
+                                : Color.white
+                        )
+                        .cornerRadius(16)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16)
+                                .stroke(Color.accentColor.opacity(0.2), lineWidth: 1.5)
+                        )
+                    }
+                    .buttonStyle(ScaleButtonStyle())
+                    .opacity(isAnimating ? 1 : 0)
+                    .offset(y: isAnimating ? 0 : 20)
+                    .animation(.easeOut(duration: 0.5).delay(0.5), value: isAnimating)
+                }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 50)
+            }
+        }
+        .onAppear {
+            isAnimating = true
+        }
+    }
+}
+
+// Custom button style for scale animation
+struct ScaleButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.96 : 1.0)
+            .animation(.easeInOut(duration: 0.15), value: configuration.isPressed)
+    }
+}
+
+#Preview {
+    LoginView(
+        onGetStarted: { print("Get Started tapped") },
+        onSignIn: { print("Sign In tapped") }
+    )
+}
+
+#Preview("Dark Mode") {
+    LoginView(
+        onGetStarted: { print("Get Started tapped") },
+        onSignIn: { print("Sign In tapped") }
+    )
+    .preferredColorScheme(.dark)
+}
