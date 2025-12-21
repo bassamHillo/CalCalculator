@@ -16,17 +16,7 @@ struct MacroCardsSection: View {
     }
     
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 12) {
-//                MacroCard(
-//                    title: "Calories",
-//                    value: Double(consumed.calories),
-//                    goal: Double(goals.calories),
-//                    unit: "cal",
-//                    color: .caloriesColor,
-//                    icon: "flame.fill"
-//                )
-                
+            HStack(spacing: 10) {                
                 MacroCard(
                     title: "Protein",
                     value: consumed.proteinG,
@@ -55,7 +45,6 @@ struct MacroCardsSection: View {
                 )
             }
             .padding()
-        }
     }
 }
 
