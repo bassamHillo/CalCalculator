@@ -44,7 +44,6 @@ struct MacroCardsSection: View {
                     icon: "f.circle.fill"
                 )
             }
-            .padding()
     }
 }
 

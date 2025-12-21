@@ -116,7 +116,14 @@ struct HomeView: View {
             remainingCalories: viewModel.remainingCalories,
             progress: viewModel.calorieProgress
         )
-        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+        .listRowInsets(
+            EdgeInsets(
+                top: 8,
+                leading: 16,
+                bottom: 8,
+                trailing: 16
+            )
+        )
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
     }
@@ -126,7 +133,14 @@ struct HomeView: View {
             summary: viewModel.todaysSummary,
             goals: settings.macroGoals
         )
-        .listRowInsets(EdgeInsets(.zero))
+        .listRowInsets(
+            EdgeInsets(
+                top: 8,
+                leading: 16,
+                bottom: 8,
+                trailing: 16
+            )
+        )
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
     }
