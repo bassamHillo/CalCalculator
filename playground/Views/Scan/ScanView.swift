@@ -26,29 +26,23 @@ struct ScanView: View {
     
     var body: some View {
         NavigationStack {
-            ZStack {
-                mainContent
-                
-                if !isSubscribed {
-                    LockedFeatureOverlay(message: "Upgrade to Premium to scan meals")
-                }
-            }
-            .navigationTitle("Scan Meal")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    if onDismiss != nil {
-                        Button {
-                            onDismiss?()
-                        } label: {
-                            Image(systemName: "xmark")
-                                .font(.body)
-                                .fontWeight(.medium)
-                                .foregroundStyle(.secondary)
+            mainContent
+                .navigationTitle("Scan Meal")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        if onDismiss != nil {
+                            Button {
+                                onDismiss?()
+                            } label: {
+                                Image(systemName: "xmark")
+                                    .font(.body)
+                                    .fontWeight(.medium)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                     }
                 }
-            }
                 .sheet(isPresented: $viewModel.showingCamera) {
                     cameraSheet
                 }
@@ -129,7 +123,12 @@ struct ScanView: View {
     
     private var cameraSheet: some View {
         CameraView { image in
-            viewModel.handleSelectedImage(image)
+            // Check subscription when photo is actually taken
+            if isSubscribed {
+                viewModel.handleSelectedImage(image)
+            } else {
+                showPaywall = true
+            }
         }
     }
     
@@ -174,7 +173,14 @@ struct ScanView: View {
             if let newValue,
                let data = try? await newValue.loadTransferable(type: Data.self),
                let image = UIImage(data: data) {
-                viewModel.handleSelectedImage(image)
+                // Check subscription when photo is actually selected
+                if isSubscribed {
+                    viewModel.handleSelectedImage(image)
+                } else {
+                    await MainActor.run {
+                        showPaywall = true
+                    }
+                }
             }
         }
     }

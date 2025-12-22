@@ -67,6 +67,71 @@ struct LockedFeatureOverlay: View {
     }
 }
 
+/// Blurs content and shows Premium button overlay (matches reference app style)
+struct PremiumLockedContent<Content: View>: View {
+    @Environment(\.isSubscribed) private var isSubscribed
+    @Environment(TheSDK.self) private var sdk
+    @State private var showPaywall = false
+    
+    let content: Content
+    
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+    
+    var body: some View {
+        ZStack {
+            content
+                .blur(radius: isSubscribed ? 0 : 8)
+                .opacity(isSubscribed ? 1.0 : 0.3)
+            
+            if !isSubscribed {
+                VStack {
+                    Spacer()
+                    
+                    Button {
+                        showPaywall = true
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "crown.fill")
+                                .font(.system(size: 13, weight: .bold))
+                            Text("Premium")
+                                .font(.system(size: 15, weight: .bold))
+                        }
+                        .foregroundColor(.black)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 9)
+                        .background(
+                            // Gold/yellow gradient matching reference app
+                            LinearGradient(
+                                colors: [
+                                    Color(red: 1.0, green: 0.85, blue: 0.0),  // Gold
+                                    Color(red: 1.0, green: 0.92, blue: 0.3)   // Lighter gold
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .clipShape(Capsule())
+                        .shadow(color: Color.black.opacity(0.15), radius: 3, x: 0, y: 2)
+                    }
+                    
+                    Spacer()
+                }
+            }
+        }
+        .fullScreenCover(isPresented: $showPaywall) {
+            SDKView(
+                model: sdk,
+                page: .splash,
+                show: $showPaywall,
+                backgroundColor: .white,
+                ignoreSafeArea: true
+            )
+        }
+    }
+}
+
 struct LockedButton: View {
     @Environment(\.isSubscribed) private var isSubscribed
     @Environment(TheSDK.self) private var sdk

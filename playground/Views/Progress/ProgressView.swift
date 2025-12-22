@@ -20,41 +20,43 @@ struct ProgressDashboardView: View {
     
     var body: some View {
         NavigationStack {
-            ZStack {
-                ScrollView {
-                    VStack(spacing: 20) {
-                        // Current Weight Card
-                        CurrentWeightCard(
-                            weight: viewModel.displayWeight,
-                            unit: viewModel.weightUnit,
-                            daysUntilCheck: viewModel.daysUntilNextWeightCheck,
-                            isSubscribed: isSubscribed,
-                            onWeightTap: {
-                                if isSubscribed {
-                                    showWeightInput = true
-                                } else {
-                                    showPaywall = true
-                                }
-                            },
-                            onViewProgress: {
-                                if isSubscribed {
-                                    viewModel.showWeightProgressSheet = true
-                                } else {
-                                    showPaywall = true
-                                }
+            ScrollView {
+                VStack(spacing: 20) {
+                    // Current Weight Card
+                    CurrentWeightCard(
+                        weight: viewModel.displayWeight,
+                        unit: viewModel.weightUnit,
+                        daysUntilCheck: viewModel.daysUntilNextWeightCheck,
+                        isSubscribed: isSubscribed,
+                        onWeightTap: {
+                            if isSubscribed {
+                                showWeightInput = true
+                            } else {
+                                showPaywall = true
                             }
-                        )
-                        
-                        // BMI Card
-                        if let bmi = viewModel.bmi, let category = viewModel.bmiCategory {
-                            BMICard(bmi: bmi, category: category, isSubscribed: isSubscribed)
+                        },
+                        onViewProgress: {
+                            if isSubscribed {
+                                viewModel.showWeightProgressSheet = true
+                            } else {
+                                showPaywall = true
+                            }
                         }
-                        
-                        // Daily Calories Card
+                    )
+                    
+                    // BMI Card - Locked with blur + Premium button
+                    if let bmi = viewModel.bmi, let category = viewModel.bmiCategory {
+                        PremiumLockedContent {
+                            BMICard(bmi: bmi, category: category, isSubscribed: true)
+                        }
+                    }
+                    
+                    // Daily Calories Card - Locked with blur + Premium button
+                    PremiumLockedContent {
                         DailyCaloriesCard(
                             averageCalories: viewModel.averageCalories,
                             calorieGoal: UserSettings.shared.calorieGoal,
-                            isSubscribed: isSubscribed,
+                            isSubscribed: true,
                             onViewDetails: {
                                 if isSubscribed {
                                     viewModel.showCaloriesSheet = true
@@ -63,8 +65,10 @@ struct ProgressDashboardView: View {
                                 }
                             }
                         )
-                        
-                        // HealthKit Data Section
+                    }
+                    
+                    // HealthKit Data Section - Locked with blur + Premium button
+                    PremiumLockedContent {
                         HealthDataSection(
                             steps: viewModel.steps,
                             activeCalories: viewModel.activeCalories,
@@ -72,28 +76,28 @@ struct ProgressDashboardView: View {
                             heartRate: viewModel.heartRate,
                             distance: viewModel.distance,
                             sleepHours: viewModel.sleepHours,
-                            isSubscribed: isSubscribed
+                            isSubscribed: true
                         )
                     }
-                    .padding()
                 }
-                .background(Color(.systemGroupedBackground))
-                
-                if !isSubscribed {
-                    LockedFeatureOverlay(message: "Upgrade to Premium to track your progress")
-                }
+                .padding()
             }
+            .background(Color(.systemGroupedBackground))
             .navigationTitle("Progress")
             .refreshable {
                 await viewModel.loadData()
             }
             .task {
                 await viewModel.loadData()
-            }
-            .onAppear {
+                
+                // Show weight prompt after a delay, only if needed
                 if viewModel.shouldPromptForWeight {
-                    showWeightInput = true
-                    viewModel.markWeightPromptShown()
+                    // Wait 1.5 seconds so user can see the screen first
+                    try? await Task.sleep(nanoseconds: 1_500_000_000)
+                    if viewModel.shouldPromptForWeight { // Check again in case user dismissed
+                        showWeightInput = true
+                        viewModel.markWeightPromptShown()
+                    }
                 }
             }
             .sheet(isPresented: $showWeightInput) {
@@ -251,6 +255,12 @@ struct BMICard: View {
     let category: BMICategory
     let isSubscribed: Bool
     
+    init(bmi: Double, category: BMICategory, isSubscribed: Bool = true) {
+        self.bmi = bmi
+        self.category = category
+        self.isSubscribed = isSubscribed
+    }
+    
     var body: some View {
         VStack(spacing: 16) {
             HStack {
@@ -350,6 +360,13 @@ struct DailyCaloriesCard: View {
     let isSubscribed: Bool
     let onViewDetails: () -> Void
     
+    init(averageCalories: Int, calorieGoal: Int, isSubscribed: Bool = true, onViewDetails: @escaping () -> Void) {
+        self.averageCalories = averageCalories
+        self.calorieGoal = calorieGoal
+        self.isSubscribed = isSubscribed
+        self.onViewDetails = onViewDetails
+    }
+    
     var progress: Double {
         guard calorieGoal > 0 else { return 0 }
         return Double(averageCalories) / Double(calorieGoal)
@@ -412,17 +429,11 @@ struct DailyCaloriesCard: View {
                 HStack {
                     Image(systemName: "chart.bar.fill")
                     Text("View Daily Breakdown")
-                    if !isSubscribed {
-                        Spacer()
-                        Image(systemName: "lock.fill")
-                            .font(.caption)
-                    }
                 }
                 .font(.subheadline)
                 .fontWeight(.medium)
                 .foregroundColor(.orange)
             }
-            .opacity(isSubscribed ? 1.0 : 0.6)
         }
         .padding()
         .background(Color(.secondarySystemGroupedBackground))
@@ -441,6 +452,16 @@ struct HealthDataSection: View {
     let distance: Double
     let sleepHours: Double
     let isSubscribed: Bool
+    
+    init(steps: Int, activeCalories: Int, exerciseMinutes: Int, heartRate: Int, distance: Double, sleepHours: Double, isSubscribed: Bool = true) {
+        self.steps = steps
+        self.activeCalories = activeCalories
+        self.exerciseMinutes = exerciseMinutes
+        self.heartRate = heartRate
+        self.distance = distance
+        self.sleepHours = sleepHours
+        self.isSubscribed = isSubscribed
+    }
     
     let columns = [
         GridItem(.flexible(), spacing: 12),
@@ -566,18 +587,6 @@ struct HealthMetricCard: View {
         .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .shadow(color: .black.opacity(0.03), radius: 5, x: 0, y: 2)
-        .overlay(alignment: .topTrailing) {
-            if !isSubscribed {
-                Image(systemName: "lock.fill")
-                    .font(.caption2)
-                    .foregroundColor(.orange)
-                    .padding(4)
-                    .background(Color.orange.opacity(0.2))
-                    .clipShape(Circle())
-                    .padding(8)
-            }
-        }
-        .opacity(isSubscribed ? 1.0 : 0.6)
     }
 }
 

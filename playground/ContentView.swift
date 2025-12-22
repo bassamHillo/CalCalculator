@@ -76,6 +76,9 @@ struct ContentView: View {
                     // ✅ This is the final dictionary: [stepId: answer]
                     onboardingResult = dict
                     
+                    // Save onboarding data to UserSettings
+                    saveOnboardingData(dict)
+                    
                     // Save user as authenticated
                     AuthenticationManager.shared.setUserId(AuthenticationManager.shared.userId ?? "")
 
@@ -200,6 +203,47 @@ struct ContentView: View {
                 paywallItem = nil
             }
         }
+    }
+    
+    // MARK: - Save Onboarding Data
+    
+    private func saveOnboardingData(_ dict: [String: Any]) {
+        let settings = UserSettings.shared
+        
+        // Extract height and weight from "height_weight" step
+        // Structure: height_weight -> { height: { value: Double, unit: String }, weight: { value: Double, unit: String } }
+        if let heightWeightData = dict["height_weight"] as? [String: Any] {
+            // Height
+            if let heightData = heightWeightData["height"] as? [String: Any] {
+                if let heightValue = heightData["value"] as? Double,
+                   let unit = heightData["unit"] as? String {
+                    // Convert to cm
+                    let heightInCm = unit == "cm" ? heightValue : heightValue * 30.48 // ft to cm
+                    settings.height = heightInCm
+                }
+            }
+            
+            // Weight
+            if let weightData = heightWeightData["weight"] as? [String: Any] {
+                if let weightValue = weightData["value"] as? Double,
+                   let unit = weightData["unit"] as? String {
+                    // Convert to kg
+                    let weightInKg = unit == "kg" ? weightValue : weightValue * 0.453592 // lbs to kg
+                    // Use updateWeight to set both weight and lastWeightDate
+                    // This prevents the prompt from showing immediately after onboarding
+                    settings.updateWeight(weightInKg)
+                }
+            }
+        }
+        
+        // Extract desired weight from "desired_weight" step
+        // Structure: desired_weight -> Double (already in kg)
+        if let desiredWeightValue = dict["desired_weight"] as? Double {
+            settings.targetWeight = desiredWeightValue
+        }
+        
+        // Mark onboarding as complete
+        settings.completeOnboarding()
     }
 }
 

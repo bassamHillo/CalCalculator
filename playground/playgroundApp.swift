@@ -67,12 +67,29 @@ struct playgroundApp: App {
             ContentView()
                 .modelContainer(modelContainer)
                 .environment(sdk) // Use direct environment like example app
-                .environment(\.isSubscribed, sdk.isSubscribed) // Inject subscription status
+                .environment(\.isSubscribed, effectiveSubscriptionStatus) // Inject subscription status with debug override
                 .onChange(of: sdk.isSubscribed) { oldValue, newValue in
                     // Subscription status changed - environment will update automatically
                     print("📱 Subscription status changed: \(newValue)")
                 }
+                .onChange(of: UserSettings.shared.debugOverrideSubscription) { oldValue, newValue in
+                    // Debug override changed - update environment
+                    print("🔧 Debug override subscription: \(newValue ? "enabled" : "disabled")")
+                }
+                .onChange(of: UserSettings.shared.debugIsSubscribed) { oldValue, newValue in
+                    // Debug subscription value changed - update environment
+                    print("🔧 Debug isSubscribed: \(newValue)")
+                }
         }
+    }
+    
+    /// Effective subscription status: uses debug override if enabled, otherwise uses SDK value
+    private var effectiveSubscriptionStatus: Bool {
+        let settings = UserSettings.shared
+        if settings.debugOverrideSubscription {
+            return settings.debugIsSubscribed
+        }
+        return sdk.isSubscribed
     }
 }
 

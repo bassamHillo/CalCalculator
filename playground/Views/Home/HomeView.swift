@@ -21,7 +21,6 @@ struct HomeView: View {
     private var settings = UserSettings.shared
     
     @State private var showScanSheet = false
-    @State private var showPaywall = false
     @State private var confettiCounter = 0
     
     init(
@@ -87,51 +86,26 @@ struct HomeView: View {
             HStack {
                 Spacer()
                 Button {
-                    if isSubscribed {
-                        showScanSheet = true
-                    } else {
-                        showPaywall = true
-                    }
+                    showScanSheet = true
                 } label: {
-                    ZStack {
-                        Image(systemName: "plus")
-                            .font(.title2)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(.white)
-                            .frame(width: 60, height: 60)
-                            .background(
-                                LinearGradient(
-                                    colors: [Color.blue, Color.blue.opacity(0.8)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
+                    Image(systemName: "plus")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.white)
+                        .frame(width: 60, height: 60)
+                        .background(
+                            LinearGradient(
+                                colors: [Color.blue, Color.blue.opacity(0.8)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
                             )
-                            .clipShape(Circle())
-                            .shadow(color: .blue.opacity(0.4), radius: 8, x: 0, y: 4)
-                        
-                        if !isSubscribed {
-                            Image(systemName: "lock.fill")
-                                .font(.caption)
-                                .foregroundColor(.white)
-                                .padding(4)
-                                .background(Color.orange)
-                                .clipShape(Circle())
-                                .offset(x: 18, y: -18)
-                        }
-                    }
+                        )
+                        .clipShape(Circle())
+                        .shadow(color: .blue.opacity(0.4), radius: 8, x: 0, y: 4)
                 }
                 .padding(.trailing, 20)
                 .padding(.bottom, 20)
             }
-        }
-        .fullScreenCover(isPresented: $showPaywall) {
-            SDKView(
-                model: sdk,
-                page: .splash,
-                show: $showPaywall,
-                backgroundColor: .white,
-                ignoreSafeArea: true
-            )
         }
     }
     
@@ -155,10 +129,12 @@ struct HomeView: View {
     }
     
     private var macroSection: some View {
-        MacroCardsSection(
-            summary: viewModel.todaysSummary,
-            goals: settings.macroGoals
-        )
+        PremiumLockedContent {
+            MacroCardsSection(
+                summary: viewModel.todaysSummary,
+                goals: settings.macroGoals
+            )
+        }
         .listRowInsets(EdgeInsets(.zero))
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
