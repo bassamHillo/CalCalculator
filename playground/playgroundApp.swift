@@ -21,8 +21,16 @@ struct playgroundApp: App {
             let schema = Schema([
                 Meal.self,
                 MealItem.self,
-                DaySummary.self
+                DaySummary.self,
+                WeightEntry.self
             ])
+            
+            // Ensure Application Support directory exists before SwiftData tries to create the store
+            let fileManager = FileManager.default
+            if let appSupportURL = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
+                try? fileManager.createDirectory(at: appSupportURL, withIntermediateDirectories: true)
+            }
+            
             let modelConfiguration = ModelConfiguration(
                 schema: schema,
                 isStoredInMemoryOnly: false
@@ -35,14 +43,13 @@ struct playgroundApp: App {
             fatalError("Could not initialize ModelContainer: \(error)")
         }
         
-        // Initialize SDK synchronously like the example app
-        // The SDK's heavy work (StoreKit checks, network calls) happens async internally
-        // StoreKit errors are logged but don't block - they're expected in development
-        let baseURL = URL(string: "https://translate-now.com")!
+        // Initialize SDK synchronously like the translate app
+        // Match translate app exactly: use "app.translate-now.com" (with "app." prefix)
+        let baseURL = URL(string: "https://app.translate-now.com")!
         let config = SDKConfig(
             baseURL: baseURL,
-            facebook: nil,
-            logOptions: nil, // Reduced logging
+            facebook: "569790992889415", // Match translate app - they pass a Facebook app ID
+            logOptions: .all, // Match translate app - use .all
             apnsHandler: { event in
                 switch event {
                 case let .didReceive(notification, details):

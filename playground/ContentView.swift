@@ -87,11 +87,16 @@ struct ContentView: View {
                     }
                     
                     // Check subscription status before showing paywall
-                    // Defer subscription check to avoid blocking
+                    // Match example app pattern exactly: use async let with delay
                     Task {
                         do {
-                            _ = try await sdk.updateIsSubscribed()
+                            async let timewasteTask: () = Task.sleep(nanoseconds: 1_000_000_000) // 1 second like example app
+                            async let updateSubscriptionStateTask = sdk.updateIsSubscribed()
+                            
+                            let _ = try await (timewasteTask, updateSubscriptionStateTask)
+                            
                             await MainActor.run {
+                                // Use sdk.isSubscribed after updateIsSubscribed completes (like example app uses self.isSubscribed)
                                 if !sdk.isSubscribed {
                                     paywallItem = .init(page: .splash, callback: {
                                         authState = .authenticated
@@ -118,7 +123,13 @@ struct ContentView: View {
                             hasCheckedSubscription = true
                             
                             do {
-                                _ = try await sdk.updateIsSubscribed()
+                                // Match example app pattern exactly: use async let with delay
+                                async let timewasteTask: () = Task.sleep(nanoseconds: 1_000_000_000) // 1 second like example app
+                                async let updateSubscriptionStateTask = sdk.updateIsSubscribed()
+                                
+                                let _ = try await (timewasteTask, updateSubscriptionStateTask)
+                                
+                                // Use sdk.isSubscribed after updateIsSubscribed completes (like example app uses self.isSubscribed)
                                 if !sdk.isSubscribed {
                                     paywallItem = .init(page: .splash, callback: {
                                         authState = .authenticated
@@ -189,7 +200,7 @@ struct ContentView: View {
 #Preview {
     ContentView()
         .modelContainer(
-            for: [Meal.self, MealItem.self, DaySummary.self],
+            for: [Meal.self, MealItem.self, DaySummary.self, WeightEntry.self],
             inMemory: true
         )
 }
