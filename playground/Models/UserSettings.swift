@@ -23,6 +23,10 @@ final class UserSettings {
         static let carbsGoal = "carbsGoal"
         static let fatGoal = "fatGoal"
         static let useMetricUnits = "useMetricUnits"
+        static let currentWeight = "currentWeight"
+        static let targetWeight = "targetWeight"
+        static let height = "height"
+        static let lastWeightDate = "lastWeightDate"
     }
     
     // MARK: - Properties
@@ -50,6 +54,22 @@ final class UserSettings {
         didSet { defaults.set(useMetricUnits, forKey: Keys.useMetricUnits) }
     }
     
+    var currentWeight: Double { // in kg
+        didSet { defaults.set(currentWeight, forKey: Keys.currentWeight) }
+    }
+    
+    var targetWeight: Double { // in kg
+        didSet { defaults.set(targetWeight, forKey: Keys.targetWeight) }
+    }
+    
+    var height: Double { // in cm
+        didSet { defaults.set(height, forKey: Keys.height) }
+    }
+    
+    var lastWeightDate: Date? {
+        didSet { defaults.set(lastWeightDate, forKey: Keys.lastWeightDate) }
+    }
+    
     // MARK: - Computed Properties
     var macroGoals: MacroData {
         MacroData(
@@ -72,6 +92,10 @@ final class UserSettings {
         self.carbsGoal = defaults.object(forKey: Keys.carbsGoal) as? Double ?? 250
         self.fatGoal = defaults.object(forKey: Keys.fatGoal) as? Double ?? 65
         self.useMetricUnits = defaults.object(forKey: Keys.useMetricUnits) as? Bool ?? true
+        self.currentWeight = defaults.object(forKey: Keys.currentWeight) as? Double ?? 70
+        self.targetWeight = defaults.object(forKey: Keys.targetWeight) as? Double ?? 70
+        self.height = defaults.object(forKey: Keys.height) as? Double ?? 170
+        self.lastWeightDate = defaults.object(forKey: Keys.lastWeightDate) as? Date
     }
     
     // MARK: - Methods
@@ -85,5 +109,10 @@ final class UserSettings {
     
     func completeOnboarding() {
         hasCompletedOnboarding = true
+    }
+    
+    func updateWeight(_ weight: Double) {
+        currentWeight = weight
+        lastWeightDate = Date()
     }
 }

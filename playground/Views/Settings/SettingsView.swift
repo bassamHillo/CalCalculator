@@ -10,6 +10,7 @@ import SwiftUI
 struct SettingsView: View {
     @Bindable var settings = UserSettings.shared
     @Bindable var viewModel: SettingsViewModel
+    @Environment(\.colorScheme) private var colorScheme
     
     @State private var showingExportSheet = false
     @State private var showingDeleteConfirmation = false
@@ -20,158 +21,365 @@ struct SettingsView: View {
     
     var body: some View {
         NavigationStack {
-            settingsForm
-                .navigationTitle("Settings")
-                .confirmationDialog(
-                    "Delete All Data",
-                    isPresented: $showingDeleteConfirmation,
-                    titleVisibility: .visible
-                ) {
-                    deleteConfirmationActions
-                } message: {
-                    deleteConfirmationMessage
+            ScrollView {
+                VStack(spacing: 24) {
+                    macroGoalsSection
+                    unitsSection
+                    dataManagementSection
+                    aboutSection
                 }
-                .sheet(isPresented: $showingExportSheet) {
-                    exportSheet
-                }
+                .padding(.vertical, 8)
+            }
+            .background(Color(.systemGroupedBackground))
+            .navigationTitle("Settings")
+            .navigationBarTitleDisplayMode(.large)
+            .confirmationDialog(
+                "Delete All Data",
+                isPresented: $showingDeleteConfirmation,
+                titleVisibility: .visible
+            ) {
+                deleteConfirmationActions
+            } message: {
+                deleteConfirmationMessage
+            }
+            .sheet(isPresented: $showingExportSheet) {
+                exportSheet
+            }
         }
     }
     
     // MARK: - Private Views
     
-    private var settingsForm: some View {
-        Form {
-            macroGoalsSection
-            unitsSection
-            dataManagementSection
-            aboutSection
-        }
-    }
-    
     private var macroGoalsSection: some View {
-        Section {
-            caloriesStepper
-            proteinStepper
-            carbsStepper
-            fatStepper
-        } header: {
-            Text("Daily Goals")
-        } footer: {
-            Text("Adjust your daily nutritional targets")
-        }
-    }
-    
-    private var caloriesStepper: some View {
-        Stepper(value: $settings.calorieGoal, in: 1000...5000, step: 50) {
-            HStack {
-                Label("Calories", systemImage: "flame.fill")
-                    .foregroundColor(.caloriesColor)
-                Spacer()
-                Text("\(settings.calorieGoal)")
-                    .foregroundColor(.secondary)
+        VStack(alignment: .leading, spacing: 16) {
+            sectionHeader(title: "Daily Goals", subtitle: "Adjust your daily nutritional targets")
+            
+            VStack(spacing: 12) {
+                macroGoalCard(
+                    title: "Calories",
+                    icon: "flame.fill",
+                    value: settings.calorieGoal,
+                    unit: "",
+                    color: .caloriesColor,
+                    range: 1000...5000,
+                    step: 50,
+                    binding: $settings.calorieGoal
+                )
+                
+                macroGoalCard(
+                    title: "Protein",
+                    icon: "p.circle.fill",
+                    value: settings.proteinGoal,
+                    unit: "g",
+                    color: .proteinColor,
+                    range: 10...300,
+                    step: 5,
+                    binding: $settings.proteinGoal
+                )
+                
+                macroGoalCard(
+                    title: "Carbs",
+                    icon: "c.circle.fill",
+                    value: settings.carbsGoal,
+                    unit: "g",
+                    color: .carbsColor,
+                    range: 10...500,
+                    step: 5,
+                    binding: $settings.carbsGoal
+                )
+                
+                macroGoalCard(
+                    title: "Fat",
+                    icon: "f.circle.fill",
+                    value: settings.fatGoal,
+                    unit: "g",
+                    color: .fatColor,
+                    range: 10...200,
+                    step: 5,
+                    binding: $settings.fatGoal
+                )
             }
         }
+        .padding(.horizontal, 16)
     }
     
-    private var proteinStepper: some View {
-        Stepper(value: $settings.proteinGoal, in: 10...300, step: 5) {
-            HStack {
-                Label("Protein", systemImage: "p.circle.fill")
-                    .foregroundColor(.proteinColor)
-                Spacer()
-                Text("\(settings.proteinGoal.formattedMacro)g")
-                    .foregroundColor(.secondary)
+    private func macroGoalCard(
+        title: String,
+        icon: String,
+        value: Double,
+        unit: String,
+        color: Color,
+        range: ClosedRange<Double>,
+        step: Double,
+        binding: Binding<Double>
+    ) -> some View {
+        HStack(spacing: 16) {
+            // Icon with colored background
+            ZStack {
+                Circle()
+                    .fill(color.opacity(0.15))
+                    .frame(width: 44, height: 44)
+                
+                Image(systemName: icon)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(color)
             }
+            
+            // Title and value
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.headline)
+                    .foregroundColor(.primary)
+                
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text(value.formattedMacro)
+                        .font(.title3)
+                        .fontWeight(.bold)
+                        .foregroundColor(color)
+                    
+                    if !unit.isEmpty {
+                        Text(unit)
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+            
+            Spacer()
+            
+            // Stepper
+            Stepper("", value: binding, in: range, step: step)
+                .labelsHidden()
         }
+        .padding(16)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
     
-    private var carbsStepper: some View {
-        Stepper(value: $settings.carbsGoal, in: 10...500, step: 5) {
-            HStack {
-                Label("Carbs", systemImage: "c.circle.fill")
-                    .foregroundColor(.carbsColor)
-                Spacer()
-                Text("\(settings.carbsGoal.formattedMacro)g")
-                    .foregroundColor(.secondary)
+    // Overload for Int (calories)
+    private func macroGoalCard(
+        title: String,
+        icon: String,
+        value: Int,
+        unit: String,
+        color: Color,
+        range: ClosedRange<Int>,
+        step: Int,
+        binding: Binding<Int>
+    ) -> some View {
+        HStack(spacing: 16) {
+            // Icon with colored background
+            ZStack {
+                Circle()
+                    .fill(color.opacity(0.15))
+                    .frame(width: 44, height: 44)
+                
+                Image(systemName: icon)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(color)
             }
-        }
-    }
-    
-    private var fatStepper: some View {
-        Stepper(value: $settings.fatGoal, in: 10...200, step: 5) {
-            HStack {
-                Label("Fat", systemImage: "f.circle.fill")
-                    .foregroundColor(.fatColor)
-                Spacer()
-                Text("\(settings.fatGoal.formattedMacro)g")
-                    .foregroundColor(.secondary)
+            
+            // Title and value
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.headline)
+                    .foregroundColor(.primary)
+                
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text("\(value)")
+                        .font(.title3)
+                        .fontWeight(.bold)
+                        .foregroundColor(color)
+                    
+                    if !unit.isEmpty {
+                        Text(unit)
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                }
             }
+            
+            Spacer()
+            
+            // Stepper
+            Stepper("", value: binding, in: range, step: step)
+                .labelsHidden()
         }
+        .padding(16)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
     
     private var unitsSection: some View {
-        Section {
-            Toggle(isOn: $settings.useMetricUnits) {
-                Label("Metric Units", systemImage: "ruler")
+        VStack(alignment: .leading, spacing: 16) {
+            sectionHeader(title: "Units", subtitle: "Use grams and milliliters for portions")
+            
+            HStack(spacing: 16) {
+                ZStack {
+                    Circle()
+                        .fill(Color.blue.opacity(0.15))
+                        .frame(width: 44, height: 44)
+                    
+                    Image(systemName: "ruler")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.blue)
+                }
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Metric Units")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                    
+                    Text(settings.useMetricUnits ? "kg, g, cm, ml" : "lbs, oz, ft, fl oz")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                Toggle("", isOn: $settings.useMetricUnits)
+                    .labelsHidden()
             }
-        } header: {
-            Text("Units")
-        } footer: {
-            Text("Use grams and milliliters for portions")
+            .padding(16)
+            .background(Color(.secondarySystemGroupedBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
+        .padding(.horizontal, 16)
     }
     
     private var dataManagementSection: some View {
-        Section {
-            exportDataButton
-            deleteDataButton
-        } header: {
-            Text("Data Management")
+        VStack(alignment: .leading, spacing: 16) {
+            sectionHeader(title: "Data Management", subtitle: "Export or delete your data")
+            
+            VStack(spacing: 12) {
+                actionButton(
+                    title: "Export Data",
+                    subtitle: "Save your data as JSON",
+                    icon: "square.and.arrow.up",
+                    iconColor: .blue,
+                    action: exportDataAction
+                )
+                
+                actionButton(
+                    title: "Delete All Data",
+                    subtitle: "Permanently remove all meals and history",
+                    icon: "trash",
+                    iconColor: .red,
+                    isDestructive: true,
+                    action: { showingDeleteConfirmation = true }
+                )
+            }
         }
+        .padding(.horizontal, 16)
     }
     
-    private var exportDataButton: some View {
-        Button {
-            exportDataAction()
-        } label: {
-            Label("Export Data (JSON)", systemImage: "square.and.arrow.up")
+    private func actionButton(
+        title: String,
+        subtitle: String,
+        icon: String,
+        iconColor: Color,
+        isDestructive: Bool = false,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 16) {
+                ZStack {
+                    Circle()
+                        .fill(iconColor.opacity(0.15))
+                        .frame(width: 44, height: 44)
+                    
+                    Image(systemName: icon)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(iconColor)
+                }
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.headline)
+                        .foregroundColor(isDestructive ? .red : .primary)
+                    
+                    Text(subtitle)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.secondary)
+            }
+            .padding(16)
+            .background(Color(.secondarySystemGroupedBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
-    }
-    
-    private var deleteDataButton: some View {
-        Button(role: .destructive) {
-            showingDeleteConfirmation = true
-        } label: {
-            Label("Delete All Data", systemImage: "trash")
-                .foregroundColor(.red)
-        }
+        .buttonStyle(.plain)
     }
     
     private var aboutSection: some View {
-        Section {
-            versionRow
-            modeRow
-        } header: {
-            Text("About")
-        } footer: {
-            Text("CalAI Clone - Photo-based calorie tracking")
+        VStack(alignment: .leading, spacing: 16) {
+            sectionHeader(title: "About", subtitle: "CalAI Clone - Photo-based calorie tracking")
+            
+            VStack(spacing: 12) {
+                infoRow(
+                    title: "Version",
+                    value: "1.0.0",
+                    icon: "info.circle",
+                    iconColor: .blue
+                )
+                
+                infoRow(
+                    title: "Mode",
+                    value: "Real API",
+                    icon: "network",
+                    iconColor: .green
+                )
+            }
         }
+        .padding(.horizontal, 16)
     }
     
-    private var versionRow: some View {
-        HStack {
-            Text("Version")
+    private func infoRow(
+        title: String,
+        value: String,
+        icon: String,
+        iconColor: Color
+    ) -> some View {
+        HStack(spacing: 16) {
+            ZStack {
+                Circle()
+                    .fill(iconColor.opacity(0.15))
+                    .frame(width: 44, height: 44)
+                
+                Image(systemName: icon)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(iconColor)
+            }
+            
+            Text(title)
+                .font(.headline)
+                .foregroundColor(.primary)
+            
             Spacer()
-            Text("1.0.0")
+            
+            Text(value)
+                .font(.subheadline)
                 .foregroundColor(.secondary)
         }
+        .padding(16)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
     
-    private var modeRow: some View {
-        HStack {
-            Text("Mode")
-            Spacer()
-            Text("Real API")
+    private func sectionHeader(title: String, subtitle: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.title3)
+                .fontWeight(.bold)
+                .foregroundColor(.primary)
+            
+            Text(subtitle)
+                .font(.subheadline)
                 .foregroundColor(.secondary)
         }
     }
