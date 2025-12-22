@@ -37,7 +37,8 @@ jobs:
       
       - name: Install dependencies
         run: |
-          xcodebuild -resolvePackageDependencies -project playground.xcodeproj
+          # Resolve package dependencies with scheme
+          xcodebuild -resolvePackageDependencies -project playground.xcodeproj -scheme playground
       
       - name: Run unit tests
         run: |
@@ -84,7 +85,8 @@ jobs:
       
       - name: Install dependencies
         run: |
-          xcodebuild -resolvePackageDependencies -project playground.xcodeproj
+          # Resolve package dependencies with scheme
+          xcodebuild -resolvePackageDependencies -project playground.xcodeproj -scheme playground
       
       - name: Setup App Store Connect API Key
         run: |
