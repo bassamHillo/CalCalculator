@@ -202,6 +202,14 @@ final class UserSettings {
         hasCompletedOnboarding = true
     }
     
+    /// Update all nutrition goals at once
+    func updateGoals(calories: Int, protein: Double, carbs: Double, fat: Double) {
+        calorieGoal = calories
+        proteinGoal = protein
+        carbsGoal = carbs
+        fatGoal = fat
+    }
+
     func updateWeight(_ weight: Double) {
         currentWeight = weight
         lastWeightDate = Date()
