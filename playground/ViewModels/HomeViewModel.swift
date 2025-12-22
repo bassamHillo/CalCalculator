@@ -79,11 +79,34 @@ final class HomeViewModel {
             // Fetch week summaries and build week days
             let weekSummaries = try repository.fetchCurrentWeekSummaries()
             weekDays = buildWeekDays(from: weekSummaries)
+            
+            // Sync data to widgets
+            syncWidgetData()
         } catch {
             self.error = error
             self.errorMessage = error.localizedDescription
             self.showError = true
         }
+    }
+    
+    /// Syncs current nutrition data to widgets via App Group
+    private func syncWidgetData() {
+        let settings = UserSettings.shared
+        let lastMeal = recentMeals.first
+        
+        WidgetDataManager.shared.syncFromAppData(
+            caloriesConsumed: todaysSummary?.totalCalories ?? 0,
+            proteinConsumed: todaysSummary?.totalProteinG ?? 0,
+            carbsConsumed: todaysSummary?.totalCarbsG ?? 0,
+            fatConsumed: todaysSummary?.totalFatG ?? 0,
+            mealCount: todaysSummary?.mealCount ?? 0,
+            lastMealName: lastMeal?.name,
+            lastMealTime: lastMeal?.timestamp,
+            caloriesGoal: settings.calorieGoal,
+            proteinGoal: settings.proteinGoal,
+            carbsGoal: settings.carbsGoal,
+            fatGoal: settings.fatGoal
+        )
     }
     
     /// Build WeekDay array for the current week (Sun-Sat)

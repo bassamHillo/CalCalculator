@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftData
+import WidgetKit
 
 /// Repository for managing meal data operations
 @MainActor
@@ -25,6 +26,9 @@ final class MealRepository {
         
         // Update or create day summary
         try updateDaySummary(for: meal.timestamp, adding: meal)
+        
+        // Trigger widget refresh
+        WidgetCenter.shared.reloadAllTimelines()
     }
     
     func deleteMeal(_ meal: Meal) throws {
@@ -33,6 +37,9 @@ final class MealRepository {
         
         context.delete(meal)
         try context.save()
+        
+        // Trigger widget refresh
+        WidgetCenter.shared.reloadAllTimelines()
     }
     
     func fetchMeals(for date: Date? = nil) throws -> [Meal] {

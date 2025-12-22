@@ -222,60 +222,100 @@ struct NutritionTimelineProvider: TimelineProvider {
     }
 }
 
+// MARK: - Theme Colors
+
+struct WidgetColors {
+    static let primary = Color(red: 0.4, green: 0.8, blue: 0.4) // Fresh green
+    static let secondary = Color(red: 0.3, green: 0.7, blue: 0.9) // Sky blue
+    static let accent = Color(red: 1.0, green: 0.6, blue: 0.2) // Orange
+    static let warning = Color(red: 1.0, green: 0.4, blue: 0.4) // Soft red
+    
+    static let proteinColor = Color(red: 1.0, green: 0.55, blue: 0.0) // Vibrant orange
+    static let carbsColor = Color(red: 0.2, green: 0.6, blue: 1.0) // Bright blue
+    static let fatColor = Color(red: 0.7, green: 0.4, blue: 0.9) // Purple
+    static let caloriesGradient = LinearGradient(
+        colors: [Color(red: 0.4, green: 0.85, blue: 0.5), Color(red: 0.2, green: 0.7, blue: 0.4)],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+    static let overGradient = LinearGradient(
+        colors: [Color(red: 1.0, green: 0.5, blue: 0.4), Color(red: 0.9, green: 0.3, blue: 0.3)],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+}
+
 // MARK: - Small Widget View (Calories Progress Ring)
 
 struct SmallCaloriesWidgetView: View {
     let entry: NutritionEntry
     
-    private var progressColor: Color {
+    private var progressGradient: LinearGradient {
         if entry.isOverGoal {
-            return .red
+            return WidgetColors.overGradient
         } else if entry.caloriesProgress >= 0.8 {
-            return .green
-        } else if entry.caloriesProgress >= 0.5 {
-            return .orange
+            return WidgetColors.caloriesGradient
         } else {
-            return .blue
+            return LinearGradient(
+                colors: [WidgetColors.secondary, WidgetColors.secondary.opacity(0.8)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        }
+    }
+    
+    private var statusText: String {
+        if entry.isOverGoal {
+            return "+\(entry.caloriesOverage) over"
+        } else {
+            return "\(entry.caloriesRemaining) left"
         }
     }
     
     var body: some View {
         GeometryReader { geometry in
             let size = min(geometry.size.width, geometry.size.height)
+            let ringSize = size * 0.7
+            let lineWidth = size * 0.09
             
-            VStack(spacing: 4) {
+            VStack(spacing: size * 0.03) {
                 ZStack {
+                    // Background ring
                     Circle()
-                        .stroke(Color.gray.opacity(0.2), lineWidth: size * 0.08)
+                        .stroke(Color.gray.opacity(0.15), lineWidth: lineWidth)
                     
+                    // Progress ring with gradient
                     Circle()
                         .trim(from: 0, to: min(entry.caloriesProgress, 1.0))
                         .stroke(
-                            progressColor,
-                            style: StrokeStyle(lineWidth: size * 0.08, lineCap: .round)
+                            progressGradient,
+                            style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
                         )
                         .rotationEffect(.degrees(-90))
+                        .shadow(color: entry.isOverGoal ? Color.red.opacity(0.3) : Color.green.opacity(0.3), radius: 4, x: 0, y: 2)
                     
+                    // Center content
                     VStack(spacing: 0) {
                         Text("\(entry.caloriesConsumed)")
                             .font(.system(size: size * 0.18, weight: .bold, design: .rounded))
-                            .foregroundColor(.primary)
+                            .foregroundStyle(entry.isOverGoal ? WidgetColors.warning : .primary)
                         
-                        Text("/ \(entry.caloriesGoal)")
-                            .font(.system(size: size * 0.08, weight: .medium, design: .rounded))
-                            .foregroundColor(.secondary)
+                        Text("of \(entry.caloriesGoal)")
+                            .font(.system(size: size * 0.07, weight: .medium, design: .rounded))
+                            .foregroundStyle(.secondary)
                     }
                 }
-                .frame(width: size * 0.65, height: size * 0.65)
+                .frame(width: ringSize, height: ringSize)
                 
-                if entry.isOverGoal {
-                    Text("+\(entry.caloriesOverage) over")
+                // Status text with icon
+                HStack(spacing: 3) {
+                    Image(systemName: entry.isOverGoal ? "exclamationmark.triangle.fill" : "flame.fill")
+                        .font(.system(size: size * 0.06))
+                        .foregroundStyle(entry.isOverGoal ? WidgetColors.warning : WidgetColors.primary)
+                    
+                    Text(statusText)
                         .font(.system(size: size * 0.08, weight: .semibold, design: .rounded))
-                        .foregroundColor(.red)
-                } else {
-                    Text("\(entry.caloriesRemaining) left")
-                        .font(.system(size: size * 0.08, weight: .semibold, design: .rounded))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(entry.isOverGoal ? WidgetColors.warning : .secondary)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -288,60 +328,87 @@ struct SmallCaloriesWidgetView: View {
 struct MediumMacrosWidgetView: View {
     let entry: NutritionEntry
     
-    private var caloriesColor: Color {
-        if entry.isOverGoal { return .red }
-        else if entry.caloriesProgress >= 0.8 { return .green }
-        else if entry.caloriesProgress >= 0.5 { return .orange }
-        else { return .blue }
+    private var caloriesGradient: LinearGradient {
+        entry.isOverGoal ? WidgetColors.overGradient : WidgetColors.caloriesGradient
     }
     
     var body: some View {
         GeometryReader { geometry in
-            HStack(spacing: 12) {
-                VStack(spacing: 4) {
+            HStack(spacing: 16) {
+                // Left side - Calories ring
+                VStack(spacing: 6) {
                     ZStack {
+                        // Background
                         Circle()
-                            .stroke(Color.gray.opacity(0.2), lineWidth: 8)
+                            .stroke(Color.gray.opacity(0.12), lineWidth: 10)
                         
+                        // Progress
                         Circle()
                             .trim(from: 0, to: min(entry.caloriesProgress, 1.0))
-                            .stroke(caloriesColor, style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                            .stroke(caloriesGradient, style: StrokeStyle(lineWidth: 10, lineCap: .round))
                             .rotationEffect(.degrees(-90))
+                            .shadow(color: entry.isOverGoal ? Color.red.opacity(0.25) : Color.green.opacity(0.25), radius: 4)
                         
                         VStack(spacing: 0) {
                             Text("\(entry.caloriesConsumed)")
-                                .font(.system(size: 20, weight: .bold, design: .rounded))
+                                .font(.system(size: 22, weight: .bold, design: .rounded))
                             Text("kcal")
-                                .font(.system(size: 10, weight: .medium))
-                                .foregroundColor(.secondary)
+                                .font(.system(size: 9, weight: .medium))
+                                .foregroundStyle(.secondary)
                         }
                     }
-                    .frame(width: 80, height: 80)
+                    .frame(width: 85, height: 85)
                     
-                    Text("\(entry.caloriesRemaining) left")
-                        .font(.system(size: 10, weight: .medium, design: .rounded))
-                        .foregroundColor(.secondary)
+                    // Status badge
+                    HStack(spacing: 3) {
+                        Image(systemName: entry.isOverGoal ? "arrow.up.circle.fill" : "flame.fill")
+                            .font(.system(size: 8))
+                        Text(entry.isOverGoal ? "+\(entry.caloriesOverage)" : "\(entry.caloriesRemaining) left")
+                            .font(.system(size: 9, weight: .semibold, design: .rounded))
+                    }
+                    .foregroundStyle(entry.isOverGoal ? WidgetColors.warning : WidgetColors.primary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(
+                        Capsule()
+                            .fill((entry.isOverGoal ? WidgetColors.warning : WidgetColors.primary).opacity(0.12))
+                    )
                 }
-                .frame(width: geometry.size.width * 0.35)
+                .frame(width: geometry.size.width * 0.38)
                 
-                VStack(spacing: 8) {
-                    MacroProgressBar(title: "Protein", value: entry.proteinConsumed, goal: entry.proteinGoal, unit: "g", color: .orange)
-                    MacroProgressBar(title: "Carbs", value: entry.carbsConsumed, goal: entry.carbsGoal, unit: "g", color: .blue)
-                    MacroProgressBar(title: "Fat", value: entry.fatConsumed, goal: entry.fatGoal, unit: "g", color: .purple)
+                // Right side - Macro bars
+                VStack(spacing: 10) {
+                    ModernMacroBar(
+                        title: "Protein",
+                        value: entry.proteinConsumed,
+                        goal: entry.proteinGoal,
+                        color: WidgetColors.proteinColor
+                    )
+                    ModernMacroBar(
+                        title: "Carbs",
+                        value: entry.carbsConsumed,
+                        goal: entry.carbsGoal,
+                        color: WidgetColors.carbsColor
+                    )
+                    ModernMacroBar(
+                        title: "Fat",
+                        value: entry.fatConsumed,
+                        goal: entry.fatGoal,
+                        color: WidgetColors.fatColor
+                    )
                 }
                 .frame(maxWidth: .infinity)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
         }
     }
 }
 
-struct MacroProgressBar: View {
+struct ModernMacroBar: View {
     let title: String
     let value: Double
     let goal: Double
-    let unit: String
     let color: Color
     
     private var progress: Double {
@@ -349,28 +416,43 @@ struct MacroProgressBar: View {
         return min(value / goal, 1.0)
     }
     
+    private var gradient: LinearGradient {
+        LinearGradient(
+            colors: [color, color.opacity(0.7)],
+            startPoint: .leading,
+            endPoint: .trailing
+        )
+    }
+    
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Text(title)
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                 Spacer()
-                Text("\(Int(value))/\(Int(goal))\(unit)")
-                    .font(.system(size: 10, weight: .semibold, design: .rounded))
-                    .foregroundColor(.primary)
+                Text("\(Int(value))")
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .foregroundStyle(.primary)
+                Text("/ \(Int(goal))g")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(.tertiary)
             }
             
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
+                    // Background
                     RoundedRectangle(cornerRadius: 4)
-                        .fill(Color.gray.opacity(0.2))
+                        .fill(Color.gray.opacity(0.12))
+                    
+                    // Progress with gradient
                     RoundedRectangle(cornerRadius: 4)
-                        .fill(color)
+                        .fill(gradient)
                         .frame(width: geometry.size.width * progress)
+                        .shadow(color: color.opacity(0.3), radius: 2, x: 0, y: 1)
                 }
             }
-            .frame(height: 6)
+            .frame(height: 7)
         }
     }
 }
@@ -381,78 +463,111 @@ struct LargeWeeklyWidgetView: View {
     let entry: NutritionEntry
     
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 14) {
+            // Header
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Weekly Overview")
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
-                    Text("Track your daily progress")
-                        .font(.system(size: 12, weight: .regular))
-                        .foregroundColor(.secondary)
+                    Text("Weekly Progress")
+                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                    Text(Date(), style: .date)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.secondary)
                 }
                 
                 Spacer()
                 
+                // Today's calories badge
                 VStack(alignment: .trailing, spacing: 2) {
                     Text("\(entry.caloriesConsumed)")
-                        .font(.system(size: 20, weight: .bold, design: .rounded))
-                        .foregroundColor(entry.isOverGoal ? .red : .green)
-                    Text("today")
+                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .foregroundStyle(entry.isOverGoal ? WidgetColors.warning : WidgetColors.primary)
+                    Text("kcal today")
                         .font(.system(size: 10, weight: .medium))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
             }
-            .padding(.horizontal)
-            .padding(.top, 8)
+            .padding(.horizontal, 16)
+            .padding(.top, 12)
             
-            HStack(spacing: 8) {
+            // Weekly chart
+            HStack(spacing: 6) {
                 ForEach(entry.weeklyData) { day in
-                    WeeklyDayBar(data: day)
+                    ModernWeeklyDayBar(data: day)
                 }
             }
-            .padding(.horizontal)
+            .padding(.horizontal, 16)
             
-            Divider()
-                .padding(.horizontal)
+            // Divider with gradient
+            Rectangle()
+                .fill(
+                    LinearGradient(
+                        colors: [Color.gray.opacity(0.05), Color.gray.opacity(0.15), Color.gray.opacity(0.05)],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .frame(height: 1)
+                .padding(.horizontal, 20)
             
-            HStack(spacing: 16) {
-                MacroCircleSmall(title: "Protein", value: entry.proteinConsumed, goal: entry.proteinGoal, color: .orange)
-                MacroCircleSmall(title: "Carbs", value: entry.carbsConsumed, goal: entry.carbsGoal, color: .blue)
-                MacroCircleSmall(title: "Fat", value: entry.fatConsumed, goal: entry.fatGoal, color: .purple)
-                MacroCircleSmall(title: "Calories", value: Double(entry.caloriesConsumed), goal: Double(entry.caloriesGoal), color: entry.isOverGoal ? .red : .green)
+            // Macro circles row
+            HStack(spacing: 20) {
+                ModernMacroCircle(title: "Protein", value: entry.proteinConsumed, goal: entry.proteinGoal, color: WidgetColors.proteinColor)
+                ModernMacroCircle(title: "Carbs", value: entry.carbsConsumed, goal: entry.carbsGoal, color: WidgetColors.carbsColor)
+                ModernMacroCircle(title: "Fat", value: entry.fatConsumed, goal: entry.fatGoal, color: WidgetColors.fatColor)
+                ModernMacroCircle(title: "Calories", value: Double(entry.caloriesConsumed), goal: Double(entry.caloriesGoal), color: entry.isOverGoal ? WidgetColors.warning : WidgetColors.primary)
             }
-            .padding(.horizontal)
-            .padding(.bottom, 8)
+            .padding(.horizontal, 16)
             
+            // Last meal info
             if let mealName = entry.lastMealName, let mealTime = entry.lastMealTime {
-                HStack {
-                    Image(systemName: "fork.knife")
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
-                    Text("Last: \(mealName)")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(.secondary)
+                HStack(spacing: 8) {
+                    Image(systemName: "fork.knife.circle.fill")
+                        .font(.system(size: 14))
+                        .foregroundStyle(WidgetColors.accent)
+                    
+                    Text(mealName)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(.primary)
                         .lineLimit(1)
+                    
                     Spacer()
+                    
                     Text(mealTime, style: .time)
                         .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
-                .padding(.horizontal)
-                .padding(.bottom, 8)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(Color.gray.opacity(0.06))
+                .cornerRadius(10)
+                .padding(.horizontal, 12)
             }
+            
+            Spacer(minLength: 8)
         }
     }
 }
 
-struct WeeklyDayBar: View {
+struct ModernWeeklyDayBar: View {
     let data: DailyData
     
-    private var barColor: Color {
-        if data.progress > 1.0 { return .red }
-        else if data.progress >= 0.8 { return .green }
-        else if data.progress >= 0.5 { return .orange }
-        else { return .blue.opacity(0.6) }
+    private var barGradient: LinearGradient {
+        let color: Color
+        if data.progress > 1.0 {
+            color = WidgetColors.warning
+        } else if data.progress >= 0.8 {
+            color = WidgetColors.primary
+        } else if data.progress >= 0.5 {
+            color = WidgetColors.accent
+        } else {
+            color = WidgetColors.secondary.opacity(0.7)
+        }
+        
+        return LinearGradient(
+            colors: [color, color.opacity(0.6)],
+            startPoint: .top,
+            endPoint: .bottom
+        )
     }
     
     var body: some View {
@@ -460,22 +575,27 @@ struct WeeklyDayBar: View {
             GeometryReader { geometry in
                 VStack {
                     Spacer()
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(data.isToday ? barColor : barColor.opacity(0.7))
+                    RoundedRectangle(cornerRadius: 5)
+                        .fill(barGradient)
                         .frame(height: geometry.size.height * min(data.progress, 1.0))
+                        .shadow(color: data.isToday ? Color.black.opacity(0.1) : .clear, radius: 2)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 5)
+                                .stroke(data.isToday ? Color.primary.opacity(0.3) : .clear, lineWidth: 1.5)
+                        )
                 }
             }
-            .frame(height: 60)
+            .frame(height: 55)
             
             Text(data.dayAbbreviation)
-                .font(.system(size: 10, weight: data.isToday ? .bold : .medium))
-                .foregroundColor(data.isToday ? .primary : .secondary)
+                .font(.system(size: 10, weight: data.isToday ? .bold : .medium, design: .rounded))
+                .foregroundStyle(data.isToday ? .primary : .secondary)
         }
         .frame(maxWidth: .infinity)
     }
 }
 
-struct MacroCircleSmall: View {
+struct ModernMacroCircle: View {
     let title: String
     let value: Double
     let goal: Double
@@ -486,23 +606,33 @@ struct MacroCircleSmall: View {
         return min(value / goal, 1.0)
     }
     
+    private var gradient: LinearGradient {
+        LinearGradient(
+            colors: [color, color.opacity(0.7)],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+    
     var body: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 5) {
             ZStack {
                 Circle()
-                    .stroke(Color.gray.opacity(0.2), lineWidth: 4)
+                    .stroke(Color.gray.opacity(0.1), lineWidth: 4)
                 Circle()
                     .trim(from: 0, to: progress)
-                    .stroke(color, style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                    .stroke(gradient, style: StrokeStyle(lineWidth: 4, lineCap: .round))
                     .rotationEffect(.degrees(-90))
+                    .shadow(color: color.opacity(0.3), radius: 2)
+                
                 Text("\(Int(progress * 100))%")
-                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
             }
-            .frame(width: 40, height: 40)
+            .frame(width: 42, height: 42)
             
             Text(title)
                 .font(.system(size: 9, weight: .medium))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
         }
     }
 }
@@ -512,63 +642,80 @@ struct MacroCircleSmall: View {
 struct QuickLogWidgetView: View {
     let entry: NutritionEntry
     
+    private var progressGradient: LinearGradient {
+        entry.isOverGoal ? WidgetColors.overGradient : WidgetColors.caloriesGradient
+    }
+    
     var body: some View {
-        VStack(spacing: 8) {
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
+        VStack(spacing: 10) {
+            // Top section
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 3) {
                     Text("\(entry.caloriesConsumed)")
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .font(.system(size: 32, weight: .bold, design: .rounded))
+                        .foregroundStyle(entry.isOverGoal ? WidgetColors.warning : .primary)
+                    
                     Text("of \(entry.caloriesGoal) kcal")
                         .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 
                 Spacer()
                 
+                // Progress ring
                 ZStack {
                     Circle()
-                        .stroke(Color.gray.opacity(0.2), lineWidth: 6)
+                        .stroke(Color.gray.opacity(0.12), lineWidth: 7)
                     Circle()
                         .trim(from: 0, to: min(entry.caloriesProgress, 1.0))
-                        .stroke(entry.isOverGoal ? Color.red : Color.green, style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                        .stroke(progressGradient, style: StrokeStyle(lineWidth: 7, lineCap: .round))
                         .rotationEffect(.degrees(-90))
+                    
                     Text("\(Int(min(entry.caloriesProgress, 1.0) * 100))%")
                         .font(.system(size: 14, weight: .bold, design: .rounded))
                 }
-                .frame(width: 50, height: 50)
+                .frame(width: 55, height: 55)
             }
             
-            Divider()
+            // Divider
+            Rectangle()
+                .fill(Color.gray.opacity(0.1))
+                .frame(height: 1)
             
-            HStack(spacing: 12) {
-                QuickActionButton(icon: "camera.fill", title: "Scan", color: .blue)
-                QuickActionButton(icon: "plus.circle.fill", title: "Add", color: .green)
-                QuickActionButton(icon: "chart.bar.fill", title: "History", color: .purple)
+            // Quick action buttons
+            HStack(spacing: 10) {
+                ModernQuickActionButton(icon: "camera.fill", title: "Scan", color: WidgetColors.secondary, action: "scan")
+                ModernQuickActionButton(icon: "plus.circle.fill", title: "Add", color: WidgetColors.primary, action: "add")
+                ModernQuickActionButton(icon: "chart.bar.fill", title: "History", color: WidgetColors.fatColor, action: "history")
             }
         }
-        .padding()
+        .padding(14)
     }
 }
 
-struct QuickActionButton: View {
+struct ModernQuickActionButton: View {
     let icon: String
     let title: String
     let color: Color
+    let action: String
     
     var body: some View {
-        Link(destination: URL(string: "calcalculator://action/\(title.lowercased())")!) {
-            VStack(spacing: 4) {
-                Image(systemName: icon)
-                    .font(.system(size: 20))
-                    .foregroundColor(color)
+        Link(destination: URL(string: "calcalculator://action/\(action)")!) {
+            VStack(spacing: 5) {
+                ZStack {
+                    Circle()
+                        .fill(color.opacity(0.15))
+                        .frame(width: 36, height: 36)
+                    Image(systemName: icon)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(color)
+                }
+                
                 Text(title)
                     .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 8)
-            .background(color.opacity(0.1))
-            .cornerRadius(8)
         }
     }
 }
@@ -578,75 +725,88 @@ struct QuickActionButton: View {
 struct CompactMacrosWidgetView: View {
     let entry: NutritionEntry
     
+    private var progressGradient: LinearGradient {
+        entry.isOverGoal ? WidgetColors.overGradient : WidgetColors.caloriesGradient
+    }
+    
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 14) {
+            // Header row
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Today's Nutrition")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.secondary)
+                    HStack(spacing: 6) {
+                        Image(systemName: "flame.fill")
+                            .font(.system(size: 12))
+                            .foregroundStyle(WidgetColors.accent)
+                        Text("Today's Nutrition")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                    }
                     
-                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text("\(entry.caloriesConsumed)")
-                            .font(.system(size: 42, weight: .bold, design: .rounded))
+                            .font(.system(size: 44, weight: .bold, design: .rounded))
+                            .foregroundStyle(entry.isOverGoal ? WidgetColors.warning : .primary)
+                        
                         Text("/ \(entry.caloriesGoal) kcal")
                             .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                     
-                    if entry.isOverGoal {
-                        HStack(spacing: 4) {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .font(.system(size: 12))
-                            Text("\(entry.caloriesOverage) over goal")
-                        }
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.red)
-                    } else {
-                        HStack(spacing: 4) {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 12))
-                            Text("\(entry.caloriesRemaining) remaining")
-                        }
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.green)
+                    // Status badge
+                    HStack(spacing: 4) {
+                        Image(systemName: entry.isOverGoal ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
+                            .font(.system(size: 11))
+                        Text(entry.isOverGoal ? "\(entry.caloriesOverage) over goal" : "\(entry.caloriesRemaining) remaining")
+                            .font(.system(size: 11, weight: .medium))
                     }
+                    .foregroundStyle(entry.isOverGoal ? WidgetColors.warning : WidgetColors.primary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(
+                        Capsule()
+                            .fill((entry.isOverGoal ? WidgetColors.warning : WidgetColors.primary).opacity(0.12))
+                    )
                 }
                 
                 Spacer()
                 
+                // Large progress ring
                 ZStack {
                     Circle()
-                        .stroke(Color.gray.opacity(0.2), lineWidth: 10)
+                        .stroke(Color.gray.opacity(0.1), lineWidth: 12)
                     Circle()
                         .trim(from: 0, to: min(entry.caloriesProgress, 1.0))
-                        .stroke(entry.isOverGoal ? Color.red : Color.green, style: StrokeStyle(lineWidth: 10, lineCap: .round))
+                        .stroke(progressGradient, style: StrokeStyle(lineWidth: 12, lineCap: .round))
                         .rotationEffect(.degrees(-90))
+                        .shadow(color: entry.isOverGoal ? Color.red.opacity(0.2) : Color.green.opacity(0.2), radius: 4)
+                    
                     VStack(spacing: 0) {
                         Text("\(Int(min(entry.caloriesProgress, 1.0) * 100))")
-                            .font(.system(size: 24, weight: .bold, design: .rounded))
+                            .font(.system(size: 26, weight: .bold, design: .rounded))
                         Text("%")
                             .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                 }
-                .frame(width: 80, height: 80)
+                .frame(width: 90, height: 90)
             }
-            .padding(.horizontal)
-            .padding(.top, 12)
+            .padding(.horizontal, 16)
+            .padding(.top, 14)
             
-            VStack(spacing: 6) {
-                MacroBarLarge(title: "Protein", value: entry.proteinConsumed, goal: entry.proteinGoal, color: .orange)
-                MacroBarLarge(title: "Carbs", value: entry.carbsConsumed, goal: entry.carbsGoal, color: .blue)
-                MacroBarLarge(title: "Fat", value: entry.fatConsumed, goal: entry.fatGoal, color: .purple)
+            // Macro bars
+            VStack(spacing: 8) {
+                CompactMacroBar(title: "Protein", value: entry.proteinConsumed, goal: entry.proteinGoal, color: WidgetColors.proteinColor)
+                CompactMacroBar(title: "Carbs", value: entry.carbsConsumed, goal: entry.carbsGoal, color: WidgetColors.carbsColor)
+                CompactMacroBar(title: "Fat", value: entry.fatConsumed, goal: entry.fatGoal, color: WidgetColors.fatColor)
             }
-            .padding(.horizontal)
-            .padding(.bottom, 12)
+            .padding(.horizontal, 16)
+            .padding(.bottom, 14)
         }
     }
 }
 
-struct MacroBarLarge: View {
+struct CompactMacroBar: View {
     let title: String
     let value: Double
     let goal: Double
@@ -657,13 +817,28 @@ struct MacroBarLarge: View {
         return min(value / goal, 1.0)
     }
     
+    private var gradient: LinearGradient {
+        LinearGradient(
+            colors: [color.opacity(0.9), color],
+            startPoint: .leading,
+            endPoint: .trailing
+        )
+    }
+    
     var body: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 5) {
             HStack {
-                Text(title)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.secondary)
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(color)
+                        .frame(width: 6, height: 6)
+                    Text(title)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(.secondary)
+                }
+                
                 Spacer()
+                
                 Text("\(Int(value))g / \(Int(goal))g")
                     .font(.system(size: 12, weight: .semibold, design: .rounded))
             }
@@ -671,10 +846,11 @@ struct MacroBarLarge: View {
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 6)
-                        .fill(Color.gray.opacity(0.2))
+                        .fill(Color.gray.opacity(0.1))
                     RoundedRectangle(cornerRadius: 6)
-                        .fill(LinearGradient(gradient: Gradient(colors: [color.opacity(0.8), color]), startPoint: .leading, endPoint: .trailing))
+                        .fill(gradient)
                         .frame(width: geometry.size.width * progress)
+                        .shadow(color: color.opacity(0.25), radius: 2, x: 0, y: 1)
                 }
             }
             .frame(height: 10)
@@ -694,7 +870,7 @@ struct AccessoryCircularView: View {
             Image(systemName: "flame.fill")
         } currentValueLabel: {
             Text("\(entry.caloriesConsumed)")
-                .font(.system(size: 12, weight: .bold))
+                .font(.system(size: 12, weight: .bold, design: .rounded))
         }
         .gaugeStyle(.accessoryCircularCapacity)
     }
@@ -705,7 +881,8 @@ struct AccessoryRectangularView: View {
     let entry: NutritionEntry
     
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 10) {
+            // Mini progress ring
             ZStack {
                 Circle()
                     .stroke(Color.gray.opacity(0.3), lineWidth: 3)
@@ -716,18 +893,19 @@ struct AccessoryRectangularView: View {
                 Image(systemName: "flame.fill")
                     .font(.system(size: 10))
             }
-            .frame(width: 30, height: 30)
+            .frame(width: 32, height: 32)
             
-            VStack(alignment: .leading, spacing: 2) {
-                Text("\(entry.caloriesConsumed) / \(entry.caloriesGoal) kcal")
-                    .font(.system(size: 12, weight: .semibold))
+            VStack(alignment: .leading, spacing: 3) {
+                Text("\(entry.caloriesConsumed) / \(entry.caloriesGoal)")
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                
                 HStack(spacing: 8) {
-                    Label("\(Int(entry.proteinConsumed))g", systemImage: "p.circle")
-                    Label("\(Int(entry.carbsConsumed))g", systemImage: "c.circle")
-                    Label("\(Int(entry.fatConsumed))g", systemImage: "f.circle")
+                    Label("\(Int(entry.proteinConsumed))g", systemImage: "p.circle.fill")
+                    Label("\(Int(entry.carbsConsumed))g", systemImage: "c.circle.fill")
+                    Label("\(Int(entry.fatConsumed))g", systemImage: "f.circle.fill")
                 }
-                .font(.system(size: 9))
-                .foregroundColor(.secondary)
+                .font(.system(size: 9, weight: .medium))
+                .foregroundStyle(.secondary)
             }
         }
     }
@@ -741,6 +919,7 @@ struct AccessoryInlineView: View {
         HStack(spacing: 4) {
             Image(systemName: "flame.fill")
             Text("\(entry.caloriesConsumed)/\(entry.caloriesGoal) kcal")
+                .font(.system(.body, design: .rounded))
         }
     }
 }
@@ -876,4 +1055,36 @@ struct CalCalculatorWidget: Widget {
         .description("Track your daily calorie intake.")
         .supportedFamilies([.systemSmall, .systemMedium])
     }
+}
+
+// MARK: - Widget Previews
+
+#Preview("Small", as: .systemSmall) {
+    CaloriesSmallWidget()
+} timeline: {
+    NutritionEntry.placeholder
+}
+
+#Preview("Medium Macros", as: .systemMedium) {
+    MacrosMediumWidget()
+} timeline: {
+    NutritionEntry.placeholder
+}
+
+#Preview("Large Weekly", as: .systemLarge) {
+    WeeklyLargeWidget()
+} timeline: {
+    NutritionEntry.placeholder
+}
+
+#Preview("Quick Log", as: .systemMedium) {
+    QuickLogWidget()
+} timeline: {
+    NutritionEntry.placeholder
+}
+
+#Preview("Compact Macros", as: .systemMedium) {
+    CompactMacrosWidget()
+} timeline: {
+    NutritionEntry.placeholder
 }

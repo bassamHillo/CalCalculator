@@ -36,19 +36,31 @@ final class UserSettings {
     }
     
     var calorieGoal: Int {
-        didSet { defaults.set(calorieGoal, forKey: Keys.calorieGoal) }
+        didSet {
+            defaults.set(calorieGoal, forKey: Keys.calorieGoal)
+            syncGoalsToWidgets()
+        }
     }
     
     var proteinGoal: Double {
-        didSet { defaults.set(proteinGoal, forKey: Keys.proteinGoal) }
+        didSet {
+            defaults.set(proteinGoal, forKey: Keys.proteinGoal)
+            syncGoalsToWidgets()
+        }
     }
     
     var carbsGoal: Double {
-        didSet { defaults.set(carbsGoal, forKey: Keys.carbsGoal) }
+        didSet {
+            defaults.set(carbsGoal, forKey: Keys.carbsGoal)
+            syncGoalsToWidgets()
+        }
     }
     
     var fatGoal: Double {
-        didSet { defaults.set(fatGoal, forKey: Keys.fatGoal) }
+        didSet {
+            defaults.set(fatGoal, forKey: Keys.fatGoal)
+            syncGoalsToWidgets()
+        }
     }
     
     var useMetricUnits: Bool {
@@ -186,6 +198,16 @@ final class UserSettings {
     
     func markWeightPromptShown() {
         lastWeightPromptDate = Date()
+    }
+    
+    /// Syncs goal changes to widgets
+    private func syncGoalsToWidgets() {
+        WidgetDataManager.shared.updateGoals(
+            calories: calorieGoal,
+            protein: proteinGoal,
+            carbs: carbsGoal,
+            fat: fatGoal
+        )
     }
 }
 
