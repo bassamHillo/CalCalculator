@@ -137,7 +137,15 @@ jobs:
             unzip -q awscliv2.zip
             sudo ./aws/install
           fi
-          # Configure Git credentials for AWS CodeCommit
+          # Configure Git to use URL rewriting with embedded credentials
+          # This is more reliable than credential helper for xcodebuild
+          ACCESS_KEY="${{ secrets.AWS_ACCESS_KEY_ID }}"
+          SECRET_KEY="${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+          # URL encode the credentials (basic encoding for special chars)
+          ACCESS_KEY_ENCODED=$(echo -n "$ACCESS_KEY" | sed 's/@/%40/g')
+          SECRET_KEY_ENCODED=$(echo -n "$SECRET_KEY" | sed 's/@/%40/g' | sed 's/:/%3A/g' | sed 's/\//%2F/g' | sed 's/=/%3D/g')
+          git config --global url."https://${ACCESS_KEY_ENCODED}:${SECRET_KEY_ENCODED}@git-codecommit.us-east-1.amazonaws.com/".insteadOf "https://git-codecommit.us-east-1.amazonaws.com/"
+          # Also set up credential helper as fallback
           git config --global credential.helper '!aws codecommit credential-helper $@'
           git config --global credential.UseHttpPath true
         env:
