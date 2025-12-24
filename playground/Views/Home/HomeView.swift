@@ -7,12 +7,16 @@
 
 import SwiftUI
 import MavenCommonSwiftUI
+import SDK
 
 struct HomeView: View {
     @Bindable var viewModel: HomeViewModel
     let repository: MealRepository
     @Bindable var scanViewModel: ScanViewModel
     var onMealSaved: () -> Void
+    
+    @Environment(\.isSubscribed) private var isSubscribed
+    @Environment(TheSDK.self) private var sdk
     
     private var settings = UserSettings.shared
     @State private var badgeManager = BadgeManager.shared
@@ -248,10 +252,12 @@ struct HomeView: View {
     }
     
     private var macroSection: some View {
-        MacroCardsSection(
-            summary: viewModel.todaysSummary,
-            goals: settings.macroGoals
-        )
+        PremiumLockedContent {
+            MacroCardsSection(
+                summary: viewModel.todaysSummary,
+                goals: settings.macroGoals
+            )
+        }
         .listRowInsets(EdgeInsets(.zero))
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
