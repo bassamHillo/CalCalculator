@@ -112,6 +112,12 @@ platform :ios do
   #
   desc "Build and archive the app"
   lane :_build_app_for_testflight do
+    # Configure AWS credentials for CodeCommit if available
+    if ENV["AWS_ACCESS_KEY_ID"] && ENV["AWS_SECRET_ACCESS_KEY"]
+      sh("git config --global credential.helper '!aws codecommit credential-helper $@'")
+      sh("git config --global credential.UseHttpPath true")
+    end
+    
     # Skip package dependency resolution - project format issue
     # Build directly which should work with newer Xcode
     build_app(
@@ -125,7 +131,7 @@ platform :ios do
         teamID: TEAM_ID,
         signingStyle: "automatic"
       },
-      skip_package_dependencies_resolution: true,
+      skip_package_dependencies_resolution: false, # Need to resolve packages to get dependencies
       xcargs: "-allowProvisioningUpdates -skipPackagePluginValidation"
     )
   end

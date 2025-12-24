@@ -42,10 +42,30 @@ jobs:
           # that Xcode 15.2 in CI can't parse. Project will be validated during build.
           echo "Skipping project validation (newer Xcode format - validated during build)"
       
+      - name: Setup AWS CodeCommit credentials
+        run: |
+          # Install AWS CLI if not available
+          if ! command -v aws &> /dev/null; then
+            curl "https://awscli.amazonaws.com/awscli-exe-macos.zip" -o "awscliv2.zip"
+            unzip -q awscliv2.zip
+            sudo ./aws/install
+          fi
+          # Configure Git credentials for AWS CodeCommit
+          git config --global credential.helper '!aws codecommit credential-helper $@'
+          git config --global credential.UseHttpPath true
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: us-east-1
+      
       - name: Install dependencies
         run: |
           # Resolve package dependencies with scheme (this validates the project)
-          xcodebuild -resolvePackageDependencies -project playground.xcodeproj -scheme playground || echo "Package resolution completed"
+          xcodebuild -resolvePackageDependencies -project CalCalculatorAiPlaygournd.xcodeproj -scheme CalCalculator || echo "Package resolution completed"
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: us-east-1
       
       - name: Run unit tests
         run: |
@@ -102,6 +122,22 @@ jobs:
           # Resolve package dependencies with scheme (this validates the project)
           xcodebuild -resolvePackageDependencies -project playground.xcodeproj -scheme playground || echo "Package resolution completed"
       
+      - name: Setup AWS CodeCommit credentials
+        run: |
+          # Install AWS CLI if not available
+          if ! command -v aws &> /dev/null; then
+            curl "https://awscli.amazonaws.com/awscli-exe-macos.zip" -o "awscliv2.zip"
+            unzip -q awscliv2.zip
+            sudo ./aws/install
+          fi
+          # Configure Git credentials for AWS CodeCommit
+          git config --global credential.helper '!aws codecommit credential-helper $@'
+          git config --global credential.UseHttpPath true
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: us-east-1
+      
       - name: Setup App Store Connect API Key
         run: |
           mkdir -p fastlane
@@ -118,6 +154,9 @@ jobs:
           APP_STORE_CONNECT_KEY_FILEPATH: ./fastlane/AuthKey.p8
           FASTLANE_SKIP_UPDATE_CHECK: 1
           FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD: ${{ secrets.FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: us-east-1
       
       - name: Clean up API key
         if: always()
