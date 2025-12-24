@@ -121,32 +121,66 @@ final class ScanViewModel {
         showingNoFoodDetected = false
         noFoodDetectedMessage = nil
 
-        // Simulate progress for better UX
+        // Simulate smooth progress that continues until API call completes
         let progressTask = Task {
-            for i in 1...8 {
-                try await Task.sleep(nanoseconds: 200_000_000)
+            var currentProgress: Double = 0.0
+            let increment: Double = 0.02 // 2% increments
+            let interval: UInt64 = 100_000_000 // 100ms intervals
+            
+            // Start from 10% to show immediate feedback
+            await MainActor.run {
+                analysisProgress = 0.1
+            }
+            currentProgress = 0.1
+            
+            // Continue progress smoothly up to 90%
+            while currentProgress < 0.9 && !Task.isCancelled {
+                try await Task.sleep(nanoseconds: interval)
                 if !Task.isCancelled {
+                    currentProgress = min(currentProgress + increment, 0.9)
                     await MainActor.run {
-                        analysisProgress = Double(i) * 0.1
+                        analysisProgress = currentProgress
                     }
                 }
             }
         }
 
         do {
+            print("🔵 [ScanViewModel] Calling analysisService.analyzeFood...")
             let response = try await analysisService.analyzeFood(image: image, mode: mode, foodHint: foodHint)
+            print("🟢 [ScanViewModel] Analysis completed successfully")
+            print("🟢 [ScanViewModel] Response - foodDetected: \(response.foodDetected)")
+            print("🟢 [ScanViewModel] Response - mealName: \(response.mealName ?? "nil")")
+            print("🟢 [ScanViewModel] Response - totalCalories: \(response.totalCalories ?? 0)")
+            
+            // Cancel progress task and smoothly complete to 100%
             progressTask.cancel()
-            analysisProgress = 1.0
+            await MainActor.run {
+                withAnimation(.easeOut(duration: 0.3)) {
+                    analysisProgress = 1.0
+                }
+            }
+            // Small delay to show 100% before transitioning
+            try? await Task.sleep(nanoseconds: 200_000_000)
 
             // Check if food was detected
             guard response.foodDetected, let meal = response.toMeal() else {
+                print("⚠️ [ScanViewModel] Food not detected or meal conversion failed")
                 isAnalyzing = false
                 showingNoFoodDetected = true
-                noFoodDetectedMessage = response.notes ?? "No food detected in the image."
+                // Use notes from response, or provide default message
+                noFoodDetectedMessage = response.notes ?? "No food detected in the image. Please try with a clearer photo of food."
+                print("⚠️ [ScanViewModel] Showing no food detected screen with message: \(noFoodDetectedMessage ?? "nil")")
+                // Clear any pending meal to prevent saving
+                pendingMeal = nil
+                pendingImage = nil
+                showingResults = false
                 HapticManager.shared.notification(.warning)
                 return
             }
 
+            print("🟢 [ScanViewModel] Meal created: \(meal.name)")
+            
             // Save image and get URL
             let imageURL = try imageStorage.saveImage(image, for: meal.id)
             meal.photoURL = imageURL.absoluteString
@@ -155,16 +189,32 @@ final class ScanViewModel {
             pendingImage = image
             showingResults = true
 
+            print("🟢 [ScanViewModel] Analysis complete, showing results")
             HapticManager.shared.notification(.success)
         } catch let foodError as FoodAnalysisError {
             progressTask.cancel()
+            print("🔴 [ScanViewModel] FoodAnalysisError caught: \(foodError)")
+            print("🔴 [ScanViewModel] Error description: \(foodError.errorDescription ?? "nil")")
+
+            // Reset progress on error
+            await MainActor.run {
+                analysisProgress = 0
+            }
 
             // Handle no food detected specifically
             if foodError.isNoFoodDetected {
+                print("⚠️ [ScanViewModel] No food detected - showing no food message")
+                isAnalyzing = false
                 showingNoFoodDetected = true
                 noFoodDetectedMessage = foodError.errorDescription
+                // Clear any pending meal to prevent saving
+                pendingMeal = nil
+                pendingImage = nil
+                showingResults = false
+                print("⚠️ [ScanViewModel] No food detected message: \(noFoodDetectedMessage ?? "nil")")
                 HapticManager.shared.notification(.warning)
             } else {
+                print("🔴 [ScanViewModel] Other error - showing error dialog")
                 self.errorMessage = foodError.errorDescription
                 self.error = mapToScanError(foodError)
                 self.showingError = true
@@ -172,6 +222,15 @@ final class ScanViewModel {
             }
         } catch {
             progressTask.cancel()
+            print("🔴 [ScanViewModel] Unexpected error: \(error)")
+            print("🔴 [ScanViewModel] Error type: \(type(of: error))")
+            print("🔴 [ScanViewModel] Error description: \(error.localizedDescription)")
+            
+            // Reset progress on error
+            await MainActor.run {
+                analysisProgress = 0
+            }
+            
             self.errorMessage = error.localizedDescription
             self.error = .analysisTimeout
             self.showingError = true

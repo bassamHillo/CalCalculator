@@ -54,8 +54,19 @@ struct HomeView: View {
                 await viewModel.refreshTodayData()
             }
             .task {
+                // Load data without blocking UI
+                let startTime = Date()
+                print("🟢 [HomeView] .task started - loading data")
                 await viewModel.loadData()
+                let elapsed = Date().timeIntervalSince(startTime)
+                print("🟢 [HomeView] .task completed - total time: \(String(format: "%.3f", elapsed))s")
                 checkForBadges()
+            }
+            .task(id: viewModel.weekDays.count) {
+                // Re-check badges when week days are loaded
+                if !viewModel.weekDays.isEmpty {
+                    checkForBadges()
+                }
             }
             .onChange(of: viewModel.recentMeals.count) { _, _ in
                 checkForBadges()
@@ -231,11 +242,16 @@ struct HomeView: View {
         }
     }
     
+    @ViewBuilder
+    @ViewBuilder
     private var weekDaysSection: some View {
-        WeekDaysHeader(weekDays: viewModel.weekDays)
-            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-            .listRowSeparator(.hidden)
-            .listRowBackground(Color.clear)
+        if !viewModel.weekDays.isEmpty {
+            WeekDaysHeader(weekDays: viewModel.weekDays)
+                .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
+        }
     }
     
     private var progressSection: some View {
@@ -246,6 +262,7 @@ struct HomeView: View {
             progress: viewModel.calorieProgress,
             goalAdjustment: viewModel.goalAdjustmentDescription
         )
+        .opacity(viewModel.hasDataLoaded ? 1 : 0.3)
         .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
@@ -283,8 +300,10 @@ struct HomeView: View {
                         }
                     }
                 )
+                .transition(.opacity.combined(with: .move(edge: .bottom)))
             } else {
                 EmptyMealsView()
+                    .opacity(viewModel.hasDataLoaded ? 1 : 0.3)
                     .listRowInsets(EdgeInsets(top: 40, leading: 0, bottom: 0, trailing: 0))
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)

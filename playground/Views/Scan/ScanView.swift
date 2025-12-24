@@ -108,8 +108,14 @@ struct ScanView: View {
             NoFoodDetectedView(
                 message: viewModel.noFoodDetectedMessage,
                 image: Image(uiImage: image),
-                onRetry: { viewModel.retryAnalysis() },
-                onRetake: { viewModel.clearSelection() }
+                onRetry: { 
+                    // Clear selection to allow taking a new photo
+                    viewModel.clearSelection()
+                },
+                onRetake: { 
+                    // Clear selection to allow taking a new photo
+                    viewModel.clearSelection()
+                }
             )
         } else {
             NoFoodDetectedView(

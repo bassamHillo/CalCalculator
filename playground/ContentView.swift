@@ -22,10 +22,22 @@ struct ContentView: View {
     
     private var settings = UserSettings.shared
     
-    struct PaywallItem: Identifiable {
-        let id = UUID()
+    struct PaywallItem: Equatable, Identifiable {
         let page: Page
         var callback: (() -> Void)?
+
+        init(page: Page, callback: (() -> Void)? = nil) {
+            self.page = page
+            self.callback = callback
+        }
+
+        static func == (lhs: Self, rhs: Self) -> Bool {
+            lhs.page == rhs.page
+        }
+
+        var id: String {
+            page.id
+        }
     }
     
     enum AuthState {
@@ -70,26 +82,25 @@ struct ContentView: View {
                             print(json)
                         }
                         
-                        // Check subscription status before showing paywall
+                        // Check subscription status before showing paywall (non-blocking)
                         Task {
-                            do {
-                                async let timewasteTask: () = Task.sleep(nanoseconds: 1_000_000_000)
-                                async let updateSubscriptionStateTask = sdk.updateIsSubscribed()
-                                
-                                let _ = try await (timewasteTask, updateSubscriptionStateTask)
-                                
-                                await MainActor.run {
-                                    if !sdk.isSubscribed {
-                                        paywallItem = .init(page: .splash, callback: {
-                                            authState = .goalsGeneration
-                                        })
-                                    } else {
-                                        authState = .goalsGeneration
+                            // Don't block - proceed immediately and check subscription in background
+                            await MainActor.run {
+                                authState = .goalsGeneration
+                            }
+                            
+                            // Check subscription in background (non-blocking)
+                            Task.detached(priority: .utility) {
+                                do {
+                                    try await sdk.updateIsSubscribed()
+                                    // If not subscribed, show paywall when ready
+                                    await MainActor.run {
+                                        if !sdk.isSubscribed {
+                                            paywallItem = .init(page: .splash, callback: nil)
+                                        }
                                     }
-                                }
-                            } catch {
-                                await MainActor.run {
-                                    authState = .goalsGeneration
+                                } catch {
+                                    print("⚠️ Failed to check subscription: \(error)")
                                 }
                             }
                         }
@@ -112,21 +123,22 @@ struct ContentView: View {
                             guard !hasCheckedSubscription else { return }
                             hasCheckedSubscription = true
                             
-                            do {
-                                async let timewasteTask: () = Task.sleep(nanoseconds: 1_000_000_000)
-                                async let updateSubscriptionStateTask = sdk.updateIsSubscribed()
-                                
-                                let _ = try await (timewasteTask, updateSubscriptionStateTask)
-                                
-                                if !sdk.isSubscribed {
-                                    paywallItem = .init(page: .splash, callback: {
-                                        authState = .authenticated
-                                    })
-                                } else {
-                                    authState = .authenticated
+                            // Don't block - proceed immediately
+                            authState = .authenticated
+                            
+                            // Check subscription in background (non-blocking)
+                            Task.detached(priority: .utility) {
+                                do {
+                                    try await sdk.updateIsSubscribed()
+                                    // If not subscribed, show paywall when ready
+                                    await MainActor.run {
+                                        if !sdk.isSubscribed {
+                                            paywallItem = .init(page: .splash, callback: nil)
+                                        }
+                                    }
+                                } catch {
+                                    print("⚠️ Failed to check subscription: \(error)")
                                 }
-                            } catch {
-                                authState = .authenticated
                             }
                         }
                     
@@ -136,7 +148,26 @@ struct ContentView: View {
             } else {
                 ProgressView("Loading...")
                     .task {
+                        let repoStart = Date()
+                        // Pre-warm the model context and database with a simple query
+                        // This ensures SwiftData is fully initialized before we start querying
+                        let warmStart = Date()
+                        do {
+                            // Perform a lightweight query to initialize the database
+                            var testDescriptor = FetchDescriptor<DaySummary>()
+                            testDescriptor.fetchLimit = 1
+                            _ = try? modelContext.fetch(testDescriptor)
+                        }
+                        let warmTime = Date().timeIntervalSince(warmStart)
+                        if warmTime > 0.1 {
+                            print("⚠️ [ContentView] Database warm-up took \(String(format: "%.3f", warmTime))s")
+                        } else {
+                            print("✅ [ContentView] Database warm-up took \(String(format: "%.3f", warmTime))s")
+                        }
+                        
                         self.repository = MealRepository(context: modelContext)
+                        let repoTime = Date().timeIntervalSince(repoStart)
+                        print("✅ [ContentView] Repository created in \(String(format: "%.3f", repoTime))s")
                         
                         // Check if onboarding is already completed
                         if settings.hasCompletedOnboarding {
@@ -145,24 +176,26 @@ struct ContentView: View {
                     }
             }
         }
-        .fullScreenCover(item: $paywallItem) { item in
+        .fullScreenCover(item: $paywallItem) { page in
+            let show: Binding<Bool> = .init(
+                get: {
+                    true
+                },
+                set: { _ in
+                    page.callback?()
+                    paywallItem = nil
+                }
+            )
+
             SDKView(
                 model: sdk,
-                page: item.page,
-                show: Binding(
-                    get: { paywallItem != nil },
-                    set: { if !$0 { paywallItem = nil } }
-                ),
+                page: page.page,
+                show: show,
                 backgroundColor: .white,
                 ignoreSafeArea: true
             )
             .ignoresSafeArea()
-            .onChange(of: sdk.isSubscribed) { oldValue, newValue in
-                if newValue && paywallItem != nil {
-                    paywallItem?.callback?()
-                    paywallItem = nil
-                }
-            }
+            .id(page.id)
         }
     }
     

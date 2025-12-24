@@ -51,24 +51,59 @@ struct NoFoodDetectedView: View {
                 .fill(Color.orange.opacity(0.1))
                 .frame(width: 80, height: 80)
             
-            Image(systemName: "fork.knife.circle")
+            Image(systemName: iconName)
                 .font(.system(size: 40))
                 .foregroundStyle(Color.orange)
         }
     }
     
+    private var iconName: String {
+        // Check if the message indicates the item is not food (vs just no food detected)
+        if let message = message?.lowercased() {
+            let notFoodKeywords = ["not food", "not a food", "is not food", "does not contain food", "shows a", "this is not", "unable to provide"]
+            if notFoodKeywords.contains(where: { message.contains($0) }) {
+                return "exclamationmark.triangle.fill"
+            }
+        }
+        return "fork.knife.circle"
+    }
+    
     private var messageSection: some View {
-        VStack(spacing: 8) {
-            Text("No Food Detected")
+        VStack(spacing: 12) {
+            Text(messageTitle)
                 .font(.title2)
                 .fontWeight(.bold)
             
-            Text(message ?? "We couldn't identify any food in this image.")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
+            if let message = message, !message.isEmpty {
+                Text(message)
+                    .font(.body)
+                    .foregroundColor(.primary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+                    .padding(.vertical, 12)
+                    .frame(maxWidth: .infinity)
+                    .background(Color.orange.opacity(0.1))
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            } else {
+                Text("We couldn't identify any food in this image.")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+            }
         }
+        .padding(.horizontal)
+    }
+    
+    private var messageTitle: String {
+        // Check if the message indicates the item is not food (vs just no food detected)
+        if let message = message?.lowercased() {
+            let notFoodKeywords = ["not food", "not a food", "is not food", "does not contain food", "shows a", "this is not", "unable to provide"]
+            if notFoodKeywords.contains(where: { message.contains($0) }) {
+                return "Not Food Detected"
+            }
+        }
+        return "No Food Detected"
     }
     
     private var tipsSection: some View {

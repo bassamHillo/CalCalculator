@@ -12,7 +12,7 @@ import SwiftData
 @Model
 final class DaySummary {
     var id: UUID
-    var date: Date
+    @Attribute(.unique) var date: Date
     var totalCalories: Int
     var totalProteinG: Double
     var totalCarbsG: Double

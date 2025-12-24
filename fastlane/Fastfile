@@ -5,9 +5,9 @@ platform :ios do
   KEY_ID = ENV["APP_STORE_CONNECT_API_KEY_ID"] || ""
   ISSUER_ID = ENV["APP_STORE_CONNECT_ISSUER_ID"] || ""
   KEY_FILEPATH = ENV["APP_STORE_CONNECT_KEY_FILEPATH"] || "./fastlane/AuthKey.p8"
-  PROJECT = "playground.xcodeproj"
-  SCHEME = "playground"
-  APP_NAME = "playground"
+  PROJECT = "CalCalculatorAiPlaygournd.xcodeproj"
+  SCHEME = "CalCalculator"
+  APP_NAME = "CalCalculator"
   BUNDLE_IDENTIFIER = "CalCalculatorAi"
   TEAM_ID = "5NS9ZUMYCS"
 
@@ -57,12 +57,27 @@ platform :ios do
   #
   desc "Increment build number"
   lane :_bump_build do
-    increment_build_number(
-      xcodeproj: PROJECT
-    )
+    # Manually increment build number for newer Xcode format
+    # Fastlane runs from fastlane/ directory, so go up one level
+    project_dir = File.expand_path("..", __dir__)
+    project_path = File.join(project_dir, PROJECT, "project.pbxproj")
     
-    build_number = get_build_number(xcodeproj: PROJECT)
-    UI.message("Build number incremented to: #{build_number}")
+    if !File.exist?(project_path)
+      UI.user_error!("Project file not found at: #{project_path}")
+    end
+    
+    content = File.read(project_path)
+    
+    # Find current build number
+    current_build = content.match(/CURRENT_PROJECT_VERSION = (\d+);/)
+    if current_build
+      new_build = (current_build[1].to_i + 1).to_s
+      content.gsub!(/CURRENT_PROJECT_VERSION = \d+;/, "CURRENT_PROJECT_VERSION = #{new_build};")
+      File.write(project_path, content)
+      UI.message("Build number incremented to: #{new_build}")
+    else
+      UI.important("Could not find CURRENT_PROJECT_VERSION, skipping increment")
+    end
   end
 
   #

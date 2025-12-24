@@ -20,6 +20,7 @@ struct MainTabView: View {
     @State var settingsViewModel: SettingsViewModel
     
     init(repository: MealRepository) {
+        let initStart = Date()
         self.repository = repository
         _homeViewModel = State(
             initialValue: HomeViewModel(
@@ -50,6 +51,10 @@ struct MainTabView: View {
                 imageStorage: .shared
             )
         )
+        let initTime = Date().timeIntervalSince(initStart)
+        if initTime > 0.1 {
+            print("⚠️ [MainTabView] Initialization took \(String(format: "%.3f", initTime))s")
+        }
     }
     
     var body: some View {

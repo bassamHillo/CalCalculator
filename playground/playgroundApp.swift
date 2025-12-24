@@ -50,6 +50,7 @@ struct playgroundApp: App {
             fatalError("Could not initialize ModelContainer: \(error)")
         }
         
+        // UserDefaults read is fast, so this is fine to do synchronously
         _appearanceMode = State(initialValue: UserProfileRepository.shared.getAppearanceMode())
         sdk = .init(config: .init(baseURL: Config.baseURL,
                                   logOptions: .all,
@@ -80,13 +81,17 @@ struct playgroundApp: App {
                 .environment(sdk) // Use direct environment like example app
                 .environment(\.isSubscribed, subscriptionStatus) // Inject reactive subscription status
                 .task {
-                    // Update subscription status on app opening
-                    do {
-                        try await sdk.updateIsSubscribed()
-                        updateSubscriptionStatus()
-                        print("📱 Subscription status updated on app launch: \(subscriptionStatus)")
-                    } catch {
-                        print("⚠️ Failed to update subscription status on launch: \(error)")
+                    // Update subscription status on app opening (non-blocking, low priority)
+                    Task.detached(priority: .utility) {
+                        do {
+                            try await sdk.updateIsSubscribed()
+                            await MainActor.run {
+                                updateSubscriptionStatus()
+                                print("📱 Subscription status updated on app launch: \(subscriptionStatus)")
+                            }
+                        } catch {
+                            print("⚠️ Failed to update subscription status on launch: \(error)")
+                        }
                     }
                 }
                 .onChange(of: sdk.isSubscribed) { oldValue, newValue in
@@ -105,12 +110,14 @@ struct playgroundApp: App {
                     print("🔧 Debug isSubscribed: \(newValue)")
                 }
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
-                    // Refresh subscription status when app becomes active
-                    Task {
+                    // Refresh subscription status when app becomes active (non-blocking)
+                    Task.detached(priority: .utility) {
                         do {
                             try await sdk.updateIsSubscribed()
-                            updateSubscriptionStatus()
-                            print("📱 Subscription status refreshed on app becoming active: \(subscriptionStatus)")
+                            await MainActor.run {
+                                updateSubscriptionStatus()
+                                print("📱 Subscription status refreshed on app becoming active: \(subscriptionStatus)")
+                            }
                         } catch {
                             print("⚠️ Failed to refresh subscription status: \(error)")
                         }

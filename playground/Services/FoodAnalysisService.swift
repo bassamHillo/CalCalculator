@@ -56,8 +56,18 @@ final class CaloriesAPIService: FoodAnalysisServiceProtocol {
         mode: ScanMode = .food,
         foodHint: String? = nil
     ) async throws -> FoodAnalysisResult {
+        print("🔵 [FoodAnalysis] ===== Starting food analysis =====")
+        print("🔵 [FoodAnalysis] Mode: \(mode)")
+        print("🔵 [FoodAnalysis] Food hint: \(foodHint ?? "none")")
+        print("🔵 [FoodAnalysis] Image size: \(image.size)")
+        
         let (userId, token) = try getCredentials()
+        print("🔵 [FoodAnalysis] User ID: \(userId)")
+        print("🔵 [FoodAnalysis] Token present: \(!token.isEmpty)")
+        
         let base64Image = try encodeImage(image)
+        print("🔵 [FoodAnalysis] Base64 image length: \(base64Image.count) characters")
+        
         let request = try buildRequest(
             base64Image: base64Image,
             userId: userId,
@@ -66,6 +76,7 @@ final class CaloriesAPIService: FoodAnalysisServiceProtocol {
             foodHint: foodHint
         )
 
+        print("🔵 [FoodAnalysis] Request built successfully")
         return try await performRequest(request)
     }
 
@@ -133,14 +144,64 @@ final class CaloriesAPIService: FoodAnalysisServiceProtocol {
     private func performRequest(
         _ request: URLRequest
     ) async throws -> FoodAnalysisResult {
+        // Log request details
+        print("🔵 [FoodAnalysis] Starting request to: \(request.url?.absoluteString ?? "unknown")")
+        print("🔵 [FoodAnalysis] Method: \(request.httpMethod ?? "unknown")")
+        print("🔵 [FoodAnalysis] Headers: \(request.allHTTPHeaderFields ?? [:])")
+        if let body = request.httpBody {
+            print("🔵 [FoodAnalysis] Request body size: \(body.count) bytes")
+            if let bodyString = String(data: body, encoding: .utf8) {
+                let preview = String(bodyString.prefix(200))
+                print("🔵 [FoodAnalysis] Request body preview: \(preview)...")
+            }
+        }
+        
         do {
             let (data, response) = try await session.data(for: request)
+            
+            // Log response details
+            print("🟢 [FoodAnalysis] Received response")
+            if let httpResponse = response as? HTTPURLResponse {
+                print("🟢 [FoodAnalysis] Status code: \(httpResponse.statusCode)")
+                print("🟢 [FoodAnalysis] Response headers: \(httpResponse.allHeaderFields)")
+            }
+            print("🟢 [FoodAnalysis] Response data size: \(data.count) bytes")
+            
+            // Log response data content for debugging
+            if data.isEmpty {
+                print("⚠️ [FoodAnalysis] WARNING: Response data is EMPTY!")
+            } else {
+                if let dataString = String(data: data, encoding: .utf8) {
+                    let preview = String(dataString.prefix(500))
+                    print("🟢 [FoodAnalysis] Response data preview: \(preview)")
+                } else {
+                    print("⚠️ [FoodAnalysis] Response data is not valid UTF-8 string")
+                }
+            }
+            
             return try processResponse(data: data, response: response)
         } catch let error as FoodAnalysisError {
+            print("🔴 [FoodAnalysis] FoodAnalysisError: \(error)")
             throw error
         } catch let error as DecodingError {
+            print("🔴 [FoodAnalysis] DecodingError: \(error)")
+            print("🔴 [FoodAnalysis] DecodingError details:")
+            switch error {
+            case .typeMismatch(let type, let context):
+                print("   - Type mismatch: expected \(type), context: \(context.debugDescription)")
+            case .valueNotFound(let type, let context):
+                print("   - Value not found: \(type), context: \(context.debugDescription)")
+            case .keyNotFound(let key, let context):
+                print("   - Key not found: \(key.stringValue), context: \(context.debugDescription)")
+            case .dataCorrupted(let context):
+                print("   - Data corrupted: \(context.debugDescription)")
+            @unknown default:
+                print("   - Unknown decoding error")
+            }
             throw FoodAnalysisError.decodingError(error)
         } catch {
+            print("🔴 [FoodAnalysis] Network error: \(error.localizedDescription)")
+            print("🔴 [FoodAnalysis] Error type: \(type(of: error))")
             throw FoodAnalysisError.networkError(error)
         }
     }
@@ -149,42 +210,111 @@ final class CaloriesAPIService: FoodAnalysisServiceProtocol {
         data: Data,
         response: URLResponse
     ) throws -> FoodAnalysisResult {
+        print("🟡 [FoodAnalysis] Processing response...")
+        
         guard let httpResponse = response as? HTTPURLResponse else {
+            print("🔴 [FoodAnalysis] Invalid response type: \(type(of: response))")
             throw FoodAnalysisError.invalidResponse
         }
 
+        print("🟡 [FoodAnalysis] Validating HTTP status: \(httpResponse.statusCode)")
         try validateHTTPStatus(httpResponse.statusCode, data: data)
 
-        let apiResponse = try decoder.decode(AnalyzeResponse.self, from: data)
-
-        guard apiResponse.ok, let analysis = apiResponse.analysis else {
-            let errorMessage = apiResponse.error ?? "Unknown error"
-            throw FoodAnalysisError.serverError(errorMessage)
+        // Check if data is empty before decoding
+        if data.isEmpty {
+            print("🔴 [FoodAnalysis] ERROR: Data is empty, cannot decode!")
+            throw FoodAnalysisError.decodingError(
+                DecodingError.dataCorrupted(
+                    DecodingError.Context(
+                        codingPath: [],
+                        debugDescription: "Response data is empty"
+                    )
+                )
+            )
         }
 
-        if !analysis.foodDetected {
-            throw FoodAnalysisError.noFoodDetected(analysis.notes)
-        }
+        print("🟡 [FoodAnalysis] Attempting to decode AnalyzeResponse from \(data.count) bytes")
+        
+        do {
+            let apiResponse = try decoder.decode(AnalyzeResponse.self, from: data)
+            print("🟢 [FoodAnalysis] Successfully decoded response")
+            print("🟢 [FoodAnalysis] Response.ok: \(apiResponse.ok)")
+            print("🟢 [FoodAnalysis] Response.error: \(apiResponse.error ?? "nil")")
+            print("🟢 [FoodAnalysis] Response.analysis: \(apiResponse.analysis != nil ? "present" : "nil")")
 
-        return mapToResult(analysis)
+            guard apiResponse.ok, let analysis = apiResponse.analysis else {
+                let errorMessage = apiResponse.error ?? "Unknown error"
+                print("🔴 [FoodAnalysis] API returned error: \(errorMessage)")
+                throw FoodAnalysisError.serverError(errorMessage)
+            }
+
+            print("🟢 [FoodAnalysis] Analysis - foodDetected: \(analysis.foodDetected)")
+            print("🟢 [FoodAnalysis] Analysis - foodName: \(analysis.foodName ?? "nil")")
+            print("🟢 [FoodAnalysis] Analysis - totalCalories: \(analysis.totalCalories ?? 0)")
+
+            if !analysis.foodDetected {
+                print("⚠️ [FoodAnalysis] No food detected in analysis")
+                throw FoodAnalysisError.noFoodDetected(analysis.notes)
+            }
+
+            print("🟢 [FoodAnalysis] Mapping to result...")
+            return mapToResult(analysis)
+        } catch let decodingError as DecodingError {
+            print("🔴 [FoodAnalysis] Decoding failed in processResponse")
+            print("🔴 [FoodAnalysis] DecodingError: \(decodingError)")
+            
+            // Try to get more details about what went wrong
+            if let dataString = String(data: data, encoding: .utf8) {
+                print("🔴 [FoodAnalysis] Full response data: \(dataString)")
+            }
+            
+            throw FoodAnalysisError.decodingError(decodingError)
+        }
     }
 
     private func validateHTTPStatus(
         _ statusCode: Int,
         data: Data
     ) throws {
+        print("🟡 [FoodAnalysis] Validating HTTP status code: \(statusCode)")
+        
         switch statusCode {
         case 200:
+            print("🟢 [FoodAnalysis] Status 200 OK")
             return
         case 400:
-            let errorResponse = try? decoder.decode(AnalyzeResponse.self, from: data)
-            throw FoodAnalysisError.serverError(errorResponse?.error ?? "Bad request")
+            print("🔴 [FoodAnalysis] Status 400 Bad Request")
+            print("🔴 [FoodAnalysis] Error data size: \(data.count) bytes")
+            if !data.isEmpty {
+                if let errorString = String(data: data, encoding: .utf8) {
+                    print("🔴 [FoodAnalysis] Error response: \(errorString)")
+                }
+                let errorResponse = try? decoder.decode(AnalyzeResponse.self, from: data)
+                throw FoodAnalysisError.serverError(errorResponse?.error ?? "Bad request")
+            } else {
+                throw FoodAnalysisError.serverError("Bad request (empty response)")
+            }
         case 423:
+            print("🔴 [FoodAnalysis] Status 423 Authentication Failed")
             throw FoodAnalysisError.authenticationFailed
         case 500:
-            let errorResponse = try? decoder.decode(AnalyzeResponse.self, from: data)
-            throw FoodAnalysisError.serverError(errorResponse?.error ?? "Server error")
+            print("🔴 [FoodAnalysis] Status 500 Server Error")
+            print("🔴 [FoodAnalysis] Error data size: \(data.count) bytes")
+            if !data.isEmpty {
+                if let errorString = String(data: data, encoding: .utf8) {
+                    print("🔴 [FoodAnalysis] Error response: \(errorString)")
+                }
+                let errorResponse = try? decoder.decode(AnalyzeResponse.self, from: data)
+                throw FoodAnalysisError.serverError(errorResponse?.error ?? "Server error")
+            } else {
+                throw FoodAnalysisError.serverError("Server error (empty response)")
+            }
         default:
+            print("🔴 [FoodAnalysis] Unexpected status code: \(statusCode)")
+            print("🔴 [FoodAnalysis] Response data size: \(data.count) bytes")
+            if !data.isEmpty, let errorString = String(data: data, encoding: .utf8) {
+                print("🔴 [FoodAnalysis] Response content: \(errorString)")
+            }
             throw FoodAnalysisError.serverError("Unexpected status code: \(statusCode)")
         }
     }
@@ -192,7 +322,17 @@ final class CaloriesAPIService: FoodAnalysisServiceProtocol {
     private func mapToResult(
         _ analysis: AnalysisData
     ) -> FoodAnalysisResult {
+        print("🟡 [FoodAnalysis] Mapping analysis to result...")
+        print("🟡 [FoodAnalysis] API confidence string: \(analysis.confidence ?? "nil")")
+        
         let confidenceLevel = analysis.confidence.flatMap { ConfidenceLevel(rawValue: $0) }
+        if let conf = confidenceLevel {
+            print("🟢 [FoodAnalysis] ConfidenceLevel enum: \(conf)")
+            print("🟢 [FoodAnalysis] Confidence numeric value: \(conf.numericValue)")
+        } else {
+            print("⚠️ [FoodAnalysis] Could not convert confidence string to ConfidenceLevel")
+        }
+        
         let totalCalories = analysis.totalCalories ?? 0
 
         let resultItems: [FoodItemResult]? = analysis.items?.map { item in

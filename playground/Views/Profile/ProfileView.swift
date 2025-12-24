@@ -6,12 +6,15 @@
 //
 
 import SwiftUI
+import SDK
 
 struct ProfileView: View {
     
     // MARK: - State
     
     @State private var viewModel = ProfileViewModel()
+    @Environment(TheSDK.self) private var sdk
+    private var settings = UserSettings.shared
     
     // Sheet presentation states
     @State private var showingPersonalDetails = false
@@ -36,6 +39,9 @@ struct ProfileView: View {
                     goalsTrackingSection
                     preferencesSection
                     supportSection
+                    #if DEBUG
+                    debugSection
+                    #endif
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
@@ -266,6 +272,73 @@ struct ProfileView: View {
             .padding(.top, 16)
         }
     }
+    
+    // MARK: - Debug Section
+    
+    #if DEBUG
+    @ViewBuilder
+    private var debugSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ProfileSectionHeader(title: "Debug")
+            
+            ProfileSectionCard {
+                ToggleSettingRow(
+                    icon: "hammer.fill",
+                    iconColor: .orange,
+                    title: "Override Subscription",
+                    description: "Manually control subscription status for testing",
+                    isOn: Binding(
+                        get: { settings.debugOverrideSubscription },
+                        set: { settings.debugOverrideSubscription = $0 }
+                    )
+                )
+                
+                if settings.debugOverrideSubscription {
+                    SettingsDivider()
+                    
+                    ToggleSettingRow(
+                        icon: "checkmark.circle.fill",
+                        iconColor: .green,
+                        title: "Debug: Is Subscribed",
+                        description: "Override subscription status",
+                        isOn: Binding(
+                            get: { settings.debugIsSubscribed },
+                            set: { settings.debugIsSubscribed = $0 }
+                        )
+                    )
+                    
+                    SettingsDivider()
+                    
+                    HStack {
+                        Text("Debug Status")
+                            .font(.body)
+                            .foregroundColor(.primary)
+                        Spacer()
+                        Text(settings.debugIsSubscribed ? "Premium" : "Free")
+                            .font(.body)
+                            .foregroundColor(settings.debugIsSubscribed ? .green : .gray)
+                    }
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, 16)
+                    
+                    SettingsDivider()
+                    
+                    HStack {
+                        Text("SDK Status")
+                            .font(.body)
+                            .foregroundColor(.primary)
+                        Spacer()
+                        Text(sdk.isSubscribed ? "Premium" : "Free")
+                            .font(.body)
+                            .foregroundColor(sdk.isSubscribed ? .green : .gray)
+                    }
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, 16)
+                }
+            }
+        }
+    }
+    #endif
     
     // MARK: - Helpers
     

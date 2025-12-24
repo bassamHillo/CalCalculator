@@ -67,6 +67,7 @@ final class MealRepository {
     }
     
     func fetchRecentMeals(limit: Int = 10) throws -> [Meal] {
+        let startTime = Date()
         let calendar = Calendar.current
         let today = Date()
         let startOfDay = calendar.startOfDay(for: today)
@@ -80,25 +81,33 @@ final class MealRepository {
         )
         descriptor.fetchLimit = limit
         
-        return try context.fetch(descriptor)
+        let meals = try context.fetch(descriptor)
+        let elapsed = Date().timeIntervalSince(startTime)
+        print("  🍽️ [MealRepository] fetchRecentMeals(limit: \(limit)) returned \(meals.count) meals in \(String(format: "%.3f", elapsed))s")
+        return meals
     }
     
     // MARK: - Exercise Operations
     
     func fetchTodaysExercises() throws -> [Exercise] {
+        let startTime = Date()
         let calendar = Calendar.current
         let today = Date()
         let startOfDay = calendar.startOfDay(for: today)
         let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
         
-        let descriptor = FetchDescriptor<Exercise>(
+        var descriptor = FetchDescriptor<Exercise>(
             predicate: #Predicate<Exercise> { exercise in
                 exercise.date >= startOfDay && exercise.date < endOfDay
             },
             sortBy: [SortDescriptor(\.date, order: .reverse)]
         )
+        descriptor.includePendingChanges = false
         
-        return try context.fetch(descriptor)
+        let exercises = try context.fetch(descriptor)
+        let elapsed = Date().timeIntervalSince(startTime)
+        print("  🔥 [MealRepository] fetchTodaysExercises() returned \(exercises.count) exercises in \(String(format: "%.3f", elapsed))s")
+        return exercises
     }
     
     func fetchExercises(for date: Date) throws -> [Exercise] {
@@ -129,27 +138,44 @@ final class MealRepository {
     // MARK: - Day Summary Operations
     
     func fetchDaySummary(for date: Date) throws -> DaySummary? {
+        let startTime = Date()
         let calendar = Calendar.current
         let startOfDay = calendar.startOfDay(for: date)
         
-        let descriptor = FetchDescriptor<DaySummary>(
+        var descriptor = FetchDescriptor<DaySummary>(
             predicate: #Predicate<DaySummary> { summary in
                 summary.date == startOfDay
             }
         )
+        descriptor.fetchLimit = 1 // Optimize: only fetch one
         
-        return try context.fetch(descriptor).first
+        let result = try context.fetch(descriptor).first
+        let elapsed = Date().timeIntervalSince(startTime)
+        if elapsed > 0.1 {
+            print("  ⚠️ [MealRepository] fetchDaySummary() took \(String(format: "%.3f", elapsed))s (slow!)")
+        }
+        return result
     }
     
     func fetchTodaySummary() throws -> DaySummary {
+        let startTime = Date()
+        
+        let fetchStart = Date()
         if let summary = try fetchDaySummary(for: Date()) {
+            let fetchTime = Date().timeIntervalSince(fetchStart)
+            let totalTime = Date().timeIntervalSince(startTime)
+            print("  📊 [MealRepository] fetchTodaySummary() found existing - fetch: \(String(format: "%.3f", fetchTime))s, total: \(String(format: "%.3f", totalTime))s")
             return summary
         }
         
         // Create new summary for today
+        let createStart = Date()
         let summary = DaySummary(date: Date())
         context.insert(summary)
         try context.save()
+        let createTime = Date().timeIntervalSince(createStart)
+        let totalTime = Date().timeIntervalSince(startTime)
+        print("  📊 [MealRepository] fetchTodaySummary() created new in \(String(format: "%.3f", createTime))s (total: \(String(format: "%.3f", totalTime))s)")
         return summary
     }
     
@@ -162,6 +188,7 @@ final class MealRepository {
     
     /// Fetch summaries for the current week (Sunday to Saturday)
     func fetchCurrentWeekSummaries() throws -> [Date: DaySummary] {
+        let startTime = Date()
         let calendar = Calendar.current
         let today = Date()
         
@@ -169,9 +196,11 @@ final class MealRepository {
         let weekday = calendar.component(.weekday, from: today)
         guard let startOfWeek = calendar.date(byAdding: .day, value: -(weekday - 1), to: calendar.startOfDay(for: today)),
               let endOfWeek = calendar.date(byAdding: .day, value: 7, to: startOfWeek) else {
+            print("  ⚠️ [MealRepository] fetchCurrentWeekSummaries() failed to calculate week range")
             return [:]
         }
         
+        let fetchStart = Date()
         let descriptor = FetchDescriptor<DaySummary>(
             predicate: #Predicate<DaySummary> { summary in
                 summary.date >= startOfWeek && summary.date < endOfWeek
@@ -180,13 +209,19 @@ final class MealRepository {
         )
         
         let summaries = try context.fetch(descriptor)
+        let fetchTime = Date().timeIntervalSince(fetchStart)
+        print("  📅 [MealRepository] fetchCurrentWeekSummaries() fetched \(summaries.count) summaries in \(String(format: "%.3f", fetchTime))s")
         
         // Convert to dictionary keyed by date
+        let dictStart = Date()
         var result: [Date: DaySummary] = [:]
         for summary in summaries {
             let dayStart = calendar.startOfDay(for: summary.date)
             result[dayStart] = summary
         }
+        let dictTime = Date().timeIntervalSince(dictStart)
+        let totalTime = Date().timeIntervalSince(startTime)
+        print("  📅 [MealRepository] fetchCurrentWeekSummaries() completed in \(String(format: "%.3f", totalTime))s (dict conversion: \(String(format: "%.6f", dictTime))s)")
         
         return result
     }

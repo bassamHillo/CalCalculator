@@ -26,6 +26,8 @@ struct TodaysProgressCard: View {
                 Text("\(consumed)")
                     .font(.system(size: 42, weight: .bold, design: .rounded))
                     .foregroundColor(.primary)
+                    .contentTransition(.numericText())
+                    .animation(.spring(response: 0.6, dampingFraction: 0.8), value: consumed)
                 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("of \(calorieGoal) cal")
@@ -48,6 +50,8 @@ struct TodaysProgressCard: View {
                     Text("\(remainingCalories) remaining")
                         .font(.caption)
                         .fontWeight(.medium)
+                        .contentTransition(.numericText())
+                        .animation(.spring(response: 0.6, dampingFraction: 0.8), value: remainingCalories)
                 }
                 .foregroundColor(remainingCalories > 0 ? .orange : .green)
                 .padding(.horizontal, 10)

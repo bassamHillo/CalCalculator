@@ -63,6 +63,53 @@ struct AnalyzeResponse: Decodable {
         case error
         case exceptionType = "exception_type"
     }
+    
+    // Custom initializer to handle missing data gracefully and log decoding errors
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        
+        // ok is required, but provide default if missing
+        ok = (try? container.decode(Bool.self, forKey: .ok)) ?? false
+        mode = try? container.decode(String.self, forKey: .mode)
+        
+        // Try to decode analysis and log any errors
+        if container.contains(.analysis) {
+            do {
+                analysis = try container.decode(AnalysisData.self, forKey: .analysis)
+                print("🟢 [Models] Successfully decoded AnalysisData")
+            } catch let decodingError {
+                print("🔴 [Models] Failed to decode AnalysisData: \(decodingError)")
+                if let decodingError = decodingError as? DecodingError {
+                    switch decodingError {
+                    case .keyNotFound(let key, let context):
+                        print("   - Missing key: \(key.stringValue)")
+                        print("   - Context: \(context.debugDescription)")
+                        print("   - Coding path: \(context.codingPath)")
+                    case .typeMismatch(let type, let context):
+                        print("   - Type mismatch: expected \(type)")
+                        print("   - Context: \(context.debugDescription)")
+                        print("   - Coding path: \(context.codingPath)")
+                    case .valueNotFound(let type, let context):
+                        print("   - Value not found: \(type)")
+                        print("   - Context: \(context.debugDescription)")
+                        print("   - Coding path: \(context.codingPath)")
+                    case .dataCorrupted(let context):
+                        print("   - Data corrupted: \(context.debugDescription)")
+                        print("   - Coding path: \(context.codingPath)")
+                    @unknown default:
+                        print("   - Unknown decoding error")
+                    }
+                }
+                analysis = nil
+            }
+        } else {
+            print("⚠️ [Models] Analysis key not found in response")
+            analysis = nil
+        }
+        
+        error = try? container.decode(String.self, forKey: .error)
+        exceptionType = try? container.decode(String.self, forKey: .exceptionType)
+    }
 }
 
 struct AnalysisData: Decodable {
@@ -94,6 +141,32 @@ struct AnalysisData: Decodable {
         case ingredients
         case labelType = "label_type"
         case notes
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        
+        // food_detected is required
+        foodDetected = (try? container.decode(Bool.self, forKey: .foodDetected)) ?? false
+        
+        // All other fields are optional
+        foodName = try? container.decode(String.self, forKey: .foodName)
+        brand = try? container.decode(String.self, forKey: .brand)
+        totalCalories = try? container.decode(Int.self, forKey: .totalCalories)
+        confidence = try? container.decode(String.self, forKey: .confidence)
+        breakdown = try? container.decode(NutritionBreakdown.self, forKey: .breakdown)
+        servingSize = try? container.decode(String.self, forKey: .servingSize)
+        items = try? container.decode([FoodItemData].self, forKey: .items)
+        source = try? container.decode(String.self, forKey: .source)
+        barcode = try? container.decode(String.self, forKey: .barcode)
+        ingredients = try? container.decode(IngredientsList.self, forKey: .ingredients)
+        labelType = try? container.decode(String.self, forKey: .labelType)
+        notes = try? container.decode(String.self, forKey: .notes)
+        
+        print("🟢 [Models] AnalysisData decoded successfully")
+        print("   - foodDetected: \(foodDetected)")
+        print("   - foodName: \(foodName ?? "nil")")
+        print("   - totalCalories: \(totalCalories ?? 0)")
     }
 }
 
@@ -138,7 +211,7 @@ struct NutritionBreakdown: Codable {
     let proteinG: Double
     let carbsG: Double
     let fatG: Double
-    let fiberG: Double
+    let fiberG: Double?  // Made optional - API can return null
     let sugarG: Double?
     let sodiumMg: Double?
     let saturatedFatG: Double?
@@ -151,6 +224,21 @@ struct NutritionBreakdown: Codable {
         case sugarG = "sugar_g"
         case sodiumMg = "sodium_mg"
         case saturatedFatG = "saturated_fat_g"
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        
+        // Required fields with defaults if missing
+        proteinG = (try? container.decode(Double.self, forKey: .proteinG)) ?? 0.0
+        carbsG = (try? container.decode(Double.self, forKey: .carbsG)) ?? 0.0
+        fatG = (try? container.decode(Double.self, forKey: .fatG)) ?? 0.0
+        
+        // Optional fields
+        fiberG = try? container.decode(Double.self, forKey: .fiberG)
+        sugarG = try? container.decode(Double.self, forKey: .sugarG)
+        sodiumMg = try? container.decode(Double.self, forKey: .sodiumMg)
+        saturatedFatG = try? container.decode(Double.self, forKey: .saturatedFatG)
     }
 
     var toMacroData: MacroData {
@@ -250,9 +338,12 @@ struct FoodAnalysisResult {
             return nil
         }
 
+        let confidenceValue = confidence?.numericValue ?? 0
+        print("🟡 [Models] Converting to Meal - confidence: \(confidenceValue) (from \(confidence?.rawValue ?? "nil"))")
+        
         let meal = Meal(
             name: mealName,
-            confidence: confidence?.numericValue ?? 0,
+            confidence: confidenceValue,
             notes: notes
         )
 
