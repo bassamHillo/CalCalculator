@@ -2,79 +2,60 @@
 //  ProfileView.swift
 //  playground
 //
-//  Main Profile/Settings screen matching the design
+//  Main Profile screen with settings and user information
 //
 
 import SwiftUI
 
 struct ProfileView: View {
-    @State private var profile = UserProfile.shared
+    
+    // MARK: - State
+    
+    @State private var viewModel = ProfileViewModel()
+    
+    // Sheet presentation states
     @State private var showingPersonalDetails = false
     @State private var showingPreferences = false
     @State private var showingLanguageSelection = false
     @State private var showingEditNutritionGoals = false
-    @State private var showingEditWeightGoal = false
     @State private var showingWeightHistory = false
     @State private var showingRingColorsExplained = false
-    @State private var showingReferFriend = false
-    @State private var showingMilestones = false
-    @State private var showingFeatureRequests = false
     @State private var showingSupportEmail = false
-    @State private var showingPDFSummary = false
-    @State private var showingWidgets = false
-    @State private var showingFamilyPlan = false
-    @State private var showingPremium = false
+    @State private var showingDataExport = false
+    @State private var showingReferralCode = false
+    @State private var showingBadges = false
+    
+    // MARK: - Body
     
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 24) {
-                    // Profile Info Card
-                    profileInfoCard
-                    
-                    // App Theme Section
-                    appThemeSection
-                    
-                    // Premium Section
-                    premiumSection
-                    
-                    // Invite Friends Section
-                    inviteFriendsSection
-                    
-                    // Account Section
+                VStack(spacing: 20) {
+                    profileInfoSection
                     accountSection
-                    
-                    // Goals & Tracking Section
                     goalsTrackingSection
-                    
-                    // Support & Legal Section
-                    supportLegalSection
-                    
-                    // Follow Us Section
-                    followUsSection
+                    preferencesSection
+                    supportSection
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
-                .padding(.bottom, 100) // Space for tab bar
+                .padding(.bottom, 100)
             }
-            .background(Color(uiColor: .systemGroupedBackground))
+            .background(Color(UIColor.systemGroupedBackground))
             .navigationTitle("Profile")
             .navigationBarTitleDisplayMode(.large)
         }
         .sheet(isPresented: $showingPersonalDetails) {
-            PersonalDetailsView()
+            PersonalDetailsView(viewModel: viewModel)
         }
         .sheet(isPresented: $showingPreferences) {
-            PreferencesView()
+            PreferencesView(viewModel: viewModel)
         }
         .sheet(isPresented: $showingLanguageSelection) {
-            LanguageSelectionView()
+            LanguageSelectionView(viewModel: viewModel)
         }
         .sheet(isPresented: $showingEditNutritionGoals) {
-            EditNutritionGoalsView()
-        }
-        .sheet(isPresented: $showingEditWeightGoal) {
-            EditWeightGoalView()
+            EditNutritionGoalsView(viewModel: viewModel)
         }
         .sheet(isPresented: $showingWeightHistory) {
             WeightHistoryView()
@@ -82,412 +63,220 @@ struct ProfileView: View {
         .sheet(isPresented: $showingRingColorsExplained) {
             RingColorsExplainedView()
         }
-        .sheet(isPresented: $showingReferFriend) {
-            ReferFriendView()
-        }
-        .sheet(isPresented: $showingMilestones) {
-            MilestonesView()
-        }
-        .sheet(isPresented: $showingFeatureRequests) {
-            FeatureRequestsView()
-        }
         .sheet(isPresented: $showingSupportEmail) {
             SupportEmailView()
         }
-        .sheet(isPresented: $showingPDFSummary) {
-            PDFSummaryReportView()
+        .sheet(isPresented: $showingDataExport) {
+            DataExportView()
         }
-        .sheet(isPresented: $showingWidgets) {
-            WidgetsView()
+        .sheet(isPresented: $showingReferralCode) {
+            ReferralCodeView()
         }
-        .sheet(isPresented: $showingFamilyPlan) {
-            FamilyPlanView()
-        }
-        .fullScreenCover(isPresented: $showingPremium) {
-            PremiumView()
+        .sheet(isPresented: $showingBadges) {
+            BadgesView()
         }
     }
     
-    // MARK: - Profile Info Card
-    private var profileInfoCard: some View {
-        Button {
-            showingPersonalDetails = true
-        } label: {
-            HStack(spacing: 16) {
-                Image(systemName: "person.circle.fill")
-                    .font(.system(size: 40))
-                    .foregroundColor(.gray)
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(profile.fullName)
-                        .font(.headline)
-                        .foregroundColor(.primary)
-                    
-                    if profile.username.isEmpty {
-                        Text("and username")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    } else {
-                        Text("@\(profile.username)")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                }
-                
-                Spacer()
-                
-                Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            .padding()
-            .background(Color(uiColor: .secondarySystemGroupedBackground))
-            .cornerRadius(12)
-        }
-    }
+    // MARK: - Profile Info Section
     
-    // MARK: - App Theme Section
-    private var appThemeSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("App Theme")
-                .font(.headline)
-                .foregroundColor(.secondary)
-                .padding(.horizontal, 4)
-            
-            HStack(spacing: 12) {
-                Image(systemName: "sparkles")
-                    .font(.title2)
-                    .foregroundColor(.green)
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Feel the Holiday Magic")
-                        .font(.headline)
-                        .foregroundColor(.primary)
-                    
-                    Text("Let your app sparkle with snow and Christmas cheer.")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-                
-                Spacer()
-                
-                Toggle("", isOn: .constant(false))
-            }
-            .padding()
-            .background(Color(uiColor: .secondarySystemGroupedBackground))
-            .cornerRadius(12)
-        }
-    }
-    
-    // MARK: - Premium Section
-    private var premiumSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Premium")
-                .font(.headline)
-                .foregroundColor(.secondary)
-                .padding(.horizontal, 4)
-            
-            Button {
-                showingPremium = true
-            } label: {
-                HStack(spacing: 12) {
-                    Image(systemName: "crown.fill")
-                        .font(.title2)
-                        .foregroundColor(.yellow)
-                    
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Try Premium for Free")
-                            .font(.headline)
-                            .foregroundColor(.primary)
-                        
-                        Text("Unlock Cal AI free for 7 days")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    Spacer()
-                    
-                    Image(systemName: "chevron.right")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                .padding()
-                .background(Color(uiColor: .secondarySystemGroupedBackground))
-                .cornerRadius(12)
-            }
-        }
-    }
-    
-    // MARK: - Invite Friends Section
-    private var inviteFriendsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Invite Friends")
-                .font(.headline)
-                .foregroundColor(.secondary)
-                .padding(.horizontal, 4)
-            
-            Button {
-                showingReferFriend = true
-            } label: {
-                HStack(spacing: 12) {
-                    Image(systemName: "person.badge.plus")
-                        .font(.title2)
-                        .foregroundColor(.blue)
-                    
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Refer a friend and earn $10")
-                            .font(.headline)
-                            .foregroundColor(.primary)
-                        
-                        Text("Earn $10 per friend that signs up with your promo code.")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    Spacer()
-                    
-                    Image(systemName: "chevron.right")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                .padding()
-                .background(Color(uiColor: .secondarySystemGroupedBackground))
-                .cornerRadius(12)
-            }
-        }
+    @ViewBuilder
+    private var profileInfoSection: some View {
+        ProfileInfoCard(
+            fullName: viewModel.fullName,
+            username: viewModel.username,
+            onTap: { showingPersonalDetails = true }
+        )
     }
     
     // MARK: - Account Section
+    
+    @ViewBuilder
     private var accountSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Account")
-                .font(.headline)
-                .foregroundColor(.secondary)
-                .padding(.horizontal, 4)
+        VStack(alignment: .leading, spacing: 8) {
+            ProfileSectionHeader(title: "Account")
             
-            VStack(spacing: 0) {
-                SettingsRow(
-                    icon: "person.text.rectangle",
-                    title: "Personal Details",
-                    action: { showingPersonalDetails = true }
-                )
-                
-                Divider().padding(.leading, 60)
-                
+            ProfileSectionCard {
                 SettingsRow(
                     icon: "gearshape",
                     title: "Preferences",
+                    subtitle: "Appearance, notifications & behavior",
                     action: { showingPreferences = true }
                 )
                 
-                Divider().padding(.leading, 60)
+                SettingsDivider()
                 
                 SettingsRow(
-                    icon: "textformat.abc",
+                    icon: "globe",
                     title: "Language",
+                    subtitle: viewModel.selectedLanguage,
                     action: { showingLanguageSelection = true }
                 )
-                
-                Divider().padding(.leading, 60)
-                
-                SettingsRow(
-                    icon: "person.2",
-                    title: "Upgrade to Family Plan",
-                    action: { showingFamilyPlan = true }
-                )
             }
-            .background(Color(uiColor: .secondarySystemGroupedBackground))
-            .cornerRadius(12)
         }
     }
     
     // MARK: - Goals & Tracking Section
+    
+    @ViewBuilder
     private var goalsTrackingSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Goals & Tracking")
-                .font(.headline)
-                .foregroundColor(.secondary)
-                .padding(.horizontal, 4)
+        VStack(alignment: .leading, spacing: 8) {
+            ProfileSectionHeader(title: "Goals & Tracking")
             
-            VStack(spacing: 0) {
+            ProfileSectionCard {
                 SettingsRow(
                     icon: "target",
-                    title: "Edit Nutrition Goals",
+                    iconColor: .orange,
+                    title: "Nutrition Goals",
+                    subtitle: "\(viewModel.calorieGoal) cal | \(Int(viewModel.proteinGoal))g protein",
                     action: { showingEditNutritionGoals = true }
                 )
-                
-                Divider().padding(.leading, 60)
-                
-                SettingsRow(
-                    icon: "flag",
-                    title: "Goals & current weight",
-                    action: { showingEditWeightGoal = true }
-                )
-                
-                Divider().padding(.leading, 60)
+
+                SettingsDivider()
                 
                 SettingsRow(
                     icon: "clock.arrow.circlepath",
+                    iconColor: .purple,
                     title: "Weight History",
                     action: { showingWeightHistory = true }
                 )
                 
-                Divider().padding(.leading, 60)
+                SettingsDivider()
                 
                 SettingsRow(
-                    icon: "target",
+                    icon: "circle.inset.filled",
+                    iconColor: .blue,
                     title: "Ring Colors Explained",
                     action: { showingRingColorsExplained = true }
                 )
-            }
-            .background(Color(uiColor: .secondarySystemGroupedBackground))
-            .cornerRadius(12)
-        }
-    }
-    
-    // MARK: - Support & Legal Section
-    private var supportLegalSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Support & Legal")
-                .font(.headline)
-                .foregroundColor(.secondary)
-                .padding(.horizontal, 4)
-            
-            VStack(spacing: 0) {
-                SettingsRow(
-                    icon: "megaphone",
-                    title: "Request a Feature",
-                    action: { showingFeatureRequests = true }
-                )
                 
-                Divider().padding(.leading, 60)
+                SettingsDivider()
                 
                 SettingsRow(
-                    icon: "envelope",
-                    title: "Support Email",
-                    action: { showingSupportEmail = true }
+                    icon: "medal.fill",
+                    iconColor: .yellow,
+                    title: "My Badges",
+                    subtitle: BadgeManager.shared.progressText,
+                    action: { showingBadges = true }
                 )
                 
-                Divider().padding(.leading, 60)
+                SettingsDivider()
                 
                 SettingsRow(
                     icon: "square.and.arrow.up",
-                    title: "Export PDF Summary Report",
-                    action: { showingPDFSummary = true }
+                    iconColor: .green,
+                    title: "Export Data",
+                    subtitle: "Download your data as PDF",
+                    action: { showingDataExport = true }
                 )
                 
-                Divider().padding(.leading, 60)
+                SettingsDivider()
                 
-                HStack {
-                    Image(systemName: "arrow.clockwise")
-                        .foregroundColor(.blue)
-                        .frame(width: 24)
-                    
-                    Text("Sync Data")
-                        .foregroundColor(.primary)
-                    
-                    Spacer()
-                    
-                    Text("Last Synced: 2:55 PM")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    
-                    Image(systemName: "chevron.right")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                .padding()
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    // Sync action
-                }
+                SettingsRow(
+                    icon: "gift.fill",
+                    iconColor: .pink,
+                    title: "Referral Code",
+                    subtitle: "Share & earn rewards",
+                    action: { showingReferralCode = true }
+                )
+            }
+        }
+    }
+    
+    // MARK: - Preferences Section
+    
+    @ViewBuilder
+    private var preferencesSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ProfileSectionHeader(title: "Quick Settings")
+            
+            ProfileSectionCard {
+                ToggleSettingRow(
+                    icon: "flame.fill",
+                    iconColor: .orange,
+                    title: "Add Burned Calories",
+                    description: "Add exercise calories back to daily goal",
+                    isOn: $viewModel.addBurnedCalories
+                )
                 
-                Divider().padding(.leading, 60)
+                SettingsDivider()
+                
+                ToggleSettingRow(
+                    icon: "arrow.clockwise",
+                    iconColor: .green,
+                    title: "Rollover Calories",
+                    description: "Carry up to 200 unused calories to next day",
+                    isOn: $viewModel.rolloverCalories
+                )
+                
+                SettingsDivider()
+                
+                ToggleSettingRow(
+                    icon: "sparkles",
+                    iconColor: .purple,
+                    title: "Badge Celebrations",
+                    description: "Show animation when earning new badges",
+                    isOn: $viewModel.badgeCelebrations
+                )
+            }
+        }
+    }
+    
+    // MARK: - Support Section
+    
+    @ViewBuilder
+    private var supportSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ProfileSectionHeader(title: "Support")
+            
+            ProfileSectionCard {
+                SettingsRow(
+                    icon: "envelope",
+                    iconColor: .blue,
+                    title: "Contact Support",
+                    action: { showingSupportEmail = true }
+                )
+                
+                SettingsDivider()
                 
                 SettingsRow(
                     icon: "doc.text",
-                    title: "Terms and Conditions",
-                    action: { /* Open terms */ }
+                    iconColor: .gray,
+                    title: "Terms of Service",
+                    action: { openURL("https://www.apple.com/legal/internet-services/itunes/dev/stdeula/") }
                 )
                 
-                Divider().padding(.leading, 60)
+                SettingsDivider()
                 
                 SettingsRow(
-                    icon: "checkmark.shield",
+                    icon: "hand.raised",
+                    iconColor: .gray,
                     title: "Privacy Policy",
-                    action: { /* Open privacy */ }
+                    action: { openURL("https://www.apple.com/legal/privacy/") }
                 )
             }
-            .background(Color(uiColor: .secondarySystemGroupedBackground))
-            .cornerRadius(12)
+            
+            // App Version
+            HStack {
+                Spacer()
+                Text("Version 1.0.0")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Spacer()
+            }
+            .padding(.top, 16)
         }
     }
     
-    // MARK: - Follow Us Section
-    private var followUsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Follow Us")
-                .font(.headline)
-                .foregroundColor(.secondary)
-                .padding(.horizontal, 4)
-            
-            VStack(spacing: 0) {
-                SettingsRow(
-                    icon: "camera",
-                    title: "Instagram",
-                    action: { /* Open Instagram */ }
-                )
-                
-                Divider().padding(.leading, 60)
-                
-                SettingsRow(
-                    icon: "music.note",
-                    title: "TikTok",
-                    action: { /* Open TikTok */ }
-                )
-                
-                Divider().padding(.leading, 60)
-                
-                SettingsRow(
-                    icon: "xmark",
-                    title: "X",
-                    action: { /* Open X/Twitter */ }
-                )
-            }
-            .background(Color(uiColor: .secondarySystemGroupedBackground))
-            .cornerRadius(12)
-        }
+    // MARK: - Helpers
+    
+    private func openURL(_ urlString: String) {
+        guard let url = URL(string: urlString) else { return }
+        UIApplication.shared.open(url)
     }
 }
 
-// MARK: - Settings Row Component
-struct SettingsRow: View {
-    let icon: String
-    let title: String
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 16) {
-                Image(systemName: icon)
-                    .foregroundColor(.blue)
-                    .frame(width: 24)
-                
-                Text(title)
-                    .foregroundColor(.primary)
-                
-                Spacer()
-                
-                Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            .padding()
-        }
-    }
-}
+// MARK: - Preview
 
 #Preview {
     ProfileView()
 }
-

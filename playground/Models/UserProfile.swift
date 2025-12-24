@@ -194,40 +194,5 @@ final class UserProfile {
 }
 
 // MARK: - Supporting Types
-
-enum Gender: String, CaseIterable {
-    case male = "male"
-    case female = "female"
-    case other = "other"
-    
-    var displayName: String {
-        switch self {
-        case .male: return "Male"
-        case .female: return "Female"
-        case .other: return "Other"
-        }
-    }
-}
-
-enum AppearanceMode: String, CaseIterable {
-    case system = "system"
-    case light = "light"
-    case dark = "dark"
-    
-    var displayName: String {
-        switch self {
-        case .system: return "System"
-        case .light: return "Light"
-        case .dark: return "Dark"
-        }
-    }
-    
-    var colorScheme: ColorScheme? {
-        switch self {
-        case .system: return nil
-        case .light: return .light
-        case .dark: return .dark
-        }
-    }
-}
+// Gender and AppearanceMode enums are now defined in UserProfileRepository.swift
 

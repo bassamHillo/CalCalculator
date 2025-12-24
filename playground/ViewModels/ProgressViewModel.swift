@@ -10,6 +10,8 @@ import SwiftData
 
 /// Time filter options for charts
 enum TimeFilter: String, CaseIterable, Identifiable {
+    case oneWeek = "1W"
+    case oneMonth = "1M"
     case threeMonths = "3M"
     case sixMonths = "6M"
     case oneYear = "1Y"
@@ -17,8 +19,21 @@ enum TimeFilter: String, CaseIterable, Identifiable {
     
     var id: String { rawValue }
     
+    var displayName: String {
+        switch self {
+        case .oneWeek: return "Last 7 Days"
+        case .oneMonth: return "Last Month"
+        case .threeMonths: return "Last 3 Months"
+        case .sixMonths: return "Last 6 Months"
+        case .oneYear: return "Last Year"
+        case .all: return "All Time"
+        }
+    }
+    
     var months: Int? {
         switch self {
+        case .oneWeek: return nil // Special case for days
+        case .oneMonth: return 1
         case .threeMonths: return 3
         case .sixMonths: return 6
         case .oneYear: return 12
@@ -27,10 +42,17 @@ enum TimeFilter: String, CaseIterable, Identifiable {
     }
     
     var startDate: Date {
-        guard let months = months else {
+        switch self {
+        case .oneWeek:
+            return Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
+        case .all:
             return Calendar.current.date(byAdding: .year, value: -10, to: Date()) ?? Date()
+        default:
+            guard let months = months else {
+                return Calendar.current.date(byAdding: .year, value: -10, to: Date()) ?? Date()
+            }
+            return Calendar.current.date(byAdding: .month, value: -months, to: Date()) ?? Date()
         }
-        return Calendar.current.date(byAdding: .month, value: -months, to: Date()) ?? Date()
     }
 }
 
@@ -39,14 +61,25 @@ enum CaloriesTimeFilter: String, CaseIterable, Identifiable {
     case oneWeek = "1W"
     case twoWeeks = "2W"
     case threeWeeks = "3W"
+    case oneMonth = "1M"
     
     var id: String { rawValue }
+    
+    var displayName: String {
+        switch self {
+        case .oneWeek: return "Last 7 Days"
+        case .twoWeeks: return "Last 2 Weeks"
+        case .threeWeeks: return "Last 3 Weeks"
+        case .oneMonth: return "Last Month"
+        }
+    }
     
     var days: Int {
         switch self {
         case .oneWeek: return 7
         case .twoWeeks: return 14
         case .threeWeeks: return 21
+        case .oneMonth: return 30
         }
     }
     
@@ -86,6 +119,13 @@ struct WeightDataPoint: Identifiable {
     let id = UUID()
     let date: Date
     let weight: Double
+    let note: String?
+    
+    init(date: Date, weight: Double, note: String? = nil) {
+        self.date = date
+        self.weight = weight
+        self.note = note
+    }
     
     var dateString: String {
         let formatter = DateFormatter()
@@ -101,6 +141,7 @@ final class ProgressViewModel {
     // MARK: - Dependencies
     private let repository: MealRepository
     private let healthKitManager = HealthKitManager.shared
+    private var modelContext: ModelContext?
     
     // MARK: - State
     var isLoading = false
@@ -111,6 +152,13 @@ final class ProgressViewModel {
     // Weight Data
     var weightHistory: [WeightDataPoint] = []
     var weightTimeFilter: TimeFilter = .threeMonths
+    var weightEntries: [WeightEntry] = []
+    
+    // Weight Stats
+    var totalWeightChange: Double = 0
+    var averageWeight: Double = 0
+    var minWeight: Double = 0
+    var maxWeight: Double = 0
     
     // Calories Data
     var dailyCaloriesData: [DailyCalorieData] = []
@@ -181,8 +229,13 @@ final class ProgressViewModel {
     
     // MARK: - Initialization
     
-    init(repository: MealRepository) {
+    init(repository: MealRepository, modelContext: ModelContext? = nil) {
         self.repository = repository
+        self.modelContext = modelContext
+    }
+    
+    func setModelContext(_ context: ModelContext) {
+        self.modelContext = context
     }
     
     // MARK: - Data Loading
@@ -200,18 +253,74 @@ final class ProgressViewModel {
     func loadWeightHistory() async {
         let startDate = weightTimeFilter.startDate
         
-        // Only fetch from HealthKit if available
+        // First try to load from SwiftData
+        if let context = modelContext {
+            do {
+                let descriptor = FetchDescriptor<WeightEntry>(
+                    predicate: #Predicate<WeightEntry> { entry in
+                        entry.date >= startDate
+                    },
+                    sortBy: [SortDescriptor(\.date, order: .forward)]
+                )
+                
+                let entries = try context.fetch(descriptor)
+                weightEntries = entries
+                
+                // Convert to weight data points
+                weightHistory = entries.map { entry in
+                    WeightDataPoint(
+                        date: entry.date,
+                        weight: useMetricUnits ? entry.weight : entry.weightInPounds,
+                        note: entry.note
+                    )
+                }
+                
+                // Calculate stats
+                calculateWeightStats()
+                
+                // If we have SwiftData entries, don't fall back to HealthKit
+                if !weightHistory.isEmpty {
+                    return
+                }
+            } catch {
+                print("Failed to fetch weight entries from SwiftData: \(error)")
+            }
+        }
+        
+        // Fallback to HealthKit if no SwiftData entries
         if healthKitManager.isHealthDataAvailable {
             let history = await healthKitManager.fetchWeightHistory(from: startDate)
             weightHistory = history.map { WeightDataPoint(date: $0.date, weight: $0.weight) }
+            calculateWeightStats()
         }
         
-        // If no HealthKit data, use settings
+        // If no HealthKit data either, use settings
         if weightHistory.isEmpty {
             if let lastDate = settings.lastWeightDate {
-                weightHistory = [WeightDataPoint(date: lastDate, weight: settings.currentWeight)]
+                weightHistory = [WeightDataPoint(date: lastDate, weight: displayWeight)]
             }
         }
+    }
+    
+    private func calculateWeightStats() {
+        guard !weightHistory.isEmpty else {
+            totalWeightChange = 0
+            averageWeight = 0
+            minWeight = 0
+            maxWeight = 0
+            return
+        }
+        
+        let weights = weightHistory.map { $0.weight }
+        
+        if let firstWeight = weightHistory.first?.weight,
+           let lastWeight = weightHistory.last?.weight {
+            totalWeightChange = lastWeight - firstWeight
+        }
+        
+        averageWeight = weights.reduce(0, +) / Double(weights.count)
+        minWeight = weights.min() ?? 0
+        maxWeight = weights.max() ?? 0
     }
     
     func loadCaloriesData() async {
@@ -278,7 +387,20 @@ final class ProgressViewModel {
         let weightInKg = settings.useMetricUnits ? weight : weight / 2.20462
         settings.updateWeight(weightInKg)
         
-        // Save to HealthKit if available
+        // Save to SwiftData
+        if let context = modelContext {
+            let entry = WeightEntry(weight: weightInKg, date: Date())
+            context.insert(entry)
+            
+            do {
+                try context.save()
+                HapticManager.shared.notification(.success)
+            } catch {
+                print("Failed to save weight entry to SwiftData: \(error)")
+            }
+        }
+        
+        // Also save to HealthKit if available
         if healthKitManager.isHealthDataAvailable {
             do {
                 try await healthKitManager.saveWeight(weightInKg)
@@ -289,6 +411,24 @@ final class ProgressViewModel {
         }
         
         await loadWeightHistory()
+    }
+    
+    func deleteWeightEntry(_ entry: WeightEntry) {
+        guard let context = modelContext else { return }
+        
+        context.delete(entry)
+        
+        do {
+            try context.save()
+            HapticManager.shared.notification(.success)
+            
+            // Reload data
+            Task {
+                await loadWeightHistory()
+            }
+        } catch {
+            print("Failed to delete weight entry: \(error)")
+        }
     }
     
     func markWeightPromptShown() {

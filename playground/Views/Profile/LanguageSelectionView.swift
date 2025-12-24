@@ -1,55 +1,30 @@
 //
 //  LanguageSelectionView.swift
 //
-//  Language selection modal
+//  Language selection modal using ProfileViewModel
 //
 
 import SwiftUI
 
 struct LanguageSelectionView: View {
-    @State private var profile = UserProfile.shared
+    @Bindable var viewModel: ProfileViewModel
     @Environment(\.dismiss) private var dismiss
-    
-    let languages: [(name: String, flag: String, code: String)] = [
-        ("English", "🇺🇸", "en"),
-        ("中国人", "🇨🇳", "zh"),
-        ("हिन्दी", "🇮🇳", "hi"),
-        ("Español", "🇪🇸", "es"),
-        ("Français", "🇫🇷", "fr"),
-        ("Deutsch", "🇩🇪", "de"),
-        ("Русский", "🇷🇺", "ru"),
-        ("Português", "🇧🇷", "pt"),
-        ("Italiano", "🇮🇹", "it"),
-        ("Română", "🇷🇴", "ro"),
-        ("Azərbaycanca", "🇦🇿", "az"),
-        ("Nederlands", "🇳🇱", "nl")
-    ]
     
     var body: some View {
         NavigationStack {
             List {
-                ForEach(languages, id: \.code) { language in
-                    Button {
-                        profile.selectedLanguage = language.name
-                        dismiss()
-                    } label: {
-                        HStack {
-                            Text(language.flag)
-                                .font(.title2)
-                            
-                            Text(language.name)
-                                .foregroundColor(.primary)
-                            
-                            Spacer()
-                            
-                            if profile.selectedLanguage == language.name {
-                                Image(systemName: "checkmark")
-                                    .foregroundColor(.blue)
-                            }
+                ForEach(ProfileViewModel.supportedLanguages, id: \.code) { language in
+                    LanguageRow(
+                        language: language,
+                        isSelected: viewModel.selectedLanguage == language.name,
+                        onSelect: {
+                            viewModel.selectedLanguage = language.name
+                            dismiss()
                         }
-                    }
+                    )
                 }
             }
+            .listStyle(.insetGrouped)
             .navigationTitle("Select Language")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -58,7 +33,7 @@ struct LanguageSelectionView: View {
                         dismiss()
                     } label: {
                         Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(.gray)
+                            .foregroundStyle(.secondary)
                     }
                 }
             }
@@ -67,7 +42,49 @@ struct LanguageSelectionView: View {
     }
 }
 
-#Preview {
-    LanguageSelectionView()
+// MARK: - Language Row
+
+private struct LanguageRow: View {
+    let language: (name: String, flag: String, code: String)
+    let isSelected: Bool
+    let onSelect: () -> Void
+    
+    var body: some View {
+        Button(action: onSelect) {
+            HStack(spacing: 16) {
+                // Flag emoji from country code
+                Text(flagEmoji(from: language.flag))
+                    .font(.title2)
+                
+                Text(language.name)
+                    .foregroundStyle(.primary)
+                
+                Spacer()
+                
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.blue)
+                        .font(.title3)
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+    
+    /// Convert country code to flag emoji
+    private func flagEmoji(from countryCode: String) -> String {
+        let base: UInt32 = 127397
+        var emoji = ""
+        for scalar in countryCode.uppercased().unicodeScalars {
+            if let flagScalar = UnicodeScalar(base + scalar.value) {
+                emoji.append(String(flagScalar))
+            }
+        }
+        return emoji
+    }
 }
 
+#Preview {
+    LanguageSelectionView(viewModel: ProfileViewModel())
+}
