@@ -44,6 +44,25 @@ platform :ios do
   #
   desc "Run unit tests"
   lane :_run_tests do
+    # Configure AWS credentials for CodeCommit if available
+    # This is needed even for scan because xcodebuild -showBuildSettings may resolve packages
+    if ENV["AWS_ACCESS_KEY_ID"] && ENV["AWS_SECRET_ACCESS_KEY"]
+      access_key = ENV["AWS_ACCESS_KEY_ID"]
+      secret_key = ENV["AWS_SECRET_ACCESS_KEY"]
+      # URL encode credentials (basic encoding)
+      access_key_encoded = access_key.gsub("@", "%40")
+      secret_key_encoded = secret_key.gsub("@", "%40").gsub(":", "%3A").gsub("/", "%2F").gsub("=", "%3D")
+      # Configure Git URL rewriting with embedded credentials
+      sh("git config --global url.\\\"https://#{access_key_encoded}:#{secret_key_encoded}@git-codecommit.us-east-1.amazonaws.com/\\\".insteadOf \\\"https://git-codecommit.us-east-1.amazonaws.com/\\\"")
+      # Also set up credential helper as fallback
+      sh("git config --global credential.helper '!aws codecommit credential-helper $@'")
+      sh("git config --global credential.UseHttpPath true")
+    end
+    
+    # Increase timeout for xcodebuild -showBuildSettings (default is 3 seconds)
+    ENV["FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT"] = "60"
+    ENV["FASTLANE_XCODEBUILD_SETTINGS_RETRIES"] = "2"
+    
     begin
       # Run tests using scan action
       # Xcode will auto-discover test files if test target is configured
@@ -64,12 +83,13 @@ platform :ios do
       UI.success("✅ Unit tests passed!")
     rescue => ex
       # If tests fail or test target not configured, provide helpful message
-      if ex.message.include?("test") || ex.message.include?("Test") || ex.message.include?("scheme")
+      if ex.message.include?("test") || ex.message.include?("Test") || ex.message.include?("scheme") || ex.message.include?("timeout")
         UI.important("⚠️  Tests could not be run: #{ex.message}")
         UI.important("This might be because:")
         UI.important("  1. No test target is configured in the Xcode project")
         UI.important("  2. Test files need to be added to a test target")
         UI.important("  3. Scheme needs to reference the test target")
+        UI.important("  4. Package dependency resolution is taking too long")
         UI.important("")
         UI.important("To fix: Add a Unit Testing Bundle target in Xcode and add test files to it")
         UI.important("Project builds successfully - continuing with deployment...")
