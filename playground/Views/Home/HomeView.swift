@@ -242,16 +242,13 @@ struct HomeView: View {
         }
     }
     
-    @ViewBuilder
-    @ViewBuilder
     private var weekDaysSection: some View {
-        if !viewModel.weekDays.isEmpty {
-            WeekDaysHeader(weekDays: viewModel.weekDays)
-                .transition(.opacity.combined(with: .scale(scale: 0.95)))
-                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-                .listRowSeparator(.hidden)
-                .listRowBackground(Color.clear)
-        }
+        WeekDaysHeader(weekDays: viewModel.weekDays)
+            .transition(.opacity.combined(with: .scale(scale: 0.95)))
+            .animation(.spring(response: 0.6, dampingFraction: 0.8), value: viewModel.weekDays.map { $0.progress })
+            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
     }
     
     private var progressSection: some View {
@@ -262,7 +259,7 @@ struct HomeView: View {
             progress: viewModel.calorieProgress,
             goalAdjustment: viewModel.goalAdjustmentDescription
         )
-        .opacity(viewModel.hasDataLoaded ? 1 : 0.3)
+        .opacity((viewModel.hasDataLoaded) ? 1.0 : 0.3)
         .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
@@ -303,7 +300,7 @@ struct HomeView: View {
                 .transition(.opacity.combined(with: .move(edge: .bottom)))
             } else {
                 EmptyMealsView()
-                    .opacity(viewModel.hasDataLoaded ? 1 : 0.3)
+                    .opacity((viewModel.hasDataLoaded) ? 1.0 : 0.3)
                     .listRowInsets(EdgeInsets(top: 40, leading: 0, bottom: 0, trailing: 0))
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)

@@ -111,27 +111,38 @@ final class ScanViewModel {
         selectedImage = nil
         showingNoFoodDetected = false
         noFoodDetectedMessage = nil
+        pendingMeal = nil
+        pendingImage = nil
+        isAnalyzing = false
+        analysisProgress = 0
+        showingResults = false
     }
 
     // MARK: - Meal Analysis
 
     func analyzeImage(_ image: UIImage, mode: ScanMode = .food, foodHint: String? = nil) async {
-        isAnalyzing = true
-        analysisProgress = 0
+        // Note: isAnalyzing and analysisProgress may already be set by the caller
+        // to provide immediate feedback. Only set if not already analyzing.
+        if !isAnalyzing {
+            isAnalyzing = true
+            analysisProgress = 0.1
+        }
         showingNoFoodDetected = false
         noFoodDetectedMessage = nil
 
         // Simulate smooth progress that continues until API call completes
         let progressTask = Task {
-            var currentProgress: Double = 0.0
+            var currentProgress: Double = analysisProgress // Start from current progress
             let increment: Double = 0.02 // 2% increments
             let interval: UInt64 = 100_000_000 // 100ms intervals
             
-            // Start from 10% to show immediate feedback
-            await MainActor.run {
-                analysisProgress = 0.1
+            // Ensure we're at least at 10% to show immediate feedback
+            if currentProgress < 0.1 {
+                await MainActor.run {
+                    analysisProgress = 0.1
+                }
+                currentProgress = 0.1
             }
-            currentProgress = 0.1
             
             // Continue progress smoothly up to 90%
             while currentProgress < 0.9 && !Task.isCancelled {
@@ -249,7 +260,12 @@ final class ScanViewModel {
             return
         }
 
-        // Close results view before re-analyzing
+        // Set analyzing state FIRST to ensure analyzing view shows immediately
+        // This takes priority in contentBody, so it shows even if showingResults is still true
+        isAnalyzing = true
+        analysisProgress = 0.1
+        
+        // Close results view after setting analyzing state
         showingResults = false
         pendingMeal = nil
 
@@ -316,6 +332,8 @@ final class ScanViewModel {
         case .image(let image):
             lastCaptureMode = .photo
             selectedImage = image
+            // Start analyzing immediately - this will show analyzing view
+            // Camera dismissal is handled by SwiftUI automatically via the binding
             await analyzeImage(image, mode: .food, foodHint: hint)
             
         case .barcode(let barcodeValue, let previewImage):

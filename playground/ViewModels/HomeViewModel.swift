@@ -66,6 +66,7 @@ final class HomeViewModel {
     var weekDays: [WeekDay] = []
     var isLoading = false
     var isInitialLoad = true // Track if this is the first load
+    var hasDataLoaded = false // Track if data has been loaded for animations
     var error: Error?
     
     // MARK: - Burned/Rollover Calories State
@@ -86,6 +87,52 @@ final class HomeViewModel {
     ) {
         self.repository = repository
         self.imageStorage = imageStorage
+        // Initialize with placeholder week days so header appears immediately
+        self.weekDays = buildPlaceholderWeekDays()
+    }
+    
+    /// Build placeholder week days structure (appears immediately, data fills in later)
+    private func buildPlaceholderWeekDays() -> [WeekDay] {
+        let calendar = Calendar.current
+        let today = Date()
+        
+        // Get the start of the week (Sunday) - same logic as buildWeekDays
+        let weekday = calendar.component(.weekday, from: today)
+        guard let startOfWeek = calendar.date(byAdding: .day, value: -(weekday - 1), to: calendar.startOfDay(for: today)) else {
+            return []
+        }
+        
+        let dayFormatter = DateFormatter()
+        dayFormatter.dateFormat = "EEE"
+        
+        return (0..<7).map { dayOffset -> WeekDay in
+            guard let date = calendar.date(byAdding: .day, value: dayOffset, to: startOfWeek) else {
+                // Fallback to today if date calculation fails
+                return WeekDay(
+                    date: today,
+                    dayName: dayFormatter.string(from: today),
+                    dayNumber: calendar.component(.day, from: today),
+                    isToday: true,
+                    progress: 0.0,
+                    summary: nil,
+                    caloriesConsumed: 0,
+                    calorieGoal: 0,
+                    hasMeals: false
+                )
+            }
+            
+            return WeekDay(
+                date: date,
+                dayName: dayFormatter.string(from: date),
+                dayNumber: calendar.component(.day, from: date),
+                isToday: calendar.isDateInToday(date),
+                progress: 0.0, // Placeholder - will be updated when data loads
+                summary: nil, // Placeholder - will be updated when data loads
+                caloriesConsumed: 0, // Placeholder
+                calorieGoal: 0, // Placeholder
+                hasMeals: false // Placeholder - will show dotted ring
+            )
+        }
     }
     
     // MARK: - Data Loading
@@ -128,30 +175,25 @@ final class HomeViewModel {
         // Load rollover calories immediately (fast - UserDefaults, non-blocking)
         loadRolloverCalories()
         
-        // Start loading from database in background (non-blocking)
-        // UI can show immediately with empty state while data loads
-        Task { @MainActor in
+        // SwiftData requires main thread, but we can run queries in parallel
+        // Use Task with @MainActor to allow true parallelism
+        Task { @MainActor [weak self] in
+            guard let self = self else { return }
+            
             do {
-                // Load today's summary and recent meals
-                let summaryStart = Date()
-                print("  📊 Fetching today's summary...")
-                let summary = try repository.fetchTodaySummary()
-                let summaryTime = Date().timeIntervalSince(summaryStart)
-                print("  ✅ Today's summary loaded in \(String(format: "%.3f", summaryTime))s - Calories: \(summary.totalCalories)")
+                // Load today's summary and recent meals in parallel (both on main thread but truly parallel)
+                async let summaryTask = try repository.fetchTodaySummary()
+                async let mealsTask = try repository.fetchRecentMeals()
                 
-                let mealsStart = Date()
-                print("  🍽️ Fetching recent meals...")
-                let meals = try repository.fetchRecentMeals()
-                let mealsTime = Date().timeIntervalSince(mealsStart)
-                print("  ✅ Recent meals loaded in \(String(format: "%.3f", mealsTime))s - Count: \(meals.count)")
+                // Wait for both
+                let summary = try await summaryTask
+                let meals = try await mealsTask
                 
-                // Update with animation
-                await MainActor.run {
-                    withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
-                        self.todaysSummary = summary
-                        self.recentMeals = meals
-                        self.hasDataLoaded = true
-                    }
+                // Update UI with animation
+                withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+                    self.todaysSummary = summary
+                    self.recentMeals = meals
+                    self.hasDataLoaded = true
                 }
                 
                 let totalTime = Date().timeIntervalSince(startTime)
@@ -174,45 +216,38 @@ final class HomeViewModel {
         let startTime = Date()
         print("🟡 [HomeViewModel] loadBackgroundData() started")
         
-        do {
-            // Fetch week summaries and build week days (can load after UI is shown)
-            let weekStart = Date()
-            print("  📅 Fetching week summaries...")
-            let weekSummaries = try repository.fetchCurrentWeekSummaries()
-            let weekFetchTime = Date().timeIntervalSince(weekStart)
-            print("  ✅ Week summaries fetched in \(String(format: "%.3f", weekFetchTime))s - Count: \(weekSummaries.count)")
+        // SwiftData requires main thread, but we can run queries in parallel
+        Task { @MainActor [weak self] in
+            guard let self = self else { return }
             
-            let buildStart = Date()
-            print("  🔨 Building week days...")
-            let newWeekDays = buildWeekDays(from: weekSummaries)
-            let buildTime = Date().timeIntervalSince(buildStart)
-            print("  ✅ Week days built in \(String(format: "%.3f", buildTime))s - Count: \(newWeekDays.count)")
-            
-            // Update with animation
-            await MainActor.run {
+            do {
+                // Fetch week summaries and exercises in parallel (both on main thread but truly parallel)
+                async let weekSummariesTask = try repository.fetchCurrentWeekSummaries()
+                async let exercisesTask = try repository.fetchTodaysExercises()
+                
+                // Wait for both
+                let weekSummaries = try await weekSummariesTask
+                let exercises = try await exercisesTask
+                let burned = exercises.reduce(0) { $0 + $1.calories }
+                
+                // Update burned calories
+                self.todaysBurnedCalories = burned
+                
+                // Build week days and calculate rollover (fast operations)
+                let newWeekDays = self.buildWeekDays(from: weekSummaries)
+                self.calculateAndStoreRollover(weekSummaries: weekSummaries)
+                
+                // Update UI with animation
                 withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
                     self.weekDays = newWeekDays
                 }
+                
+                let totalTime = Date().timeIntervalSince(startTime)
+                print("🟢 [HomeViewModel] loadBackgroundData() completed in \(String(format: "%.3f", totalTime))s")
+            } catch {
+                print("  ⚠️ Failed to load background data: \(error)")
+                // Don't show error for background data - it's not critical
             }
-            
-            // Fetch burned calories for today (less critical)
-            let burnedStart = Date()
-            print("  🔥 Fetching burned calories...")
-            await fetchTodaysBurnedCalories()
-            let burnedTime = Date().timeIntervalSince(burnedStart)
-            print("  ✅ Burned calories loaded in \(String(format: "%.3f", burnedTime))s - Amount: \(todaysBurnedCalories)")
-            
-            // Calculate and store rollover for tomorrow (based on yesterday's data)
-            let rolloverCalcStart = Date()
-            calculateAndStoreRollover(weekSummaries: weekSummaries)
-            let rolloverCalcTime = Date().timeIntervalSince(rolloverCalcStart)
-            print("  ✅ Rollover calculated in \(String(format: "%.6f", rolloverCalcTime))s")
-            
-            let totalTime = Date().timeIntervalSince(startTime)
-            print("🟢 [HomeViewModel] loadBackgroundData() completed in \(String(format: "%.3f", totalTime))s")
-        } catch {
-            let totalTime = Date().timeIntervalSince(startTime)
-            print("🔴 [HomeViewModel] loadBackgroundData() failed after \(String(format: "%.3f", totalTime))s: \(error)")
         }
     }
 
@@ -267,18 +302,8 @@ final class HomeViewModel {
     // MARK: - Burned Calories
     
     private func fetchTodaysBurnedCalories() async {
-        let startTime = Date()
-        do {
-            let exercises = try repository.fetchTodaysExercises()
-            let exerciseCount = exercises.count
-            todaysBurnedCalories = exercises.reduce(0) { $0 + $1.calories }
-            let elapsed = Date().timeIntervalSince(startTime)
-            print("  ✅ Fetched \(exerciseCount) exercises, total burned: \(todaysBurnedCalories) cal in \(String(format: "%.3f", elapsed))s")
-        } catch {
-            let elapsed = Date().timeIntervalSince(startTime)
-            print("  ⚠️ Failed to fetch exercises after \(String(format: "%.3f", elapsed))s: \(error)")
-            todaysBurnedCalories = 0
-        }
+        // This is now handled in loadBackgroundData() directly
+        // Keeping for compatibility but it's called from background thread
     }
     
     // MARK: - Rollover Calories

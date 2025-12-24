@@ -84,8 +84,18 @@ struct ScanView: View {
     
     @ViewBuilder
     private var contentBody: some View {
+        // Priority order: analyzing > results sheet > no food > selected image > camera > capture options
+        // Analyzing takes priority - show it even if camera is still dismissing
         if viewModel.isAnalyzing {
             AnalyzingView(progress: viewModel.analysisProgress)
+        } else if viewModel.showingResults {
+            // Hide content when results sheet is showing/dismissing
+            Color.clear
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if viewModel.showingCamera {
+            // Hide content when camera is showing/dismissing (but not if analyzing)
+            Color.clear
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if viewModel.showingNoFoodDetected {
             noFoodDetectedContent
         } else if let image = viewModel.selectedImage {
@@ -131,11 +141,25 @@ struct ScanView: View {
         CustomCameraView { result, hint in
             // Handle capture result from the custom camera
             Task {
+                // If cancelled, just return
+                if case .cancelled = result {
+                    return
+                }
+                
                 // Check subscription before analyzing
                 guard isSubscribed else {
-                    // If cancelled, just return
-                    if case .cancelled = result {
-                        return
+                    // Store the image first so we can show it when paywall closes
+                    switch result {
+                    case .image(let image):
+                        viewModel.selectedImage = image
+                    case .barcode(_, let previewImage):
+                        if let image = previewImage {
+                            viewModel.selectedImage = image
+                        }
+                    case .document(let image):
+                        viewModel.selectedImage = image
+                    case .cancelled:
+                        break
                     }
                     showPaywall = true
                     return
@@ -200,10 +224,16 @@ struct ScanView: View {
     
     private func analyzeImage() {
         guard isSubscribed else {
+            // Don't start analyzing if not subscribed - just show paywall
+            // This ensures we return to the image selection screen when paywall closes
             showPaywall = true
             return
         }
         guard let image = viewModel.selectedImage else { return }
+        // Set analyzing state immediately - this takes priority in contentBody
+        // Even if camera is still dismissing, we'll show analyzing view
+        viewModel.isAnalyzing = true
+        viewModel.analysisProgress = 0.1
         Task {
             await viewModel.analyzeImage(image)
         }

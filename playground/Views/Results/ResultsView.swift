@@ -231,7 +231,9 @@ struct ResultsView: View {
     private var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .cancellationAction) {
             Button("Cancel") {
-                dismiss()
+                // Clear state before dismissing to prevent showing underlying view
+                viewModel.clearSelection()
+                viewModel.showingResults = false
             }
         }
 
@@ -266,7 +268,8 @@ struct ResultsView: View {
         guard !hint.isEmpty else { return }
 
         showingFixResult = false
-        dismiss()
+        // Don't set showingResults = false here - let analyzeWithHint handle it
+        // It will set isAnalyzing first, which takes priority in contentBody
 
         Task {
             await viewModel.analyzeWithHint(hint)

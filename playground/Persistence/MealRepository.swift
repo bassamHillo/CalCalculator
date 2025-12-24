@@ -9,7 +9,6 @@ import Foundation
 import SwiftData
 
 /// Repository for managing meal data operations
-@MainActor
 final class MealRepository {
     private let context: ModelContext
     
@@ -103,10 +102,15 @@ final class MealRepository {
             sortBy: [SortDescriptor(\.date, order: .reverse)]
         )
         descriptor.includePendingChanges = false
+        descriptor.fetchLimit = 100 // Limit results to prevent scanning entire database
         
         let exercises = try context.fetch(descriptor)
         let elapsed = Date().timeIntervalSince(startTime)
-        print("  🔥 [MealRepository] fetchTodaysExercises() returned \(exercises.count) exercises in \(String(format: "%.3f", elapsed))s")
+        if elapsed > 0.1 {
+            print("  ⚠️ [MealRepository] fetchTodaysExercises() returned \(exercises.count) exercises in \(String(format: "%.3f", elapsed))s (slow!)")
+        } else {
+            print("  🔥 [MealRepository] fetchTodaysExercises() returned \(exercises.count) exercises in \(String(format: "%.3f", elapsed))s")
+        }
         return exercises
     }
     
@@ -201,16 +205,20 @@ final class MealRepository {
         }
         
         let fetchStart = Date()
-        let descriptor = FetchDescriptor<DaySummary>(
+        var descriptor = FetchDescriptor<DaySummary>(
             predicate: #Predicate<DaySummary> { summary in
                 summary.date >= startOfWeek && summary.date < endOfWeek
             },
             sortBy: [SortDescriptor(\.date, order: .forward)]
         )
+        descriptor.fetchLimit = 7 // Only need 7 days max
+        descriptor.includePendingChanges = false
         
         let summaries = try context.fetch(descriptor)
         let fetchTime = Date().timeIntervalSince(fetchStart)
-        print("  📅 [MealRepository] fetchCurrentWeekSummaries() fetched \(summaries.count) summaries in \(String(format: "%.3f", fetchTime))s")
+        if fetchTime > 0.5 {
+            print("  ⚠️ [MealRepository] fetchCurrentWeekSummaries() fetched \(summaries.count) summaries in \(String(format: "%.3f", fetchTime))s (slow!)")
+        }
         
         // Convert to dictionary keyed by date
         let dictStart = Date()
