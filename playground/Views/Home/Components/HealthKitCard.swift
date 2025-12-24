@@ -11,13 +11,28 @@ struct HealthKitCard: View {
     
     @State private var healthKitManager = HealthKitManager.shared
     @State private var isLoading = true
-    @State private var showRequestPermission = false
     @State private var animateRings = false
+    
+    private var showEnableInSettings: Bool {
+        healthKitManager.authorizationDenied && !isLoading
+    }
+    
+    private var showRequestPermission: Bool {
+        !healthKitManager.isAuthorized && !healthKitManager.authorizationDenied && !isLoading
+    }
+    
+    private var showActivityContent: Bool {
+        healthKitManager.isHealthDataAvailable && !showEnableInSettings && !showRequestPermission && !isLoading
+    }
     
     var body: some View {
         VStack(spacing: 0) {
             if !healthKitManager.isHealthDataAvailable {
                 unavailableView
+            } else if isLoading {
+                loadingView
+            } else if showEnableInSettings {
+                enableInSettingsView
             } else if showRequestPermission {
                 requestPermissionView
             } else {
@@ -31,9 +46,57 @@ struct HealthKitCard: View {
         .task {
             await loadHealthData()
         }
-        .onAppear {
-            withAnimation(.easeOut(duration: 1.0).delay(0.3)) {
-                animateRings = true
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+            // Re-check authorization when app comes back from settings
+            Task {
+                await loadHealthData()
+            }
+        }
+    }
+    
+    // MARK: - Loading View
+    
+    @ViewBuilder
+    private var loadingView: some View {
+        HStack(spacing: 20) {
+            // Activity rings placeholder
+            ZStack {
+                Circle()
+                    .stroke(Color.green.opacity(0.2), lineWidth: 12)
+                    .frame(width: 100, height: 100)
+                
+                Circle()
+                    .stroke(Color.orange.opacity(0.2), lineWidth: 12)
+                    .frame(width: 72, height: 72)
+                
+                Circle()
+                    .stroke(Color.cyan.opacity(0.2), lineWidth: 12)
+                    .frame(width: 44, height: 44)
+                
+                ProgressView()
+                    .scaleEffect(0.8)
+            }
+            
+            VStack(alignment: .leading, spacing: 14) {
+                ForEach(0..<4, id: \.self) { _ in
+                    HStack(spacing: 10) {
+                        Circle()
+                            .fill(Color.gray.opacity(0.2))
+                            .frame(width: 28, height: 28)
+                        
+                        VStack(alignment: .leading, spacing: 4) {
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(Color.gray.opacity(0.2))
+                                .frame(width: 60, height: 14)
+                            
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(Color.gray.opacity(0.15))
+                                .frame(width: 40, height: 10)
+                        }
+                        
+                        Spacer()
+                    }
+                }
             }
         }
     }
@@ -48,6 +111,11 @@ struct HealthKitCard: View {
             
             // Right side - Stats
             activityStatsView
+        }
+        .onAppear {
+            withAnimation(.easeOut(duration: 1.0).delay(0.3)) {
+                animateRings = true
+            }
         }
     }
     
@@ -79,12 +147,6 @@ struct HealthKitCard: View {
                 lineWidth: 12
             )
             .frame(width: 44, height: 44)
-            
-            // Loading indicator
-            if isLoading {
-                ProgressView()
-                    .scaleEffect(0.7)
-            }
         }
     }
     
@@ -204,8 +266,12 @@ struct HealthKitCard: View {
             
             Button {
                 Task {
-                    try? await healthKitManager.requestAuthorization()
-                    await loadHealthData()
+                    do {
+                        try await healthKitManager.requestAuthorization()
+                        await loadHealthData()
+                    } catch {
+                        // Error requesting authorization
+                    }
                 }
             } label: {
                 HStack {
@@ -230,23 +296,104 @@ struct HealthKitCard: View {
         }
     }
     
+    // MARK: - Enable In Settings View
+    
+    @ViewBuilder
+    private var enableInSettingsView: some View {
+        VStack(spacing: 16) {
+            HStack(spacing: 16) {
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [.orange.opacity(0.2), .yellow.opacity(0.2)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 60, height: 60)
+                    
+                    Image(systemName: "gearshape.fill")
+                        .font(.title2)
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [.orange, .yellow],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                }
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Health Access Required")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                    
+                    Text("Enable Health access in Settings to track your activity")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .lineLimit(2)
+                }
+                
+                Spacer()
+            }
+            
+            Button {
+                openHealthSettings()
+            } label: {
+                HStack {
+                    Image(systemName: "gearshape.fill")
+                        .font(.subheadline)
+                    Text("Open Settings")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(
+                    LinearGradient(
+                        colors: [.orange, .yellow.opacity(0.8)],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+        }
+    }
+    
     // MARK: - Actions
+    
+    private func openHealthSettings() {
+        if let url = URL(string: UIApplication.openSettingsURLString) {
+            UIApplication.shared.open(url)
+        }
+    }
     
     private func loadHealthData() async {
         isLoading = true
+        animateRings = false
         
-        if !healthKitManager.isAuthorized {
+        // First check authorization status
+        healthKitManager.checkAuthorizationStatus()
+        
+        if !healthKitManager.isAuthorized && !healthKitManager.authorizationDenied {
+            // Not determined - need to request
             do {
                 try await healthKitManager.requestAuthorization()
             } catch {
-                showRequestPermission = true
                 isLoading = false
                 return
             }
         }
         
+        if healthKitManager.authorizationDenied {
+            isLoading = false
+            return
+        }
+        
         await healthKitManager.fetchTodayData()
-        showRequestPermission = false
         isLoading = false
         
         // Trigger ring animation after data loads

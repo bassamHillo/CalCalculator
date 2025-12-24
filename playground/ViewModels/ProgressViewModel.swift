@@ -172,6 +172,7 @@ final class ProgressViewModel {
     var heartRate: Int = 0
     var distance: Double = 0
     var sleepHours: Double = 0
+    var healthKitAuthorizationDenied: Bool = false
     
     // Settings Reference
     private var settings: UserSettings { UserSettings.shared }
@@ -365,8 +366,26 @@ final class ProgressViewModel {
             return
         }
         
+        // Check authorization status first
+        healthKitManager.checkAuthorizationStatus()
+        
+        if healthKitManager.authorizationDenied {
+            healthKitAuthorizationDenied = true
+            return
+        }
+        
         do {
             try await healthKitManager.requestAuthorization()
+            
+            // Re-check after requesting
+            healthKitManager.checkAuthorizationStatus()
+            
+            if healthKitManager.authorizationDenied {
+                healthKitAuthorizationDenied = true
+                return
+            }
+            
+            healthKitAuthorizationDenied = false
             await healthKitManager.fetchTodayData()
             
             steps = healthKitManager.steps
@@ -376,7 +395,8 @@ final class ProgressViewModel {
             distance = healthKitManager.distance
             sleepHours = healthKitManager.sleepHours
         } catch {
-            // HealthKit not available or not authorized - silently fail
+            // HealthKit not available or not authorized
+            healthKitAuthorizationDenied = true
             print("HealthKit error: \(error.localizedDescription)")
         }
     }
