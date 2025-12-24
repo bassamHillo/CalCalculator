@@ -114,12 +114,19 @@ platform :ios do
   lane :_build_app_for_testflight do
     # Configure AWS credentials for CodeCommit if available
     if ENV["AWS_ACCESS_KEY_ID"] && ENV["AWS_SECRET_ACCESS_KEY"]
+      access_key = ENV["AWS_ACCESS_KEY_ID"]
+      secret_key = ENV["AWS_SECRET_ACCESS_KEY"]
+      # URL encode credentials (basic encoding)
+      access_key_encoded = access_key.gsub("@", "%40")
+      secret_key_encoded = secret_key.gsub("@", "%40").gsub(":", "%3A").gsub("/", "%2F").gsub("=", "%3D")
+      # Configure Git URL rewriting with embedded credentials
+      sh("git config --global url.\\\"https://#{access_key_encoded}:#{secret_key_encoded}@git-codecommit.us-east-1.amazonaws.com/\\\".insteadOf \\\"https://git-codecommit.us-east-1.amazonaws.com/\\\"")
+      # Also set up credential helper as fallback
       sh("git config --global credential.helper '!aws codecommit credential-helper $@'")
       sh("git config --global credential.UseHttpPath true")
     end
     
-    # Skip package dependency resolution - project format issue
-    # Build directly which should work with newer Xcode
+    # Build app - package dependencies will be resolved with Git credentials configured
     build_app(
       workspace: nil,
       project: PROJECT,
