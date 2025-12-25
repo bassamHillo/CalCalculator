@@ -351,7 +351,6 @@ struct ProfileView: View {
             }
         }
     }
-    #endif
     
     // MARK: - Helpers
     
