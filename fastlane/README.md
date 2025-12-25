@@ -23,10 +23,10 @@ For _fastlane_ installation instructions, see [Installing _fastlane_](https://do
 
 Deploy to TestFlight
 
-### ios _run_tests
+### ios run_unit_tests
 
 ```sh
-[bundle exec] fastlane ios _run_tests
+[bundle exec] fastlane ios run_unit_tests
 ```
 
 Run unit tests
@@ -54,6 +54,14 @@ Build and archive the app
 ```
 
 Upload to TestFlight
+
+### ios create_app
+
+```sh
+[bundle exec] fastlane ios create_app
+```
+
+Create app in App Store Connect
 
 ### ios test
 

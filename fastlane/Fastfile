@@ -236,14 +236,35 @@ platform :ios do
   #
   desc "Create app in App Store Connect"
   lane :create_app do
+    # Read credentials from environment at runtime
     key_id = ENV["APP_STORE_CONNECT_API_KEY_ID"] || ""
     issuer_id = ENV["APP_STORE_CONNECT_ISSUER_ID"] || ""
-    key_filepath = ENV["APP_STORE_CONNECT_KEY_FILEPATH"] || "./fastlane/AuthKey.p8"
+    # Default to AuthKey.p8 in the fastlane directory (same directory as this Fastfile)
+    default_key_path = File.expand_path("AuthKey.p8", __dir__)
+    key_filepath = ENV["APP_STORE_CONNECT_KEY_FILEPATH"] || default_key_path
+    
+    UI.message("🔑 Checking API credentials...")
+    UI.message("   Key ID: #{key_id.empty? ? '❌ Not set' : '✅ Set'}")
+    UI.message("   Issuer ID: #{issuer_id.empty? ? '❌ Not set' : '✅ Set'}")
+    UI.message("   Key file: #{File.exist?(key_filepath) ? '✅ Found' : '❌ Not found'} (#{key_filepath})")
     
     if key_id.empty? || issuer_id.empty? || !File.exist?(key_filepath)
-      UI.user_error!("App Store Connect API credentials not configured. Please set APP_STORE_CONNECT_API_KEY_ID, APP_STORE_CONNECT_ISSUER_ID, and APP_STORE_CONNECT_KEY_FILEPATH environment variables.")
+      UI.user_error!("❌ App Store Connect API credentials not configured.\n\n" \
+        "Please set the following environment variables:\n" \
+        "  export APP_STORE_CONNECT_API_KEY_ID='9D2A5A93W3'\n" \
+        "  export APP_STORE_CONNECT_ISSUER_ID='19020611-ed38-4968-8ca9-4592b8171acc'\n" \
+        "  export APP_STORE_CONNECT_KEY_FILEPATH='./fastlane/AuthKey.p8'\n\n" \
+        "Then run: bundle exec fastlane create_app")
     end
     
+    UI.message("📱 Creating app '#{APP_NAME}' (#{BUNDLE_IDENTIFIER}) in App Store Connect...")
+    
+    # Set environment variables for produce action (it reads from ENV, not from api_key parameter)
+    ENV["APP_STORE_CONNECT_API_KEY_ID"] = key_id
+    ENV["APP_STORE_CONNECT_ISSUER_ID"] = issuer_id
+    ENV["APP_STORE_CONNECT_KEY_FILEPATH"] = key_filepath
+    
+    # Use API key authentication - produce will use ENV variables we set above
     produce(
       app_identifier: BUNDLE_IDENTIFIER,
       app_name: APP_NAME,
@@ -251,15 +272,11 @@ platform :ios do
       app_version: "1.0",
       sku: BUNDLE_IDENTIFIER,
       team_id: TEAM_ID,
-      api_key: app_store_connect_api_key(
-        key_id: key_id,
-        issuer_id: issuer_id,
-        key_filepath: key_filepath
-      )
+      username: ENV["FASTLANE_USER"] || "zoharb157@gmail.com" # Fallback username for produce
     )
     
     UI.success("✅ App '#{APP_NAME}' (#{BUNDLE_IDENTIFIER}) created in App Store Connect!")
-    UI.message("You can now build and upload to TestFlight.")
+    UI.message("📦 You can now build and upload to TestFlight using: bundle exec fastlane deploy_to_testflight")
   end
 
   #
