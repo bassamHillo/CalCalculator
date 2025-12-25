@@ -9,11 +9,14 @@ import SwiftUI
 
 struct WeekDaysHeader: View {
     let weekDays: [WeekDay]
+    var onDaySelected: ((Date) -> Void)? = nil
     
     var body: some View {
         HStack(spacing: 8) {
             ForEach(weekDays) { day in
-                WeekDayItem(day: day)
+                WeekDayItem(day: day, onTap: {
+                    onDaySelected?(day.date)
+                })
             }
         }
         .padding(.vertical, 12)
@@ -26,6 +29,7 @@ struct WeekDaysHeader: View {
 
 struct WeekDayItem: View {
     let day: WeekDay
+    var onTap: (() -> Void)? = nil
     
     var body: some View {
         VStack(spacing: 6) {
@@ -64,6 +68,30 @@ struct WeekDayItem: View {
         .padding(.vertical, 4)
         .background(day.isToday ? Color.blue.opacity(0.1) : Color.clear)
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .contentShape(Rectangle())
+        .onTapGesture {
+            HapticManager.shared.impact(.light)
+            onTap?()
+        }
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityHint(accessibilityHint)
+        .accessibilityAddTraits(day.isToday ? [] : .isButton)
+    }
+    
+    private var accessibilityLabel: String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        let dateString = formatter.string(from: day.date)
+        let caloriesText = day.hasMeals ? "\(day.caloriesConsumed) calories" : "No meals"
+        return "\(dateString), \(caloriesText)"
+    }
+    
+    private var accessibilityHint: String {
+        if day.isToday {
+            return "Today's progress"
+        } else {
+            return "Tap to view details for this day"
+        }
     }
 }
 

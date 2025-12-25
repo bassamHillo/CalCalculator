@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import ActivityKit
 
 /// Represents a day in the week header
 struct WeekDay: Identifiable {
@@ -68,6 +69,9 @@ final class HomeViewModel {
     var isInitialLoad = true // Track if this is the first load
     var hasDataLoaded = false // Track if data has been loaded for animations
     var error: Error?
+    
+    // MARK: - Selected Day State
+    var selectedDate: Date? = nil // nil means today is selected
     
     // MARK: - Burned/Rollover Calories State
     var todaysBurnedCalories: Int = 0
@@ -195,6 +199,9 @@ final class HomeViewModel {
                     self.recentMeals = meals
                     self.hasDataLoaded = true
                 }
+                
+                // Update Live Activity if enabled
+                self.updateLiveActivityIfNeeded()
                 
                 let totalTime = Date().timeIntervalSince(startTime)
                 print("🟢 [HomeViewModel] loadCriticalData() completed in \(String(format: "%.3f", totalTime))s")
@@ -411,6 +418,9 @@ final class HomeViewModel {
 
             try repository.deleteMeal(meal)
             await refreshTodayData()
+            
+            // Update Live Activity
+            updateLiveActivityIfNeeded()
 
             HapticManager.shared.notification(.success)
         } catch {
@@ -419,6 +429,72 @@ final class HomeViewModel {
             self.showError = true
             HapticManager.shared.notification(.error)
         }
+    }
+    
+    // MARK: - Exercise Management
+    
+    /// Refresh today's burned calories from database
+    func refreshBurnedCalories() async {
+        do {
+            let exercises = try repository.fetchTodaysExercises()
+            let burned = exercises.reduce(0) { $0 + $1.calories }
+            await MainActor.run {
+                self.todaysBurnedCalories = burned
+                print("✅ [HomeViewModel] Refreshed burned calories: \(burned) cal")
+            }
+        } catch {
+            print("⚠️ [HomeViewModel] Failed to refresh burned calories: \(error)")
+        }
+    }
+    
+    // MARK: - Live Activity
+    
+    /// Update Live Activity if it's enabled
+    func updateLiveActivityIfNeeded() {
+        // Check if Live Activity is enabled
+        guard UserProfileRepository.shared.getLiveActivity() else {
+            // If disabled, end any active activity
+            if #available(iOS 16.1, *) {
+                LiveActivityManager.shared.endActivity()
+            }
+            return
+        }
+        
+        // Check if ActivityKit is available
+        guard #available(iOS 16.1, *) else {
+            return
+        }
+        
+        guard LiveActivityManager.shared.isAvailable else {
+            print("⚠️ [HomeViewModel] Live Activity is not available on this device")
+            return
+        }
+        
+        // Get current nutrition data
+        let summary = todaysSummary
+        let caloriesConsumed = summary?.totalCalories ?? 0
+        let calorieGoal = effectiveCalorieGoal
+        let proteinG = summary?.totalProteinG ?? 0
+        let carbsG = summary?.totalCarbsG ?? 0
+        let fatG = summary?.totalFatG ?? 0
+        
+        // Get macro goals from settings
+        let settings = UserSettings.shared
+        let proteinGoal = settings.proteinGoal
+        let carbsGoal = settings.carbsGoal
+        let fatGoal = settings.fatGoal
+        
+        // Update Live Activity
+        LiveActivityManager.shared.updateActivity(
+            caloriesConsumed: caloriesConsumed,
+            calorieGoal: calorieGoal,
+            proteinG: proteinG,
+            carbsG: carbsG,
+            fatG: fatG,
+            proteinGoal: proteinGoal,
+            carbsGoal: carbsGoal,
+            fatGoal: fatGoal
+        )
     }
 
     // MARK: - Computed Properties

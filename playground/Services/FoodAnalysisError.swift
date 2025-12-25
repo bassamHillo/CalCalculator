@@ -54,4 +54,28 @@ enum FoodAnalysisError: LocalizedError {
         if case .missingCredentials = self { return true }
         return false
     }
+    
+    var isNetworkError: Bool {
+        if case .networkError = self { return true }
+        return false
+    }
+    
+    var userFriendlyMessage: String {
+        switch self {
+        case .networkError:
+            return "Unable to connect. Please check your internet connection and try again."
+        case .authenticationFailed, .missingCredentials:
+            return "Please sign in to continue using this feature."
+        case .serverError(let message):
+            return "Server error: \(message). Please try again later."
+        case .imageTooLarge:
+            return "Image is too large. Please use a smaller image or compress it."
+        case .imageProcessingFailed:
+            return "Unable to process image. Please try with a different photo."
+        case .noFoodDetected(let notes):
+            return notes ?? "No food detected. Please ensure the image clearly shows food."
+        default:
+            return errorDescription ?? "An unexpected error occurred. Please try again."
+        }
+    }
 }

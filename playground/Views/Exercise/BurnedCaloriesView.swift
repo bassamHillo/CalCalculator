@@ -118,6 +118,10 @@ struct BurnedCaloriesView: View {
         )
         modelContext.insert(exercise)
         try? modelContext.save()
+        
+        // Notify that an exercise was saved so HomeViewModel can refresh burned calories
+        NotificationCenter.default.post(name: .exerciseSaved, object: nil)
+        
         dismiss()
     }
 }

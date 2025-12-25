@@ -75,11 +75,18 @@ final class ProfileViewModel {
     }
     
     var liveActivity: Bool {
-        didSet { repository.setLiveActivity(liveActivity) }
+        didSet {
+            repository.setLiveActivity(liveActivity)
+            handleLiveActivityToggle()
+        }
     }
     
     var addBurnedCalories: Bool {
-        didSet { repository.setAddBurnedCalories(addBurnedCalories) }
+        didSet {
+            repository.setAddBurnedCalories(addBurnedCalories)
+            // Notify that the toggle changed so UI can update
+            NotificationCenter.default.post(name: .addBurnedCaloriesToggled, object: nil)
+        }
     }
     
     var rolloverCalories: Bool {
@@ -91,7 +98,12 @@ final class ProfileViewModel {
     }
     
     var selectedLanguage: String {
-        didSet { repository.setSelectedLanguage(selectedLanguage) }
+        didSet {
+            repository.setSelectedLanguage(selectedLanguage)
+            // Apply language change immediately
+            let languageCode = LocalizationManager.languageCode(from: selectedLanguage)
+            LocalizationManager.shared.setLanguage(languageCode)
+        }
     }
     
     // MARK: - Nutrition Goals State
@@ -215,7 +227,11 @@ final class ProfileViewModel {
         self.addBurnedCalories = repository.getAddBurnedCalories()
         self.rolloverCalories = repository.getRolloverCalories()
         self.autoAdjustMacros = repository.getAutoAdjustMacros()
-        self.selectedLanguage = repository.getSelectedLanguage()
+        let savedLanguage = repository.getSelectedLanguage()
+        self.selectedLanguage = savedLanguage
+        // Apply saved language on init
+        let languageCode = LocalizationManager.languageCode(from: savedLanguage)
+        LocalizationManager.shared.setLanguage(languageCode)
         self.calorieGoal = repository.getCalorieGoal()
         self.proteinGoal = repository.getProteinGoal()
         self.carbsGoal = repository.getCarbsGoal()
@@ -261,17 +277,82 @@ final class ProfileViewModel {
         #endif
     }
     
-    /// Calculate recommended macros based on goals
-    func autoGenerateMacros() {
-        // Standard macro split: 30% protein, 40% carbs, 30% fat
-        // Protein: 4 cal/g, Carbs: 4 cal/g, Fat: 9 cal/g
-        let proteinCalories = Double(calorieGoal) * 0.30
-        let carbsCalories = Double(calorieGoal) * 0.40
-        let fatCalories = Double(calorieGoal) * 0.30
+    // MARK: - Auto Generate Macros
+    
+    var isGeneratingMacros = false {
+        didSet { /* Observable will handle updates */ }
+    }
+    var macroGenerationError: String? {
+        didSet { /* Observable will handle updates */ }
+    }
+    
+    /// Generate macros using API based on current profile and calorie goal
+    /// Preserves the user's calorie goal and only updates macros
+    func autoGenerateMacros() async {
+        guard !isGeneratingMacros else { return }
         
-        proteinGoal = proteinCalories / 4.0
-        carbsGoal = carbsCalories / 4.0
-        fatGoal = fatCalories / 9.0
+        await MainActor.run {
+            isGeneratingMacros = true
+            macroGenerationError = nil
+        }
+        
+        do {
+            // Build onboarding data from current profile
+            let onboardingData = buildOnboardingDataFromProfile()
+            
+            // Call API to generate goals
+            let goals = try await GoalsRepository.shared.generateGoals(from: onboardingData)
+            
+            // Only update macros, preserve calorie goal
+            await MainActor.run {
+                proteinGoal = goals.proteinG
+                carbsGoal = goals.carbsG
+                fatGoal = goals.fatG
+                // Note: We intentionally do NOT update calorieGoal here
+                // The user's selected calorie goal is preserved
+                
+                isGeneratingMacros = false
+                print("✅ [ProfileViewModel] Macros generated: P=\(goals.proteinG)g, C=\(goals.carbsG)g, F=\(goals.fatG)g")
+            }
+        } catch {
+            await MainActor.run {
+                isGeneratingMacros = false
+                macroGenerationError = error.localizedDescription
+                print("🔴 [ProfileViewModel] Failed to generate macros: \(error.localizedDescription)")
+            }
+        }
+    }
+    
+    /// Build onboarding data dictionary from current profile
+    private func buildOnboardingDataFromProfile() -> [String: Any] {
+        // Determine goal type based on current vs goal weight
+        let goalType: String
+        if goalWeight < currentWeight {
+            goalType = "lose_weight"
+        } else if goalWeight > currentWeight {
+            goalType = "gain_weight"
+        } else {
+            goalType = "maintain"
+        }
+        
+        // Estimate activity level (default to moderate if not available)
+        // You can enhance this by storing activity level in profile
+        let activityLevel = "moderately_active" // Default
+        
+        // Build data dictionary matching onboarding structure
+        var data: [String: Any] = [
+            "goal": goalType,
+            "activity_level": activityLevel,
+            "calorie_goal": calorieGoal, // Include current calorie goal
+            "current_weight": currentWeight,
+            "goal_weight": goalWeight,
+            "height_feet": heightFeet,
+            "height_inches": heightInches,
+            "gender": gender.rawValue,
+            "age": age
+        ]
+        
+        return data
     }
     
     /// Calculate recommended daily calories based on user metrics and goals
@@ -313,6 +394,19 @@ final class ProfileViewModel {
         settings.carbsGoal = carbsGoal
         settings.fatGoal = fatGoal
         NotificationCenter.default.post(name: .nutritionGoalsChanged, object: nil)
+    }
+    
+    /// Handle Live Activity toggle change
+    private func handleLiveActivityToggle() {
+        if #available(iOS 16.1, *) {
+            if liveActivity {
+                // Start Live Activity - trigger update from HomeViewModel
+                NotificationCenter.default.post(name: .updateLiveActivity, object: nil)
+            } else {
+                // End Live Activity
+                LiveActivityManager.shared.endActivity()
+            }
+        }
     }
 }
 

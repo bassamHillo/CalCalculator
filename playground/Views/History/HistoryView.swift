@@ -79,6 +79,11 @@ struct HistoryView: View {
                         filterMenuButton
                     }
                 }
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    if hasActiveFilters {
+                        activeFiltersSection
+                    }
+                }
                 .fullScreenCover(item: $selectedDate) { selected in
                     MealsListSheet(
                         selectedDate: selected.date,
@@ -92,6 +97,41 @@ struct HistoryView: View {
                     await viewModel.loadData()
                 }
         }
+    }
+    
+    private var hasActiveFilters: Bool {
+        selectedTimeFilter != .all || !searchText.isEmpty
+    }
+    
+    private var activeFiltersSection: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                if selectedTimeFilter != .all {
+                    FilterTag(
+                        text: selectedTimeFilter.displayName,
+                        onRemove: {
+                            withAnimation {
+                                selectedTimeFilter = .all
+                            }
+                        }
+                    )
+                }
+                
+                if !searchText.isEmpty {
+                    FilterTag(
+                        text: "\"\(searchText)\"",
+                        onRemove: {
+                            withAnimation {
+                                searchText = ""
+                            }
+                        }
+                    )
+                }
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 8)
+        }
+        .background(Color(.systemGroupedBackground))
     }
     
     private var filterMenuButton: some View {
@@ -495,6 +535,32 @@ struct MacroPill: View {
 struct SelectedDate: Identifiable {
     let id = UUID()
     let date: Date
+}
+
+// MARK: - Filter Tag
+
+struct FilterTag: View {
+    let text: String
+    let onRemove: () -> Void
+    
+    var body: some View {
+        HStack(spacing: 6) {
+            Text(text)
+                .font(.subheadline)
+                .fontWeight(.medium)
+            
+            Button(action: onRemove) {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 14))
+                    .foregroundColor(.secondary)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(Capsule())
+    }
 }
 
 #Preview {

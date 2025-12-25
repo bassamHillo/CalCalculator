@@ -8,6 +8,26 @@
 import Foundation
 import SwiftData
 
+enum MealCategory: String, Codable, CaseIterable {
+    case breakfast = "breakfast"
+    case lunch = "lunch"
+    case dinner = "dinner"
+    case snack = "snack"
+    
+    var displayName: String {
+        rawValue.capitalized
+    }
+    
+    var icon: String {
+        switch self {
+        case .breakfast: return "sunrise.fill"
+        case .lunch: return "sun.max.fill"
+        case .dinner: return "moon.fill"
+        case .snack: return "leaf.fill"
+        }
+    }
+}
+
 /// Represents a complete meal with all its food items
 @Model
 final class Meal: Identifiable {
@@ -17,6 +37,7 @@ final class Meal: Identifiable {
     var photoURL: String?
     var confidence: Double
     var notes: String?
+    var category: MealCategory?
     
     @Relationship(deleteRule: .cascade)
     var items: [MealItem]
@@ -28,6 +49,7 @@ final class Meal: Identifiable {
         photoURL: String? = nil,
         confidence: Double = 0,
         notes: String? = nil,
+        category: MealCategory? = nil,
         items: [MealItem] = []
     ) {
         self.id = id
@@ -36,7 +58,19 @@ final class Meal: Identifiable {
         self.photoURL = photoURL
         self.confidence = confidence
         self.notes = notes
+        self.category = category ?? Self.inferCategory(from: timestamp)
         self.items = items
+    }
+    
+    /// Infer meal category from timestamp
+    private static func inferCategory(from date: Date) -> MealCategory {
+        let hour = Calendar.current.component(.hour, from: date)
+        switch hour {
+        case 5..<11: return .breakfast
+        case 11..<16: return .lunch
+        case 16..<21: return .dinner
+        default: return .snack
+        }
     }
     
     /// Computed total macros from all items
@@ -53,16 +87,12 @@ final class Meal: Identifiable {
     
     /// Formatted time string
     var formattedTime: String {
-        let formatter = DateFormatter()
-        formatter.timeStyle = .short
-        return formatter.string(from: timestamp)
+        timestamp.timeString
     }
     
     /// Formatted date string
     var formattedDate: String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        return formatter.string(from: timestamp)
+        timestamp.mediumDateString
     }
 }
 

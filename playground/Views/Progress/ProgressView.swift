@@ -604,6 +604,32 @@ struct HealthMetricCard: View {
 // MARK: - HealthKit Settings Prompt Card
 
 struct HealthKitSettingsPromptCard: View {
+    private func openHealthKitSettings() {
+        // iOS doesn't allow deep linking directly to HealthKit permissions
+        // Best approach: Try opening Health app first, then user can go to Sources tab
+        // Alternative: Open app settings and guide user to Privacy & Security > Health
+        if let healthAppURL = URL(string: "x-apple-health://") {
+            // Try to open Health app - user can navigate to Sources > CalCalculator from there
+            UIApplication.shared.open(healthAppURL) { success in
+                if !success {
+                    // If Health app can't be opened, fall back to Settings
+                    openAppSettings()
+                }
+            }
+        } else {
+            // Fallback: Open app settings
+            openAppSettings()
+        }
+    }
+    
+    private func openAppSettings() {
+        // This opens: Settings > CalCalculator
+        // User needs to navigate to: Privacy & Security > Health > CalCalculator
+        if let url = URL(string: UIApplication.openSettingsURLString) {
+            UIApplication.shared.open(url)
+        }
+    }
+    
     var body: some View {
         VStack(spacing: 16) {
             HStack(spacing: 16) {
@@ -634,19 +660,17 @@ struct HealthKitSettingsPromptCard: View {
                         .font(.headline)
                         .foregroundColor(.primary)
                     
-                    Text("Enable Health access in Settings to view your activity data")
+                    Text("Go to Settings > Privacy & Security > Health > CalCalculator")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                        .lineLimit(2)
+                        .lineLimit(3)
                 }
                 
                 Spacer()
             }
             
             Button {
-                if let url = URL(string: UIApplication.openSettingsURLString) {
-                    UIApplication.shared.open(url)
-                }
+                openHealthKitSettings()
             } label: {
                 HStack {
                     Image(systemName: "gearshape.fill")

@@ -21,6 +21,7 @@ struct playgroundApp: App {
     @State private var appearanceMode: AppearanceMode
     @State var sdk: TheSDK
     @State private var subscriptionStatus: Bool = false
+    @State private var languageRefreshID = UUID()
     
     init() {
         do {
@@ -73,9 +74,19 @@ struct playgroundApp: App {
             ContentView()
                 .modelContainer(modelContainer)
                 .preferredColorScheme(appearanceMode.colorScheme)
+                .environment(\.localization, LocalizationManager.shared)
+                .id(languageRefreshID) // Force view refresh when language changes
                 .onReceive(NotificationCenter.default.publisher(for: .appearanceModeChanged)) { notification in
                     if let mode = notification.object as? AppearanceMode {
                         appearanceMode = mode
+                    }
+                }
+                .onReceive(NotificationCenter.default.publisher(for: .languageChanged)) { notification in
+                    // Force view refresh when language changes
+                    if let languageCode = notification.object as? String {
+                        print("🌐 Language changed to: \(languageCode)")
+                        // Update ID to force SwiftUI to recreate the view hierarchy
+                        languageRefreshID = UUID()
                     }
                 }
                 .environment(sdk) // Use direct environment like example app
@@ -142,4 +153,8 @@ struct playgroundApp: App {
 extension Notification.Name {
     static let appearanceModeChanged = Notification.Name("appearanceModeChanged")
     static let nutritionGoalsChanged = Notification.Name("nutritionGoalsChanged")
+    static let updateLiveActivity = Notification.Name("updateLiveActivity")
+    static let exerciseSaved = Notification.Name("exerciseSaved")
+    static let addBurnedCaloriesToggled = Notification.Name("addBurnedCaloriesToggled")
+    static let languageChanged = Notification.Name("languageChanged")
 }

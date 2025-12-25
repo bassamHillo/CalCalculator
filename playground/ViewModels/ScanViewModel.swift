@@ -43,6 +43,9 @@ final class ScanViewModel {
     var error: ScanError?
     var showingError = false
     var errorMessage: String?
+    var canRetry = false
+    var retryCount = 0
+    private let maxRetries = 2
 
     init(
         repository: MealRepository,

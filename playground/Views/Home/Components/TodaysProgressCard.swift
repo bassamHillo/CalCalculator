@@ -28,6 +28,7 @@ struct TodaysProgressCard: View {
                     .foregroundColor(.primary)
                     .contentTransition(.numericText())
                     .animation(.spring(response: 0.6, dampingFraction: 0.8), value: consumed)
+                    .accessibilityLabel("\(consumed) calories consumed")
                 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("of \(calorieGoal) cal")

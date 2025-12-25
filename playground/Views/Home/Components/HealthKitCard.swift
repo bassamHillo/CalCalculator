@@ -329,10 +329,10 @@ struct HealthKitCard: View {
                         .font(.headline)
                         .foregroundColor(.primary)
                     
-                    Text("Enable Health access in Settings to track your activity")
+                    Text("Go to Settings > Privacy & Security > Health > CalCalculator")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                        .lineLimit(2)
+                        .lineLimit(3)
                 }
                 
                 Spacer()
@@ -366,6 +366,26 @@ struct HealthKitCard: View {
     // MARK: - Actions
     
     private func openHealthSettings() {
+        // iOS doesn't allow deep linking directly to HealthKit permissions in Settings
+        // Strategy: Try opening Health app first - user can navigate to Sources > CalCalculator
+        // If that fails, open Settings (user needs to go to Privacy & Security > Health > CalCalculator)
+        if let healthAppURL = URL(string: "x-apple-health://") {
+            // Try to open Health app - user can go to Sources tab > CalCalculator
+            UIApplication.shared.open(healthAppURL) { success in
+                if !success {
+                    // If Health app can't be opened, fall back to Settings
+                    openAppSettings()
+                }
+            }
+        } else {
+            // Fallback: Open app settings
+            openAppSettings()
+        }
+    }
+    
+    private func openAppSettings() {
+        // This opens: Settings > CalCalculator
+        // User needs to navigate to: Privacy & Security > Health > CalCalculator
         if let url = URL(string: UIApplication.openSettingsURLString) {
             UIApplication.shared.open(url)
         }

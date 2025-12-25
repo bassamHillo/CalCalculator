@@ -46,12 +46,14 @@ struct HomeView: View {
                 contentView
                 floatingMenuOverlay
             }
-            .navigationTitle("Today")
+            .navigationTitle(navigationTitle)
             .navigationDestination(for: UUID.self) { mealId in
                 MealDetailView(mealId: mealId, repository: repository)
             }
             .refreshable {
+                HapticManager.shared.impact(.light)
                 await viewModel.refreshTodayData()
+                HapticManager.shared.notification(.success)
             }
             .task {
                 // Load data without blocking UI
@@ -70,6 +72,36 @@ struct HomeView: View {
             }
             .onChange(of: viewModel.recentMeals.count) { _, _ in
                 checkForBadges()
+                // Update Live Activity when meals change
+                viewModel.updateLiveActivityIfNeeded()
+            }
+            .onChange(of: viewModel.todaysSummary?.totalCalories) { _, _ in
+                // Update Live Activity when calories change
+                viewModel.updateLiveActivityIfNeeded()
+            }
+            .onChange(of: viewModel.todaysBurnedCalories) { _, _ in
+                // Update Live Activity when burned calories change
+                viewModel.updateLiveActivityIfNeeded()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .updateLiveActivity)) { _ in
+                // Update Live Activity when requested (e.g., from preferences toggle)
+                viewModel.updateLiveActivityIfNeeded()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .exerciseSaved)) { _ in
+                // Refresh burned calories when an exercise is saved
+                Task {
+                    await viewModel.refreshBurnedCalories()
+                    // Update Live Activity with new burned calories
+                    viewModel.updateLiveActivityIfNeeded()
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .addBurnedCaloriesToggled)) { _ in
+                // Refresh burned calories and update UI when toggle changes
+                Task {
+                    await viewModel.refreshBurnedCalories()
+                    // Update Live Activity with new goal
+                    viewModel.updateLiveActivityIfNeeded()
+                }
             }
             .sheet(isPresented: $showScanSheet) {
                 ScanView(
@@ -127,6 +159,17 @@ struct HomeView: View {
             calorieGoal: viewModel.effectiveCalorieGoal,
             proteinGoal: settings.proteinGoal
         )
+    }
+    
+    // MARK: - Computed Properties
+    
+    private var navigationTitle: String {
+        // Use localized date formatter - shows "Thursday, January 25, 2024" format
+        // This automatically adapts to user's locale settings
+        let formatter = DateFormatter()
+        formatter.dateStyle = .full
+        formatter.timeStyle = .none
+        return formatter.string(from: Date())
     }
     
     // MARK: - Private Views
@@ -243,12 +286,18 @@ struct HomeView: View {
     }
     
     private var weekDaysSection: some View {
-        WeekDaysHeader(weekDays: viewModel.weekDays)
-            .transition(.opacity.combined(with: .scale(scale: 0.95)))
-            .animation(.spring(response: 0.6, dampingFraction: 0.8), value: viewModel.weekDays.map { $0.progress })
-            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-            .listRowSeparator(.hidden)
-            .listRowBackground(Color.clear)
+        WeekDaysHeader(weekDays: viewModel.weekDays) { selectedDate in
+            // Navigate to history view for selected date
+            // For now, we'll show an alert or navigate to history
+            // TODO: Implement day detail view
+            HapticManager.shared.impact(.medium)
+            // Could navigate to HistoryView with date filter
+        }
+        .transition(.opacity.combined(with: .scale(scale: 0.95)))
+        .animation(.spring(response: 0.6, dampingFraction: 0.8), value: viewModel.weekDays.map { $0.progress })
+        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
     }
     
     private var progressSection: some View {
@@ -299,11 +348,13 @@ struct HomeView: View {
                 )
                 .transition(.opacity.combined(with: .move(edge: .bottom)))
             } else {
-                EmptyMealsView()
-                    .opacity((viewModel.hasDataLoaded) ? 1.0 : 0.3)
-                    .listRowInsets(EdgeInsets(top: 40, leading: 0, bottom: 0, trailing: 0))
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
+                EmptyMealsView(onScanTapped: {
+                    showScanSheet = true
+                })
+                .opacity((viewModel.hasDataLoaded) ? 1.0 : 0.3)
+                .listRowInsets(EdgeInsets(top: 40, leading: 0, bottom: 0, trailing: 0))
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
             }
         }
     }

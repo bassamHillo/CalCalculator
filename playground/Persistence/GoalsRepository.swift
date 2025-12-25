@@ -47,44 +47,77 @@ final class GoalsRepository {
     /// Calculate mock goals based on onboarding data
     /// In a real implementation, this would be done server-side
     private func calculateMockGoals(from data: [String: Any]) -> GeneratedGoals {
-        // Extract basic info from onboarding data
-        // These keys should match your onboarding.json structure
+        // Use calorie_goal from data if provided (user's current goal), otherwise calculate
+        var baseCalories: Int
         
-        var baseCalories = 2000
-        var proteinMultiplier = 1.0
-        
-        // Check for activity level
-        if let activityLevel = data["activity_level"] as? String {
-            switch activityLevel.lowercased() {
-            case "sedentary":
-                baseCalories = 1800
-                proteinMultiplier = 0.8
-            case "lightly_active", "light":
-                baseCalories = 2000
-                proteinMultiplier = 1.0
-            case "moderately_active", "moderate":
-                baseCalories = 2200
-                proteinMultiplier = 1.1
-            case "very_active", "active":
-                baseCalories = 2500
-                proteinMultiplier = 1.2
-            case "extra_active", "athlete":
-                baseCalories = 2800
-                proteinMultiplier = 1.3
-            default:
-                break
+        if let userCalorieGoal = data["calorie_goal"] as? Int {
+            // Use the user's current calorie goal - preserve their choice
+            baseCalories = userCalorieGoal
+            print("📊 [GoalsRepository] Using user's calorie goal: \(userCalorieGoal)")
+        } else {
+            // Calculate from profile data if calorie goal not provided
+            baseCalories = 2000
+            var proteinMultiplier = 1.0
+            
+            // Check for activity level
+            if let activityLevel = data["activity_level"] as? String {
+                switch activityLevel.lowercased() {
+                case "sedentary":
+                    baseCalories = 1800
+                    proteinMultiplier = 0.8
+                case "lightly_active", "light":
+                    baseCalories = 2000
+                    proteinMultiplier = 1.0
+                case "moderately_active", "moderate":
+                    baseCalories = 2200
+                    proteinMultiplier = 1.1
+                case "very_active", "active":
+                    baseCalories = 2500
+                    proteinMultiplier = 1.2
+                case "extra_active", "athlete":
+                    baseCalories = 2800
+                    proteinMultiplier = 1.3
+                default:
+                    break
+                }
+            }
+            
+            // Check for goal type
+            if let goal = data["goal"] as? String {
+                switch goal.lowercased() {
+                case "lose_weight", "weight_loss", "lose":
+                    baseCalories = Int(Double(baseCalories) * 0.8)
+                case "maintain", "maintain_weight":
+                    break // Keep as is
+                case "gain_weight", "weight_gain", "gain", "build_muscle":
+                    baseCalories = Int(Double(baseCalories) * 1.15)
+                default:
+                    break
+                }
             }
         }
         
-        // Check for goal type
+        // Calculate macros based on the calorie goal (user's or calculated)
+        // Use more sophisticated calculation based on user profile
+        var proteinMultiplier = 1.0
+        
+        // Adjust protein based on goal type
         if let goal = data["goal"] as? String {
             switch goal.lowercased() {
-            case "lose_weight", "weight_loss", "lose":
-                baseCalories = Int(Double(baseCalories) * 0.8)
-            case "maintain", "maintain_weight":
-                break // Keep as is
             case "gain_weight", "weight_gain", "gain", "build_muscle":
-                baseCalories = Int(Double(baseCalories) * 1.15)
+                proteinMultiplier = 1.2 // Higher protein for muscle gain
+            case "lose_weight", "weight_loss", "lose":
+                proteinMultiplier = 1.1 // Higher protein to preserve muscle
+            default:
+                proteinMultiplier = 1.0
+            }
+        }
+        
+        // Adjust based on activity level
+        if let activityLevel = data["activity_level"] as? String {
+            switch activityLevel.lowercased() {
+            case "very_active", "active", "extra_active", "athlete":
+                proteinMultiplier *= 1.1
             default:
                 break
             }

@@ -12,6 +12,7 @@ struct MainTabView: View {
     var repository: MealRepository
 
     @State private var selectedTab = 0
+    @StateObject private var networkMonitor = NetworkMonitor.shared
 
     @State var homeViewModel: HomeViewModel
     @State var scanViewModel: ScanViewModel
@@ -58,7 +59,8 @@ struct MainTabView: View {
     }
     
     var body: some View {
-        TabView(selection: $selectedTab) {
+        ZStack(alignment: .top) {
+            TabView(selection: $selectedTab) {
             HomeView(
                 viewModel: homeViewModel,
                 repository: repository,
@@ -66,6 +68,8 @@ struct MainTabView: View {
                 onMealSaved: {
                     Task {
                         await homeViewModel.refreshTodayData()
+                        // Update Live Activity after data refresh
+                        homeViewModel.updateLiveActivityIfNeeded()
                         await historyViewModel.loadData()
                         await progressViewModel.loadData()
                     }
@@ -93,7 +97,29 @@ struct MainTabView: View {
                     Label("Profile", systemImage: "person.fill")
                 }
                 .tag(3)
+            }
+            
+            // Offline banner
+            if !networkMonitor.isConnected {
+                VStack {
+                    HStack {
+                        Image(systemName: "wifi.slash")
+                            .foregroundColor(.white)
+                        Text("No Internet Connection")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .foregroundColor(.white)
+                        Spacer()
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(Color.red)
+                }
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .zIndex(1000)
+            }
         }
+        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: networkMonitor.isConnected)
     }
 }
 

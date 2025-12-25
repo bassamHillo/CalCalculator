@@ -171,13 +171,19 @@ struct EditNutritionGoalsView: View {
     private var autoGenerateSection: some View {
         VStack(spacing: 12) {
             Button {
-                withAnimation {
-                    viewModel.autoGenerateMacros()
+                Task {
+                    await viewModel.autoGenerateMacros()
                 }
             } label: {
                 HStack {
-                    Image(systemName: "sparkles")
-                    Text("Auto-Generate Based on Goals")
+                    if viewModel.isGeneratingMacros {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            .scaleEffect(0.8)
+                    } else {
+                        Image(systemName: "sparkles")
+                    }
+                    Text(viewModel.isGeneratingMacros ? "Generating..." : "Auto-Generate Based on Goals")
                 }
                 .font(.headline)
                 .foregroundColor(.white)
@@ -185,18 +191,26 @@ struct EditNutritionGoalsView: View {
                 .padding(.vertical, 14)
                 .background(
                     LinearGradient(
-                        colors: [.blue, .purple],
+                        colors: viewModel.isGeneratingMacros ? [.gray, .gray] : [.blue, .purple],
                         startPoint: .leading,
                         endPoint: .trailing
                     )
                 )
                 .cornerRadius(12)
             }
+            .disabled(viewModel.isGeneratingMacros)
             
-            Text("Calculates optimal macros based on your calorie goal using a balanced 30/40/30 split")
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
+            if let error = viewModel.macroGenerationError {
+                Text("Error: \(error)")
+                    .font(.caption)
+                    .foregroundColor(.red)
+                    .multilineTextAlignment(.center)
+            } else {
+                Text("Calculates optimal macros based on your profile and current calorie goal")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+            }
         }
     }
     
@@ -302,7 +316,9 @@ struct EditNutritionGoalsView: View {
                     Button("Save") {
                         viewModel.calorieGoal = tempCalories
                         if viewModel.autoAdjustMacros {
-                            viewModel.autoGenerateMacros()
+                            Task {
+                                await viewModel.autoGenerateMacros()
+                            }
                         }
                         isEditingCalories = false
                     }

@@ -13,6 +13,7 @@ struct PreferencesView: View {
     
     @Bindable var viewModel: ProfileViewModel
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
     
     // MARK: - Body
     
@@ -40,6 +41,7 @@ struct PreferencesView: View {
                 }
             }
         }
+        .preferredColorScheme(viewModel.appearanceMode.colorScheme)
     }
     
     // MARK: - Appearance Section

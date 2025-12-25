@@ -186,6 +186,16 @@ struct ScanView: View {
     @ViewBuilder
     private var errorAlertActions: some View {
         Button("OK", role: .cancel) {}
+        if viewModel.canRetry {
+            Button("Retry") {
+                if let image = viewModel.selectedImage {
+                    viewModel.retryCount += 1
+                    Task {
+                        await viewModel.analyzeImage(image)
+                    }
+                }
+            }
+        }
         if viewModel.error == .cameraPermissionDenied {
             Button("Open Settings") {
                 openSettings()
@@ -201,6 +211,7 @@ struct ScanView: View {
     
     private var errorAlertMessage: some View {
         Text(viewModel.errorMessage ?? viewModel.error?.errorDescription ?? "An error occurred")
+            .font(.subheadline)
     }
     
     // MARK: - Helper Methods

@@ -193,35 +193,15 @@ struct ProfileView: View {
     @ViewBuilder
     private var preferencesSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            ProfileSectionHeader(title: "Quick Settings")
+            ProfileSectionHeader(title: "Settings")
             
             ProfileSectionCard {
-                ToggleSettingRow(
-                    icon: "flame.fill",
-                    iconColor: .orange,
-                    title: "Add Burned Calories",
-                    description: "Add exercise calories back to daily goal",
-                    isOn: $viewModel.addBurnedCalories
-                )
-                
-                SettingsDivider()
-                
-                ToggleSettingRow(
-                    icon: "arrow.clockwise",
-                    iconColor: .green,
-                    title: "Rollover Calories",
-                    description: "Carry up to 200 unused calories to next day",
-                    isOn: $viewModel.rolloverCalories
-                )
-                
-                SettingsDivider()
-                
-                ToggleSettingRow(
-                    icon: "sparkles",
-                    iconColor: .purple,
-                    title: "Badge Celebrations",
-                    description: "Show animation when earning new badges",
-                    isOn: $viewModel.badgeCelebrations
+                SettingsRow(
+                    icon: "gearshape.fill",
+                    iconColor: .blue,
+                    title: "Preferences",
+                    subtitle: "Appearance, calorie tracking, and notifications",
+                    action: { showingPreferences = true }
                 )
             }
         }

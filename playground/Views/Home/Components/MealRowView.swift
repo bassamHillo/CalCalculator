@@ -65,6 +65,6 @@ struct MealRowView: View {
         ]
     )
     
-    return MealRowView(meal: meal)
+    MealRowView(meal: meal)
         .padding()
 }

@@ -19,7 +19,10 @@ struct LanguageSelectionView: View {
                         isSelected: viewModel.selectedLanguage == language.name,
                         onSelect: {
                             viewModel.selectedLanguage = language.name
-                            dismiss()
+                            // Small delay to ensure state is saved before dismissing
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                dismiss()
+                            }
                         }
                     )
                 }
