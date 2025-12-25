@@ -228,8 +228,20 @@ struct ScanView: View {
     }
     
     private func openSettings() {
-        if let url = URL(string: UIApplication.openSettingsURLString) {
-            UIApplication.shared.open(url)
+        Task { @MainActor in
+            let settingsURL = URL(string: UIApplication.openSettingsURLString)
+            guard let url = settingsURL else {
+                print("❌ [ScanView] Failed to create settings URL")
+                return
+            }
+            
+            print("🔵 [ScanView] Opening settings: \(url.absoluteString)")
+            let success = await UIApplication.shared.open(url)
+            if success {
+                print("✅ [ScanView] Successfully opened settings")
+            } else {
+                print("❌ [ScanView] Failed to open settings")
+            }
         }
     }
     
