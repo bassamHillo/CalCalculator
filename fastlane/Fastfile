@@ -150,6 +150,8 @@ platform :ios do
     end
     
     # Build app - package dependencies will be resolved with Git credentials configured
+    # Note: jwt-kit package has Swift 6 strict concurrency errors, but we can't control package build settings
+    # The build may fail if jwt-kit errors are blocking. This is a known issue with jwt-kit v5.3.0
     build_app(
       workspace: nil,
       project: PROJECT,
@@ -162,7 +164,7 @@ platform :ios do
         signingStyle: "automatic"
       },
       skip_package_dependencies_resolution: false, # Need to resolve packages to get dependencies
-      xcargs: "-allowProvisioningUpdates -skipPackagePluginValidation"
+      xcargs: "-allowProvisioningUpdates -skipPackagePluginValidation SWIFT_STRICT_CONCURRENCY=off"
     )
   end
 
