@@ -166,7 +166,11 @@ struct HistoryView: View {
     
     @ViewBuilder
     private var content: some View {
-        if viewModel.allDaySummaries.isEmpty {
+        if viewModel.isLoading {
+            loadingView
+        } else if viewModel.showError {
+            errorView
+        } else if viewModel.allDaySummaries.isEmpty {
             emptyStateView
         } else if filteredSummaries.isEmpty {
             noResultsView
@@ -202,6 +206,37 @@ struct HistoryView: View {
             .padding(.horizontal)
             .padding(.vertical, 8)
             .animation(.easeInOut(duration: 0.2), value: filteredSummaries.count)
+        }
+    }
+    
+    @ViewBuilder
+    private var loadingView: some View {
+        if viewModel.isLoading {
+            VStack(spacing: 20) {
+                ProgressView()
+                    .scaleEffect(1.5)
+                Text("Loading history...")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+    
+    @ViewBuilder
+    private var errorView: some View {
+        if viewModel.showError, let error = viewModel.error {
+            FullScreenErrorView(
+                error: error,
+                retry: {
+                    Task {
+                        await viewModel.loadData()
+                    }
+                },
+                dismiss: {
+                    viewModel.showError = false
+                }
+            )
         }
     }
 

@@ -20,72 +20,77 @@ struct ProgressDashboardView: View {
     
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    // Current Weight Card
-                    CurrentWeightCard(
-                        weight: viewModel.displayWeight,
-                        unit: viewModel.weightUnit,
-                        daysUntilCheck: viewModel.daysUntilNextWeightCheck,
-                        isSubscribed: isSubscribed,
-                        onWeightTap: {
-                            if isSubscribed {
-                                showWeightInput = true
-                            } else {
-                                showPaywall = true
-                            }
-                        },
-                        onViewProgress: {
-                            if isSubscribed {
-                                viewModel.showWeightProgressSheet = true
-                            } else {
-                                showPaywall = true
-                            }
-                        }
-                    )
-                    
-                    // BMI Card - Locked with blur + Premium button
-                    if let bmi = viewModel.bmi, let category = viewModel.bmiCategory {
-                        PremiumLockedContent {
-                            BMICard(bmi: bmi, category: category, isSubscribed: true)
-                        }
-                    }
-                    
-                    // Daily Calories Card - Locked with blur + Premium button
-                    PremiumLockedContent {
-                        DailyCaloriesCard(
-                            averageCalories: viewModel.averageCalories,
-                            calorieGoal: UserSettings.shared.calorieGoal,
-                            isSubscribed: true,
-                            onViewDetails: {
-                                if isSubscribed {
-                                    viewModel.showCaloriesSheet = true
-                                } else {
-                                    showPaywall = true
+            Group {
+                if viewModel.isLoading && viewModel.weightHistory.isEmpty {
+                    FullScreenLoadingView(message: "Loading progress data...")
+                } else {
+                    ScrollView {
+                        VStack(spacing: 20) {
+                            // Current Weight Card
+                            CurrentWeightCard(
+                                        weight: viewModel.displayWeight,
+                                unit: viewModel.weightUnit,
+                                daysUntilCheck: viewModel.daysUntilNextWeightCheck,
+                                isSubscribed: isSubscribed,
+                                onWeightTap: {
+                                    if isSubscribed {
+                                        showWeightInput = true
+                                    } else {
+                                        showPaywall = true
+                                    }
+                                },
+                                onViewProgress: {
+                                    if isSubscribed {
+                                        viewModel.showWeightProgressSheet = true
+                                    } else {
+                                        showPaywall = true
+                                    }
+                                }
+                            )
+                            
+                            // BMI Card - Locked with blur + Premium button
+                            if let bmi = viewModel.bmi, let category = viewModel.bmiCategory {
+                                PremiumLockedContent {
+                                    BMICard(bmi: bmi, category: category, isSubscribed: true)
                                 }
                             }
-                        )
-                    }
-                    
-                    // HealthKit Data Section - Locked with blur + Premium button
-                    // Show enable settings prompt if authorization denied
-                    if viewModel.healthKitAuthorizationDenied {
-                        HealthKitSettingsPromptCard()
-                    } else {
-                        PremiumLockedContent {
-                            HealthDataSection(
-                                steps: viewModel.steps,
-                                activeCalories: viewModel.activeCalories,
-                                exerciseMinutes: viewModel.exerciseMinutes,
-                                heartRate: viewModel.heartRate,
-                                distance: viewModel.distance,
-                                sleepHours: viewModel.sleepHours,
-                                isSubscribed: true
-                            )
+                            
+                            // Daily Calories Card - Locked with blur + Premium button
+                            PremiumLockedContent {
+                                DailyCaloriesCard(
+                                    averageCalories: viewModel.averageCalories,
+                                    calorieGoal: UserSettings.shared.calorieGoal,
+                                    isSubscribed: isSubscribed,
+                                    onViewDetails: {
+                                        if isSubscribed {
+                                            viewModel.showCaloriesSheet = true
+                                        } else {
+                                            showPaywall = true
+                                        }
+                                    }
+                                )
+                            }
+                            
+                            // HealthKit Data Section - Locked with blur + Premium button
+                            // Show enable settings prompt if authorization denied
+                            if viewModel.healthKitAuthorizationDenied {
+                                HealthKitSettingsPromptCard()
+                            } else {
+                                PremiumLockedContent {
+                                    HealthDataSection(
+                                        steps: viewModel.steps,
+                                        activeCalories: viewModel.activeCalories,
+                                        exerciseMinutes: viewModel.exerciseMinutes,
+                                        heartRate: viewModel.heartRate,
+                                        distance: viewModel.distance,
+                                        sleepHours: viewModel.sleepHours,
+                                        isSubscribed: isSubscribed
+                                    )
+                                }
+                            }
                         }
+                        .padding()
                     }
-                }
-                .padding()
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("Progress")

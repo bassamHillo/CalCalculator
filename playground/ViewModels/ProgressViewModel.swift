@@ -149,6 +149,11 @@ final class ProgressViewModel {
     var showWeightProgressSheet = false
     var showCaloriesSheet = false
     
+    // MARK: - Error State
+    var error: Error?
+    var showError = false
+    var errorMessage: String?
+    
     // Weight Data
     var weightHistory: [WeightDataPoint] = []
     var weightTimeFilter: TimeFilter = .threeMonths
@@ -243,12 +248,22 @@ final class ProgressViewModel {
     
     func loadData() async {
         isLoading = true
+        showError = false
+        error = nil
+        errorMessage = nil
         defer { isLoading = false }
         
-        // Load data sequentially to avoid actor isolation issues
-        await loadCaloriesData()
-        await loadWeightHistory()
-        await loadHealthKitData()
+        do {
+            // Load data sequentially to avoid actor isolation issues
+            await loadCaloriesData()
+            await loadWeightHistory()
+            await loadHealthKitData()
+        } catch {
+            self.error = error
+            self.errorMessage = error.localizedDescription
+            self.showError = true
+            print("🔴 [ProgressViewModel] Error loading data: \(error)")
+        }
     }
     
     func loadWeightHistory() async {
