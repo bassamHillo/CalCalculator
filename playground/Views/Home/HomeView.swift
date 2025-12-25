@@ -271,8 +271,10 @@ struct HomeView: View {
     }
     
     private var badgesSection: some View {
-        BadgesCard {
-            showBadgesSheet = true
+        PremiumLockedContent {
+            BadgesCard {
+                showBadgesSheet = true
+            }
         }
         .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
         .listRowSeparator(.hidden)
