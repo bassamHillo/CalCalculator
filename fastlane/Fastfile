@@ -16,6 +16,16 @@ platform :ios do
   APP_STORE_CONNECT_ISSUER_ID = ENV["APP_STORE_CONNECT_ISSUER_ID"]
   APP_STORE_CONNECT_KEY_FILEPATH = ENV["APP_STORE_CONNECT_KEY_FILEPATH"] || File.expand_path("AuthKey.p8", __dir__)
   
+  # Helper to get absolute path for API key file
+  def get_api_key_filepath
+    filepath = APP_STORE_CONNECT_KEY_FILEPATH
+    # If relative path, make it absolute relative to fastlane directory
+    unless File.absolute_path?(filepath)
+      filepath = File.expand_path(filepath, __dir__)
+    end
+    filepath
+  end
+  
   # AWS CodeCommit credentials (for private Swift packages)
   AWS_ACCESS_KEY_ID = ENV["AWS_ACCESS_KEY_ID"]
   AWS_SECRET_ACCESS_KEY = ENV["AWS_SECRET_ACCESS_KEY"]
@@ -71,9 +81,16 @@ platform :ios do
       UI.user_error!("❌ APP_STORE_CONNECT_ISSUER_ID environment variable is not set")
     end
     
-    unless File.exist?(APP_STORE_CONNECT_KEY_FILEPATH)
-      UI.user_error!("❌ App Store Connect API key file not found at: #{APP_STORE_CONNECT_KEY_FILEPATH}\n" \
-                     "Please set APP_STORE_CONNECT_KEY_FILEPATH environment variable or place AuthKey.p8 in fastlane/ directory")
+    key_filepath = get_api_key_filepath
+    UI.message("🔍 Checking for API key file at: #{key_filepath}")
+    UI.message("🔍 Current working directory: #{Dir.pwd}")
+    UI.message("🔍 Fastlane directory: #{__dir__}")
+    
+    unless File.exist?(key_filepath)
+      UI.user_error!("❌ App Store Connect API key file not found at: #{key_filepath}\n" \
+                     "Please ensure the 'Setup App Store Connect API Key' step has run successfully.\n" \
+                     "Expected location: #{key_filepath}\n" \
+                     "Current directory contents: #{Dir.entries(__dir__).join(', ')}")
     end
     
     UI.success("✅ App Store Connect API credentials verified")
@@ -83,10 +100,11 @@ platform :ios do
   def get_app_store_connect_api_key
     verify_app_store_connect_credentials
     
+    key_filepath = get_api_key_filepath
     app_store_connect_api_key(
       key_id: APP_STORE_CONNECT_KEY_ID,
       issuer_id: APP_STORE_CONNECT_ISSUER_ID,
-      key_filepath: APP_STORE_CONNECT_KEY_FILEPATH
+      key_filepath: key_filepath
     )
   end
 

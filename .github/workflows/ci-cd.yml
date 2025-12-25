@@ -209,11 +209,26 @@ jobs:
         run: |
           mkdir -p fastlane
           echo "${{ secrets.APP_STORE_CONNECT_KEY }}" | base64 -d > fastlane/AuthKey.p8
+          # Verify file was created
+          if [ ! -f "fastlane/AuthKey.p8" ]; then
+            echo "❌ Error: API key file was not created"
+            exit 1
+          fi
+          echo "✅ API key file created at: $(pwd)/fastlane/AuthKey.p8"
+          ls -la fastlane/AuthKey.p8
         env:
           APP_STORE_CONNECT_KEY: ${{ secrets.APP_STORE_CONNECT_KEY }}
       
       - name: Deploy to TestFlight
         run: |
+          # Verify API key file exists before running Fastlane
+          if [ ! -f "fastlane/AuthKey.p8" ]; then
+            echo "❌ Error: API key file not found at fastlane/AuthKey.p8"
+            echo "Current directory: $(pwd)"
+            echo "Files in fastlane/: $(ls -la fastlane/ || echo 'fastlane directory not found')"
+            exit 1
+          fi
+          echo "✅ API key file verified, proceeding with deployment"
           bundle exec fastlane deploy_to_testflight
         env:
           # App Store Connect API credentials
