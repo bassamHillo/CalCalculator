@@ -272,6 +272,7 @@
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "CalCalculator needs access to read your health data to display activity metrics and weight history.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "CalCalculator needs access to save your weight measurements to Apple Health.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "This app needs photo library access to select photos of your meals for calorie tracking.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "This app does not use location services. This permission may be requested by third-party SDKs for analytics purposes.";
 				INFOPLIST_KEY_NSUserTrackingUsageDescription = "This app uses tracking to provide personalized content and improve your experience. Your data is used only for app functionality and analytics.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -315,6 +316,7 @@
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "CalCalculator needs access to read your health data to display activity metrics and weight history.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "CalCalculator needs access to save your weight measurements to Apple Health.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "This app needs photo library access to select photos of your meals for calorie tracking.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "This app does not use location services. This permission may be requested by third-party SDKs for analytics purposes.";
 				INFOPLIST_KEY_NSUserTrackingUsageDescription = "This app uses tracking to provide personalized content and improve your experience. Your data is used only for app functionality and analytics.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
