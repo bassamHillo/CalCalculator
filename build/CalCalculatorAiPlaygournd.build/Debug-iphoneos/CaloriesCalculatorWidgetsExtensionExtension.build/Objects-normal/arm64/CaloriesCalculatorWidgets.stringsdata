@@ -1,0 +1,24 @@
+{
+  "source": "/Users/zoharbuchris/Documents/CalCalculator/CaloriesCalculatorWidgetsExtension/CaloriesCalculatorWidgets.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Calories Tracker",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 19
+        }
+      },
+      {
+        "comment": "",
+        "key": "Track your daily calorie and macro intake at a glance. Premium feature.",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 20
+        }
+      }
+    ]
+  },
+  "version": 1
+}

@@ -1,0 +1,4 @@
+module GoogleAdsOnDeviceConversionTarget {
+umbrella "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/google-ads-on-device-conversion-ios-sdk/GoogleAdsOnDeviceConversionWrapper/include"
+export *
+}

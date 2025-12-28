@@ -1,0 +1,40 @@
+{
+  "source": "/Users/zoharbuchris/Documents/CalCalculator/CaloriesCalculatorWidgetsExtension/Views/Components/WidgetLockedOverlay.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Premium Required",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 47
+        }
+      },
+      {
+        "comment": "",
+        "key": "Upgrade to unlock",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 51
+        }
+      },
+      {
+        "comment": "",
+        "key": "Premium",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 60
+        }
+      },
+      {
+        "comment": "",
+        "key": "Premium",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 112
+        }
+      }
+    ]
+  },
+  "version": 1
+}

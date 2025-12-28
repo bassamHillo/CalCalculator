@@ -1,0 +1,19 @@
+{
+  "" : {
+    "diagnostics" : "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/KeychainAccess/build/KeychainAccess.build/Debug-iphoneos/KeychainAccess.build/Objects-normal/arm64/KeychainAccess-primary.dia",
+    "emit-module-dependencies" : "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/KeychainAccess/build/KeychainAccess.build/Debug-iphoneos/KeychainAccess.build/Objects-normal/arm64/KeychainAccess-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/KeychainAccess/build/KeychainAccess.build/Debug-iphoneos/KeychainAccess.build/Objects-normal/arm64/KeychainAccess-primary-emit-module.dia",
+    "pch" : "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/KeychainAccess/build/KeychainAccess.build/Debug-iphoneos/KeychainAccess.build/Objects-normal/arm64/KeychainAccess-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/KeychainAccess/build/KeychainAccess.build/Debug-iphoneos/KeychainAccess.build/Objects-normal/arm64/KeychainAccess-primary.swiftdeps"
+  },
+  "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/KeychainAccess/Lib/KeychainAccess/Keychain.swift" : {
+    "const-values" : "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/KeychainAccess/build/KeychainAccess.build/Debug-iphoneos/KeychainAccess.build/Objects-normal/arm64/Keychain.swiftconstvalues",
+    "dependencies" : "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/KeychainAccess/build/KeychainAccess.build/Debug-iphoneos/KeychainAccess.build/Objects-normal/arm64/Keychain.d",
+    "diagnostics" : "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/KeychainAccess/build/KeychainAccess.build/Debug-iphoneos/KeychainAccess.build/Objects-normal/arm64/Keychain.dia",
+    "index-unit-output-path" : "/KeychainAccess.build/Debug-iphoneos/KeychainAccess.build/Objects-normal/arm64/Keychain.o",
+    "llvm-bc" : "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/KeychainAccess/build/KeychainAccess.build/Debug-iphoneos/KeychainAccess.build/Objects-normal/arm64/Keychain.bc",
+    "object" : "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/KeychainAccess/build/KeychainAccess.build/Debug-iphoneos/KeychainAccess.build/Objects-normal/arm64/Keychain.o",
+    "swift-dependencies" : "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/KeychainAccess/build/KeychainAccess.build/Debug-iphoneos/KeychainAccess.build/Objects-normal/arm64/Keychain.swiftdeps",
+    "swiftmodule" : "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/KeychainAccess/build/KeychainAccess.build/Debug-iphoneos/KeychainAccess.build/Objects-normal/arm64/Keychain~partial.swiftmodule"
+  }
+}

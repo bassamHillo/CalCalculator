@@ -1,0 +1,4 @@
+module FirebaseAnalyticsTarget {
+umbrella "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/firebase-ios-sdk/SwiftPM-PlatformExclude/FirebaseAnalyticsWrap/include"
+export *
+}

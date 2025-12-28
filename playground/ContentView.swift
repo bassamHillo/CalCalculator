@@ -117,8 +117,16 @@ struct ContentView: View {
                     }
                     
                 case .signIn:
-                    // TODO: Implement sign in view
-                    Text("Sign In View")
+                    // Sign in is handled via LoginView in the authentication flow
+                    LoginView(
+                        onGetStarted: {
+                            authState = .onboarding
+                        },
+                        onSignIn: {
+                            // Sign in functionality can be added here if needed
+                            authState = .authenticated
+                        }
+                    )
                         .task {
                             guard !hasCheckedSubscription else { return }
                             hasCheckedSubscription = true

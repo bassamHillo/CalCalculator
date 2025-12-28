@@ -1,0 +1,2 @@
+Target dependency graph (1 target)
+Target 'CaloriesCalculatorWidgetsExtensionExtension' in project 'CalCalculatorAiPlaygournd' (no dependencies)

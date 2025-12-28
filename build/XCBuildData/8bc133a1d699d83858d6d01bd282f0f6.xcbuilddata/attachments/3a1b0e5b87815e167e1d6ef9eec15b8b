@@ -1,0 +1,4 @@
+module ShipBookSDK {
+header "ShipBookSDK-Swift.h"
+export *
+}

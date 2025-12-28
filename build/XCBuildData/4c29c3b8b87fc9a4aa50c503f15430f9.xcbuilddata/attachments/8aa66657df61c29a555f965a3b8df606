@@ -1,0 +1,19 @@
+{
+  "" : {
+    "diagnostics" : "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/swift-crypto/build/swift-crypto.build/Debug-iphoneos/_CryptoExtras.build/Objects-normal/arm64/_CryptoExtras-primary.dia",
+    "emit-module-dependencies" : "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/swift-crypto/build/swift-crypto.build/Debug-iphoneos/_CryptoExtras.build/Objects-normal/arm64/_CryptoExtras-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/swift-crypto/build/swift-crypto.build/Debug-iphoneos/_CryptoExtras.build/Objects-normal/arm64/_CryptoExtras-primary-emit-module.dia",
+    "pch" : "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/swift-crypto/build/swift-crypto.build/Debug-iphoneos/_CryptoExtras.build/Objects-normal/arm64/_CryptoExtras-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/swift-crypto/build/swift-crypto.build/Debug-iphoneos/_CryptoExtras.build/Objects-normal/arm64/_CryptoExtras-primary.swiftdeps"
+  },
+  "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/swift-crypto/Sources/_CryptoExtras/Exports.swift" : {
+    "const-values" : "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/swift-crypto/build/swift-crypto.build/Debug-iphoneos/_CryptoExtras.build/Objects-normal/arm64/Exports.swiftconstvalues",
+    "dependencies" : "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/swift-crypto/build/swift-crypto.build/Debug-iphoneos/_CryptoExtras.build/Objects-normal/arm64/Exports.d",
+    "diagnostics" : "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/swift-crypto/build/swift-crypto.build/Debug-iphoneos/_CryptoExtras.build/Objects-normal/arm64/Exports.dia",
+    "index-unit-output-path" : "/swift-crypto.build/Debug-iphoneos/_CryptoExtras.build/Objects-normal/arm64/Exports.o",
+    "llvm-bc" : "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/swift-crypto/build/swift-crypto.build/Debug-iphoneos/_CryptoExtras.build/Objects-normal/arm64/Exports.bc",
+    "object" : "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/swift-crypto/build/swift-crypto.build/Debug-iphoneos/_CryptoExtras.build/Objects-normal/arm64/Exports.o",
+    "swift-dependencies" : "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/swift-crypto/build/swift-crypto.build/Debug-iphoneos/_CryptoExtras.build/Objects-normal/arm64/Exports.swiftdeps",
+    "swiftmodule" : "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/swift-crypto/build/swift-crypto.build/Debug-iphoneos/_CryptoExtras.build/Objects-normal/arm64/Exports~partial.swiftmodule"
+  }
+}

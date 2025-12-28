@@ -1,0 +1,29 @@
+{
+  "" : {
+    "diagnostics" : "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/facebook-ios-sdk/build/Facebook.build/Debug-iphoneos/FacebookCore.build/Objects-normal/arm64/FacebookCore-primary.dia",
+    "emit-module-dependencies" : "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/facebook-ios-sdk/build/Facebook.build/Debug-iphoneos/FacebookCore.build/Objects-normal/arm64/FacebookCore-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/facebook-ios-sdk/build/Facebook.build/Debug-iphoneos/FacebookCore.build/Objects-normal/arm64/FacebookCore-primary-emit-module.dia",
+    "pch" : "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/facebook-ios-sdk/build/Facebook.build/Debug-iphoneos/FacebookCore.build/Objects-normal/arm64/FacebookCore-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/facebook-ios-sdk/build/Facebook.build/Debug-iphoneos/FacebookCore.build/Objects-normal/arm64/FacebookCore-primary.swiftdeps"
+  },
+  "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/facebook-ios-sdk/Sources/FacebookCore/Exports.swift" : {
+    "const-values" : "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/facebook-ios-sdk/build/Facebook.build/Debug-iphoneos/FacebookCore.build/Objects-normal/arm64/Exports.swiftconstvalues",
+    "dependencies" : "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/facebook-ios-sdk/build/Facebook.build/Debug-iphoneos/FacebookCore.build/Objects-normal/arm64/Exports.d",
+    "diagnostics" : "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/facebook-ios-sdk/build/Facebook.build/Debug-iphoneos/FacebookCore.build/Objects-normal/arm64/Exports.dia",
+    "index-unit-output-path" : "/Facebook.build/Debug-iphoneos/FacebookCore.build/Objects-normal/arm64/Exports.o",
+    "llvm-bc" : "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/facebook-ios-sdk/build/Facebook.build/Debug-iphoneos/FacebookCore.build/Objects-normal/arm64/Exports.bc",
+    "object" : "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/facebook-ios-sdk/build/Facebook.build/Debug-iphoneos/FacebookCore.build/Objects-normal/arm64/Exports.o",
+    "swift-dependencies" : "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/facebook-ios-sdk/build/Facebook.build/Debug-iphoneos/FacebookCore.build/Objects-normal/arm64/Exports.swiftdeps",
+    "swiftmodule" : "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/facebook-ios-sdk/build/Facebook.build/Debug-iphoneos/FacebookCore.build/Objects-normal/arm64/Exports~partial.swiftmodule"
+  },
+  "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/facebook-ios-sdk/Sources/FacebookCore/Imports.swift" : {
+    "const-values" : "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/facebook-ios-sdk/build/Facebook.build/Debug-iphoneos/FacebookCore.build/Objects-normal/arm64/Imports.swiftconstvalues",
+    "dependencies" : "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/facebook-ios-sdk/build/Facebook.build/Debug-iphoneos/FacebookCore.build/Objects-normal/arm64/Imports.d",
+    "diagnostics" : "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/facebook-ios-sdk/build/Facebook.build/Debug-iphoneos/FacebookCore.build/Objects-normal/arm64/Imports.dia",
+    "index-unit-output-path" : "/Facebook.build/Debug-iphoneos/FacebookCore.build/Objects-normal/arm64/Imports.o",
+    "llvm-bc" : "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/facebook-ios-sdk/build/Facebook.build/Debug-iphoneos/FacebookCore.build/Objects-normal/arm64/Imports.bc",
+    "object" : "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/facebook-ios-sdk/build/Facebook.build/Debug-iphoneos/FacebookCore.build/Objects-normal/arm64/Imports.o",
+    "swift-dependencies" : "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/facebook-ios-sdk/build/Facebook.build/Debug-iphoneos/FacebookCore.build/Objects-normal/arm64/Imports.swiftdeps",
+    "swiftmodule" : "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/facebook-ios-sdk/build/Facebook.build/Debug-iphoneos/FacebookCore.build/Objects-normal/arm64/Imports~partial.swiftmodule"
+  }
+}

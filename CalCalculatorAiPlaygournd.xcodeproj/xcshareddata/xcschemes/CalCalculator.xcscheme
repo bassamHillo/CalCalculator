@@ -29,9 +29,9 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "E51C57DF2EFD2FF4002A2D96"
-               BuildableName = "CaloriesCalculatorWidgetsExtension.appex"
-               BlueprintName = "CaloriesCalculatorWidgetsExtension"
+               BlueprintIdentifier = "CEB314FD2F01500600986732"
+               BuildableName = "CaloriesCalculatorWidgetsExtensionExtension.appex"
+               BlueprintName = "CaloriesCalculatorWidgetsExtensionExtension"
                ReferencedContainer = "container:CalCalculatorAiPlaygournd.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>

@@ -1,0 +1,219 @@
+{
+  "" : {
+    "diagnostics" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/CaloriesCalculatorWidgetsExtensionExtension-primary.dia",
+    "emit-module-dependencies" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/CaloriesCalculatorWidgetsExtensionExtension-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/CaloriesCalculatorWidgetsExtensionExtension-primary-emit-module.dia",
+    "pch" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/CaloriesCalculatorWidgetsExtensionExtension-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/CaloriesCalculatorWidgetsExtensionExtension-primary.swiftdeps"
+  },
+  "/Users/zoharbuchris/Documents/CalCalculator/CaloriesCalculatorWidgetsExtension/CaloriesCalculatorWidgets.swift" : {
+    "const-values" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/CaloriesCalculatorWidgets.swiftconstvalues",
+    "dependencies" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/CaloriesCalculatorWidgets.d",
+    "diagnostics" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/CaloriesCalculatorWidgets.dia",
+    "index-unit-output-path" : "/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/CaloriesCalculatorWidgets.o",
+    "llvm-bc" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/CaloriesCalculatorWidgets.bc",
+    "object" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/CaloriesCalculatorWidgets.o",
+    "swift-dependencies" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/CaloriesCalculatorWidgets.swiftdeps",
+    "swiftmodule" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/CaloriesCalculatorWidgets~partial.swiftmodule"
+  },
+  "/Users/zoharbuchris/Documents/CalCalculator/CaloriesCalculatorWidgetsExtension/CaloriesCalculatorWidgetsExtensionBundle.swift" : {
+    "const-values" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/CaloriesCalculatorWidgetsExtensionBundle.swiftconstvalues",
+    "dependencies" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/CaloriesCalculatorWidgetsExtensionBundle.d",
+    "diagnostics" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/CaloriesCalculatorWidgetsExtensionBundle.dia",
+    "index-unit-output-path" : "/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/CaloriesCalculatorWidgetsExtensionBundle.o",
+    "llvm-bc" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/CaloriesCalculatorWidgetsExtensionBundle.bc",
+    "object" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/CaloriesCalculatorWidgetsExtensionBundle.o",
+    "swift-dependencies" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/CaloriesCalculatorWidgetsExtensionBundle.swiftdeps",
+    "swiftmodule" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/CaloriesCalculatorWidgetsExtensionBundle~partial.swiftmodule"
+  },
+  "/Users/zoharbuchris/Documents/CalCalculator/CaloriesCalculatorWidgetsExtension/Entry/CaloriesEntry.swift" : {
+    "const-values" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/CaloriesEntry.swiftconstvalues",
+    "dependencies" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/CaloriesEntry.d",
+    "diagnostics" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/CaloriesEntry.dia",
+    "index-unit-output-path" : "/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/CaloriesEntry.o",
+    "llvm-bc" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/CaloriesEntry.bc",
+    "object" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/CaloriesEntry.o",
+    "swift-dependencies" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/CaloriesEntry.swiftdeps",
+    "swiftmodule" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/CaloriesEntry~partial.swiftmodule"
+  },
+  "/Users/zoharbuchris/Documents/CalCalculator/CaloriesCalculatorWidgetsExtension/Models/MacroNutrients.swift" : {
+    "const-values" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MacroNutrients.swiftconstvalues",
+    "dependencies" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MacroNutrients.d",
+    "diagnostics" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MacroNutrients.dia",
+    "index-unit-output-path" : "/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MacroNutrients.o",
+    "llvm-bc" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MacroNutrients.bc",
+    "object" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MacroNutrients.o",
+    "swift-dependencies" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MacroNutrients.swiftdeps",
+    "swiftmodule" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MacroNutrients~partial.swiftmodule"
+  },
+  "/Users/zoharbuchris/Documents/CalCalculator/CaloriesCalculatorWidgetsExtension/Preview/MockData.swift" : {
+    "const-values" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MockData.swiftconstvalues",
+    "dependencies" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MockData.d",
+    "diagnostics" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MockData.dia",
+    "index-unit-output-path" : "/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MockData.o",
+    "llvm-bc" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MockData.bc",
+    "object" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MockData.o",
+    "swift-dependencies" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MockData.swiftdeps",
+    "swiftmodule" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MockData~partial.swiftmodule"
+  },
+  "/Users/zoharbuchris/Documents/CalCalculator/CaloriesCalculatorWidgetsExtension/Provider/CaloriesTimelineProvider.swift" : {
+    "const-values" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/CaloriesTimelineProvider.swiftconstvalues",
+    "dependencies" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/CaloriesTimelineProvider.d",
+    "diagnostics" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/CaloriesTimelineProvider.dia",
+    "index-unit-output-path" : "/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/CaloriesTimelineProvider.o",
+    "llvm-bc" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/CaloriesTimelineProvider.bc",
+    "object" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/CaloriesTimelineProvider.o",
+    "swift-dependencies" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/CaloriesTimelineProvider.swiftdeps",
+    "swiftmodule" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/CaloriesTimelineProvider~partial.swiftmodule"
+  },
+  "/Users/zoharbuchris/Documents/CalCalculator/CaloriesCalculatorWidgetsExtension/Shared/WidgetDataManager.swift" : {
+    "const-values" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetDataManager.swiftconstvalues",
+    "dependencies" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetDataManager.d",
+    "diagnostics" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetDataManager.dia",
+    "index-unit-output-path" : "/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetDataManager.o",
+    "llvm-bc" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetDataManager.bc",
+    "object" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetDataManager.o",
+    "swift-dependencies" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetDataManager.swiftdeps",
+    "swiftmodule" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetDataManager~partial.swiftmodule"
+  },
+  "/Users/zoharbuchris/Documents/CalCalculator/CaloriesCalculatorWidgetsExtension/Styles/WidgetColors.swift" : {
+    "const-values" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetColors.swiftconstvalues",
+    "dependencies" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetColors.d",
+    "diagnostics" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetColors.dia",
+    "index-unit-output-path" : "/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetColors.o",
+    "llvm-bc" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetColors.bc",
+    "object" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetColors.o",
+    "swift-dependencies" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetColors.swiftdeps",
+    "swiftmodule" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetColors~partial.swiftmodule"
+  },
+  "/Users/zoharbuchris/Documents/CalCalculator/CaloriesCalculatorWidgetsExtension/Styles/WidgetSpacing.swift" : {
+    "const-values" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetSpacing.swiftconstvalues",
+    "dependencies" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetSpacing.d",
+    "diagnostics" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetSpacing.dia",
+    "index-unit-output-path" : "/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetSpacing.o",
+    "llvm-bc" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetSpacing.bc",
+    "object" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetSpacing.o",
+    "swift-dependencies" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetSpacing.swiftdeps",
+    "swiftmodule" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetSpacing~partial.swiftmodule"
+  },
+  "/Users/zoharbuchris/Documents/CalCalculator/CaloriesCalculatorWidgetsExtension/Styles/WidgetTypography.swift" : {
+    "const-values" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetTypography.swiftconstvalues",
+    "dependencies" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetTypography.d",
+    "diagnostics" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetTypography.dia",
+    "index-unit-output-path" : "/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetTypography.o",
+    "llvm-bc" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetTypography.bc",
+    "object" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetTypography.o",
+    "swift-dependencies" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetTypography.swiftdeps",
+    "swiftmodule" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetTypography~partial.swiftmodule"
+  },
+  "/Users/zoharbuchris/Documents/CalCalculator/CaloriesCalculatorWidgetsExtension/Views/Background/WidgetBackgroundView.swift" : {
+    "const-values" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetBackgroundView.swiftconstvalues",
+    "dependencies" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetBackgroundView.d",
+    "diagnostics" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetBackgroundView.dia",
+    "index-unit-output-path" : "/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetBackgroundView.o",
+    "llvm-bc" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetBackgroundView.bc",
+    "object" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetBackgroundView.o",
+    "swift-dependencies" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetBackgroundView.swiftdeps",
+    "swiftmodule" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetBackgroundView~partial.swiftmodule"
+  },
+  "/Users/zoharbuchris/Documents/CalCalculator/CaloriesCalculatorWidgetsExtension/Views/Components/MacroChartView.swift" : {
+    "const-values" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MacroChartView.swiftconstvalues",
+    "dependencies" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MacroChartView.d",
+    "diagnostics" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MacroChartView.dia",
+    "index-unit-output-path" : "/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MacroChartView.o",
+    "llvm-bc" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MacroChartView.bc",
+    "object" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MacroChartView.o",
+    "swift-dependencies" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MacroChartView.swiftdeps",
+    "swiftmodule" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MacroChartView~partial.swiftmodule"
+  },
+  "/Users/zoharbuchris/Documents/CalCalculator/CaloriesCalculatorWidgetsExtension/Views/Components/MacroLabelView.swift" : {
+    "const-values" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MacroLabelView.swiftconstvalues",
+    "dependencies" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MacroLabelView.d",
+    "diagnostics" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MacroLabelView.dia",
+    "index-unit-output-path" : "/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MacroLabelView.o",
+    "llvm-bc" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MacroLabelView.bc",
+    "object" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MacroLabelView.o",
+    "swift-dependencies" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MacroLabelView.swiftdeps",
+    "swiftmodule" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MacroLabelView~partial.swiftmodule"
+  },
+  "/Users/zoharbuchris/Documents/CalCalculator/CaloriesCalculatorWidgetsExtension/Views/Components/MacroProgressRingView.swift" : {
+    "const-values" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MacroProgressRingView.swiftconstvalues",
+    "dependencies" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MacroProgressRingView.d",
+    "diagnostics" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MacroProgressRingView.dia",
+    "index-unit-output-path" : "/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MacroProgressRingView.o",
+    "llvm-bc" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MacroProgressRingView.bc",
+    "object" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MacroProgressRingView.o",
+    "swift-dependencies" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MacroProgressRingView.swiftdeps",
+    "swiftmodule" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MacroProgressRingView~partial.swiftmodule"
+  },
+  "/Users/zoharbuchris/Documents/CalCalculator/CaloriesCalculatorWidgetsExtension/Views/Components/MacroValueView.swift" : {
+    "const-values" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MacroValueView.swiftconstvalues",
+    "dependencies" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MacroValueView.d",
+    "diagnostics" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MacroValueView.dia",
+    "index-unit-output-path" : "/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MacroValueView.o",
+    "llvm-bc" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MacroValueView.bc",
+    "object" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MacroValueView.o",
+    "swift-dependencies" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MacroValueView.swiftdeps",
+    "swiftmodule" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MacroValueView~partial.swiftmodule"
+  },
+  "/Users/zoharbuchris/Documents/CalCalculator/CaloriesCalculatorWidgetsExtension/Views/Components/WidgetLockedOverlay.swift" : {
+    "const-values" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetLockedOverlay.swiftconstvalues",
+    "dependencies" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetLockedOverlay.d",
+    "diagnostics" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetLockedOverlay.dia",
+    "index-unit-output-path" : "/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetLockedOverlay.o",
+    "llvm-bc" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetLockedOverlay.bc",
+    "object" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetLockedOverlay.o",
+    "swift-dependencies" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetLockedOverlay.swiftdeps",
+    "swiftmodule" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetLockedOverlay~partial.swiftmodule"
+  },
+  "/Users/zoharbuchris/Documents/CalCalculator/CaloriesCalculatorWidgetsExtension/Views/LargeWidgetView.swift" : {
+    "const-values" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/LargeWidgetView.swiftconstvalues",
+    "dependencies" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/LargeWidgetView.d",
+    "diagnostics" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/LargeWidgetView.dia",
+    "index-unit-output-path" : "/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/LargeWidgetView.o",
+    "llvm-bc" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/LargeWidgetView.bc",
+    "object" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/LargeWidgetView.o",
+    "swift-dependencies" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/LargeWidgetView.swiftdeps",
+    "swiftmodule" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/LargeWidgetView~partial.swiftmodule"
+  },
+  "/Users/zoharbuchris/Documents/CalCalculator/CaloriesCalculatorWidgetsExtension/Views/MediumWidgetView.swift" : {
+    "const-values" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MediumWidgetView.swiftconstvalues",
+    "dependencies" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MediumWidgetView.d",
+    "diagnostics" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MediumWidgetView.dia",
+    "index-unit-output-path" : "/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MediumWidgetView.o",
+    "llvm-bc" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MediumWidgetView.bc",
+    "object" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MediumWidgetView.o",
+    "swift-dependencies" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MediumWidgetView.swiftdeps",
+    "swiftmodule" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/MediumWidgetView~partial.swiftmodule"
+  },
+  "/Users/zoharbuchris/Documents/CalCalculator/CaloriesCalculatorWidgetsExtension/Views/SmallWidgetView.swift" : {
+    "const-values" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/SmallWidgetView.swiftconstvalues",
+    "dependencies" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/SmallWidgetView.d",
+    "diagnostics" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/SmallWidgetView.dia",
+    "index-unit-output-path" : "/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/SmallWidgetView.o",
+    "llvm-bc" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/SmallWidgetView.bc",
+    "object" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/SmallWidgetView.o",
+    "swift-dependencies" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/SmallWidgetView.swiftdeps",
+    "swiftmodule" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/SmallWidgetView~partial.swiftmodule"
+  },
+  "/Users/zoharbuchris/Documents/CalCalculator/CaloriesCalculatorWidgetsExtension/Views/WidgetRootView.swift" : {
+    "const-values" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetRootView.swiftconstvalues",
+    "dependencies" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetRootView.d",
+    "diagnostics" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetRootView.dia",
+    "index-unit-output-path" : "/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetRootView.o",
+    "llvm-bc" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetRootView.bc",
+    "object" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetRootView.o",
+    "swift-dependencies" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetRootView.swiftdeps",
+    "swiftmodule" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/WidgetRootView~partial.swiftmodule"
+  },
+  "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/DerivedSources/GeneratedAssetSymbols.swift" : {
+    "const-values" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/GeneratedAssetSymbols.swiftconstvalues",
+    "dependencies" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/GeneratedAssetSymbols.d",
+    "diagnostics" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/GeneratedAssetSymbols.dia",
+    "index-unit-output-path" : "/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/GeneratedAssetSymbols.o",
+    "llvm-bc" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/GeneratedAssetSymbols.bc",
+    "object" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/GeneratedAssetSymbols.o",
+    "swift-dependencies" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/GeneratedAssetSymbols.swiftdeps",
+    "swiftmodule" : "/Users/zoharbuchris/Documents/CalCalculator/build/CalCalculatorAiPlaygournd.build/Debug-iphoneos/CaloriesCalculatorWidgetsExtensionExtension.build/Objects-normal/arm64/GeneratedAssetSymbols~partial.swiftmodule"
+  }
+}

@@ -1,0 +1,4 @@
+module nanopb {
+umbrella "/Users/zoharbuchris/Library/Developer/Xcode/DerivedData/CalCalculatorAiPlaygournd-cbzakjzkurolfugllhiknyerdlha/SourcePackages/checkouts/nanopb/spm_headers"
+export *
+}

@@ -1,0 +1,4 @@
+module CommonSwiftUI {
+header "CommonSwiftUI-Swift.h"
+export *
+}

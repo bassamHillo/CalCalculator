@@ -1,0 +1,4 @@
+module MavenCommonSwiftUI {
+header "MavenCommonSwiftUI-Swift.h"
+export *
+}

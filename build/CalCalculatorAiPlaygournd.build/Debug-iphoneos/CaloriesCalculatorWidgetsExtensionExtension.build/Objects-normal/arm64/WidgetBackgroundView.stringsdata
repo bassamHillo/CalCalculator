@@ -1,0 +1,16 @@
+{
+  "source": "/Users/zoharbuchris/Documents/CalCalculator/CaloriesCalculatorWidgetsExtension/Views/Background/WidgetBackgroundView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Card Content",
+        "location": {
+          "startingColumn": 1,
+          "startingLine": 92
+        }
+      }
+    ]
+  },
+  "version": 1
+}
