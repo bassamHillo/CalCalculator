@@ -14,12 +14,14 @@ struct WeightChangesCard: View {
     @ObservedObject private var localizationManager = LocalizationManager.shared
     
     // Force view updates when weight history changes
-    // Use a combination of count, most recent weight, and date to detect changes
+    // Use a combination of count, most recent weight, date, and currentWeight to detect changes
+    // Include currentWeight to ensure updates when weight changes but history hasn't reloaded yet
     private var weightHistoryId: String {
         let count = weightHistory.count
         let mostRecent = weightHistory.last?.weight ?? currentWeight
         let mostRecentDate = weightHistory.last?.date.timeIntervalSince1970 ?? Date().timeIntervalSince1970
-        return "\(count)-\(String(format: "%.1f", mostRecent))-\(Int(mostRecentDate))"
+        // Include currentWeight in the ID to force update when it changes
+        return "\(count)-\(String(format: "%.2f", mostRecent))-\(String(format: "%.2f", currentWeight))-\(Int(mostRecentDate))"
     }
     
     private var weightUnit: String {

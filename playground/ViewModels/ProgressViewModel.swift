@@ -302,7 +302,9 @@ final class ProgressViewModel {
                 // Assign sorted array to trigger SwiftUI update
                 // Since ProgressViewModel is @MainActor, we're already on main thread
                 let sortedHistory = newHistory.sorted { $0.date < $1.date }
-                weightHistory = sortedHistory
+                // Force SwiftUI update by creating a completely new array reference
+                // This ensures views detect the change even if only values inside changed
+                weightHistory = Array(sortedHistory)
                 print("✅ [ProgressViewModel] Loaded weight history: \(sortedHistory.count) entries, most recent: \(sortedHistory.last?.weight ?? 0)")
                 
                 // Calculate stats after updating weightHistory
@@ -465,6 +467,12 @@ final class ProgressViewModel {
                 
                 try context.save()
                 HapticManager.shared.notification(.success)
+                
+                // Force SwiftData to process the save before fetching
+                // This ensures the updated entry is available when we reload
+                if let context = modelContext {
+                    try? context.processPendingChanges()
+                }
             } catch {
                 print("Failed to save weight entry to SwiftData: \(error)")
             }
@@ -486,9 +494,11 @@ final class ProgressViewModel {
         
         // Reload weight history to update all views
         // Since ProgressViewModel is @Observable, this will automatically trigger view updates
+        // Add a small delay to ensure SwiftData has processed the save
+        try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
         await loadWeightHistory()
         
-        print("✅ [ProgressViewModel] Weight updated: \(weight) (\(weightInKg) kg), history count: \(weightHistory.count)")
+        print("✅ [ProgressViewModel] Weight updated: \(weight) (\(weightInKg) kg), history count: \(weightHistory.count), most recent: \(weightHistory.last?.weight ?? 0)")
     }
     
     /// Sync weight data to widget via shared UserDefaults
