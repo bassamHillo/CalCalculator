@@ -482,14 +482,19 @@ final class ProgressViewModel {
         // Use display weight (what user sees) for widget
         syncWeightDataToWidget(weight: weight, weightInKg: weightInKg)
         
-        // Also save to HealthKit if available
-        if healthKitManager.isHealthDataAvailable {
+        // Also save to HealthKit if available and authorized
+        // Only attempt save if authorization has been determined (not .notDetermined)
+        if healthKitManager.isHealthDataAvailable && healthKitManager.isAuthorized {
             do {
                 try await healthKitManager.saveWeight(weightInKg)
+                print("✅ [ProgressViewModel] Weight saved to HealthKit: \(weightInKg) kg")
             } catch {
                 // Continue even if HealthKit save fails
-                print("Failed to save weight to HealthKit: \(error.localizedDescription)")
+                print("⚠️ [ProgressViewModel] Failed to save weight to HealthKit: \(error.localizedDescription)")
             }
+        } else if healthKitManager.isHealthDataAvailable && !healthKitManager.isAuthorized {
+            // Authorization not determined or denied - silently skip (user hasn't granted permission yet)
+            print("ℹ️ [ProgressViewModel] Skipping HealthKit save - authorization not granted")
         }
         
         // Reload weight history to update all views
