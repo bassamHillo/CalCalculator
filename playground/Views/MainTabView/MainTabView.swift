@@ -8,12 +8,15 @@
 import SwiftUI
 import SwiftData
 import SDK
+import UIKit
+import ObjectiveC
 
 struct MainTabView: View {
     var repository: MealRepository
     @ObservedObject private var localizationManager = LocalizationManager.shared
 
     @State private var selectedTab = 0
+    @State private var scrollHomeToTopTrigger = UUID()
     @StateObject private var networkMonitor = NetworkMonitor.shared
 
     @State var homeViewModel: HomeViewModel
@@ -77,6 +80,7 @@ struct MainTabView: View {
                 viewModel: homeViewModel,
                 repository: repository,
                 scanViewModel: scanViewModel,
+                scrollToTopTrigger: scrollHomeToTopTrigger,
                 onMealSaved: {
                     Task {
                         await homeViewModel.refreshTodayData()
@@ -136,9 +140,83 @@ struct MainTabView: View {
             }
         }
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: networkMonitor.isConnected)
+        .onChange(of: selectedTab) { oldValue, newValue in
+            // When home tab (0) is selected, trigger scroll to top
+            if newValue == 0 {
+                // Small delay to ensure view is ready, then scroll
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+                    scrollHomeToTopTrigger = UUID()
+                }
+            }
+        }
+        .background(TabBarTapDetector(onHomeTabTapped: {
+            // Home tab was tapped (even if already selected)
+            scrollHomeToTopTrigger = UUID()
+        }))
         // No need for onChange - SwiftUI automatically re-evaluates views when
         // @ObservedObject properties change. Since localizationManager.currentLanguage
         // is @Published, all views using localizationManager will update automatically.
+    }
+}
+
+// MARK: - TabBar Tap Detector
+
+struct TabBarTapDetector: UIViewControllerRepresentable {
+    let onHomeTabTapped: () -> Void
+    
+    func makeUIViewController(context: Context) -> UIViewController {
+        let controller = UIViewController()
+        DispatchQueue.main.async {
+            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+               let window = windowScene.windows.first,
+               let tabBarController = window.rootViewController as? UITabBarController ?? findTabBarController(in: window.rootViewController) {
+                let delegate = TabBarTapDelegate(onHomeTabTapped: onHomeTabTapped)
+                // Store delegate to keep it alive
+                objc_setAssociatedObject(tabBarController, "tabBarTapDelegate", delegate, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+                tabBarController.delegate = delegate
+            }
+        }
+        return controller
+    }
+    
+    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}
+    
+    private func findTabBarController(in viewController: UIViewController?) -> UITabBarController? {
+        guard let viewController = viewController else { return nil }
+        if let tabBarController = viewController as? UITabBarController {
+            return tabBarController
+        }
+        for child in viewController.children {
+            if let tabBarController = findTabBarController(in: child) {
+                return tabBarController
+            }
+        }
+        return nil
+    }
+}
+
+// MARK: - TabBar Tap Delegate
+
+class TabBarTapDelegate: NSObject, UITabBarControllerDelegate {
+    let onHomeTabTapped: () -> Void
+    private var lastSelectedIndex: Int = 0
+    
+    init(onHomeTabTapped: @escaping () -> Void) {
+        self.onHomeTabTapped = onHomeTabTapped
+        super.init()
+    }
+    
+    func tabBarController(_ tabBarController: UITabBarController, shouldSelect viewController: UIViewController) -> Bool {
+        let newIndex = tabBarController.viewControllers?.firstIndex(of: viewController) ?? -1
+        
+        // If home tab (index 0) is tapped and it was already selected, trigger scroll
+        if newIndex == 0 && lastSelectedIndex == 0 {
+            onHomeTabTapped()
+        }
+        
+        lastSelectedIndex = newIndex
+        return true
     }
 }
 

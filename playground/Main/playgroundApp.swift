@@ -266,6 +266,7 @@ extension Notification.Name {
     static let updateLiveActivity = Notification.Name("updateLiveActivity")
     static let exerciseSaved = Notification.Name("exerciseSaved")
     static let exerciseFlowShouldDismiss = Notification.Name("exerciseFlowShouldDismiss")
+    static let scrollHomeToTop = Notification.Name("scrollHomeToTop")
     static let addBurnedCaloriesToggled = Notification.Name("addBurnedCaloriesToggled")
     static let languageChanged = Notification.Name("languageChanged")
     static let mealReminderAction = Notification.Name("mealReminderAction")

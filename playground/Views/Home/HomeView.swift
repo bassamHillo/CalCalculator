@@ -14,6 +14,7 @@ struct HomeView: View {
     @Bindable var viewModel: HomeViewModel
     let repository: MealRepository
     @Bindable var scanViewModel: ScanViewModel
+    let scrollToTopTrigger: UUID
     var onMealSaved: () -> Void
 
     @Environment(\.isSubscribed) private var isSubscribed
@@ -42,11 +43,13 @@ struct HomeView: View {
         viewModel: HomeViewModel,
         repository: MealRepository,
         scanViewModel: ScanViewModel,
+        scrollToTopTrigger: UUID = UUID(),
         onMealSaved: @escaping () -> Void
     ) {
         self.viewModel = viewModel
         self.repository = repository
         self.scanViewModel = scanViewModel
+        self.scrollToTopTrigger = scrollToTopTrigger
         self.onMealSaved = onMealSaved
     }
 
@@ -276,23 +279,38 @@ struct HomeView: View {
                 .background(Color(.systemGroupedBackground))
 
             // Rest of the content
-            List {
-                progressSection
-                logExperienceSection
-                dietPlanSection
-                macroSection
-                badgesSection
-                healthKitSection
-                
-                // Recently uploaded section - show meals or empty state
-                if !viewModel.recentMeals.isEmpty {
-                    mealsSection
-                } else if Calendar.current.isDateInToday(viewModel.selectedDate) {
-                    // Show empty state only for today
-                    recentlyUploadedEmptySection
+            ScrollViewReader { proxy in
+                List {
+                    progressSection
+                        .id("home-top") // Anchor point for scrolling to top
+                    logExperienceSection
+                    dietPlanSection
+                    macroSection
+                    badgesSection
+                    healthKitSection
+                    
+                    // Recently uploaded section - show meals or empty state
+                    if !viewModel.recentMeals.isEmpty {
+                        mealsSection
+                    } else if Calendar.current.isDateInToday(viewModel.selectedDate) {
+                        // Show empty state only for today
+                        recentlyUploadedEmptySection
+                    }
+                }
+                .listStyle(.plain)
+                .onChange(of: scrollToTopTrigger) { _, _ in
+                    // Scroll to top when home tab is tapped (trigger changes)
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        proxy.scrollTo("home-top", anchor: .top)
+                    }
+                }
+                .onReceive(NotificationCenter.default.publisher(for: .scrollHomeToTop)) { _ in
+                    // Also support notification-based scrolling
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        proxy.scrollTo("home-top", anchor: .top)
+                    }
                 }
             }
-            .listStyle(.plain)
         }
     }
 
