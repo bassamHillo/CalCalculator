@@ -544,7 +544,7 @@
 			};
 			name = Debug;
 		};
-		A31433222EF0897D00EFE039 /* Release */ = {
+			A31433222EF0897D00EFE039 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -554,6 +554,7 @@
 				CURRENT_PROJECT_VERSION = 2;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = 5NS9ZUMYCS;
+				DWARF_DSYM_FILE_SHOULD_ACCOMPANY_PRODUCT = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = CalCalculator;
@@ -680,6 +681,7 @@
 				CURRENT_PROJECT_VERSION = 2;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = 5NS9ZUMYCS;
+				DWARF_DSYM_FILE_SHOULD_ACCOMPANY_PRODUCT = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = CaloriesCalculatorWidgetsExtension/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = CalCalculator;
