@@ -30,9 +30,19 @@ final class WeightReminderService {
     // MARK: - Schedule Reminder
     
     /// Schedule daily weight reminder at 8 AM
+    /// Only requests authorization if not already authorized
     func scheduleDailyReminder() async throws {
-        // Request authorization first
-        try await requestAuthorization()
+        // Check current authorization status first
+        let center = UNUserNotificationCenter.current()
+        let settings = await center.notificationSettings()
+        
+        // Only request authorization if not determined
+        // If already authorized or denied, proceed accordingly
+        if settings.authorizationStatus == .notDetermined {
+            try await requestAuthorization()
+        } else if settings.authorizationStatus == .denied {
+            throw WeightReminderError.authorizationDenied
+        }
         
         // Remove any existing weight reminder notifications
         await cancelReminder()
@@ -62,8 +72,7 @@ final class WeightReminderService {
             trigger: trigger
         )
         
-        // Schedule the notification
-        let center = UNUserNotificationCenter.current()
+        // Schedule the notification (reuse center variable from above)
         try await center.add(request)
         
         print("📅 Scheduled daily weight reminder at 8:00 AM")

@@ -95,7 +95,8 @@ final class LiveActivityManager {
         if let existingActivity = Activity<NutritionActivityAttributes>.activities.first {
             // Update existing activity
             Task {
-                await existingActivity.update(using: contentState)
+                let content = ActivityContent(state: contentState, staleDate: nil)
+                await existingActivity.update(content)
                 print("✅ [LiveActivity] Updated existing activity")
             }
         } else {
@@ -103,7 +104,7 @@ final class LiveActivityManager {
             do {
                 let activity = try Activity<NutritionActivityAttributes>.request(
                     attributes: attributes,
-                    contentState: contentState,
+                    content: .init(state: contentState, staleDate: nil),
                     pushType: nil
                 )
                 print("✅ [LiveActivity] Started new activity: \(activity.id)")
@@ -121,7 +122,9 @@ final class LiveActivityManager {
         }
         
         Task {
-            await activity.end(dismissalPolicy: .immediate)
+            // Use the current content state from the activity
+            let currentContent = ActivityContent(state: activity.content.state, staleDate: nil)
+            await activity.end(currentContent, dismissalPolicy: .immediate)
             print("✅ [LiveActivity] Ended activity")
         }
     }
@@ -132,7 +135,9 @@ final class LiveActivityManager {
         let activities = Activity<NutritionActivityAttributes>.activities
         for activity in activities {
             Task {
-                await activity.end(dismissalPolicy: .immediate)
+                // Use the current content state from the activity
+                let currentContent = ActivityContent(state: activity.content.state, staleDate: nil)
+                await activity.end(currentContent, dismissalPolicy: .immediate)
             }
         }
         print("✅ [LiveActivity] Ended all activities")

@@ -38,6 +38,12 @@ final class Exercise: Identifiable {
     }
 }
 
+// MARK: - Sendable Conformance
+// Note: SwiftData's @Model macro adds Sendable conformance, but explicit extension is needed
+// for Swift 6.0 strict concurrency when returning from main actor-isolated methods.
+// The redundant conformance warning from the macro can be safely ignored.
+extension Exercise: @unchecked Sendable {}
+
 enum ExerciseType: String, Codable, CaseIterable {
     case run = "run"
     case weightLifting = "weight_lifting"

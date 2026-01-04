@@ -94,8 +94,21 @@ struct CustomCameraView: View {
             }
         }
         .onAppear {
-            camera.startSession()
-            updateCameraForMode()
+            // Check camera permission before starting
+            let authStatus = AVCaptureDevice.authorizationStatus(for: .video)
+            print("📸 [CustomCameraView] onAppear - permission status: \(authStatus.rawValue)")
+            
+            if authStatus == .authorized {
+                // Setup session first, wait for it to complete, then start
+                camera.setupSession {
+                    // Configuration complete, now start the session
+                    // Preview will be set up in updateUIView when SwiftUI updates the view
+                    camera.startSession()
+                    updateCameraForMode()
+                }
+            } else {
+                print("❌ Camera permission not authorized: \(authStatus.rawValue)")
+            }
         }
         .onDisappear {
             camera.stopSession()
@@ -123,7 +136,8 @@ struct CustomCameraView: View {
         case .photo:
             PhotoOverlay()
         case .document:
-            DocumentOverlay(corners: camera.documentCorners)
+            // Document overlay - will show guide, detection happens on captured image
+            DocumentOverlay(corners: [])
         }
     }
     
@@ -328,9 +342,11 @@ struct CustomCameraView: View {
     
     private func capturePhoto() {
         camera.capturePhoto { image in
-            if let image = image {
-                self.capturedImage = image
-                self.showingHintInput = true
+            Task { @MainActor in
+                if let image = image {
+                    self.capturedImage = image
+                    self.showingHintInput = true
+                }
             }
         }
     }
@@ -341,8 +357,10 @@ struct CustomCameraView: View {
         
         // Capture a preview image along with the barcode
         camera.capturePhoto { image in
-            self.capturedImage = image
-            self.showingHintInput = true
+            Task { @MainActor in
+                self.capturedImage = image
+                self.showingHintInput = true
+            }
         }
     }
     
@@ -376,11 +394,42 @@ struct CameraPreviewView: UIViewRepresentable {
     
     func makeUIView(context: Context) -> UIView {
         let view = UIView(frame: UIScreen.main.bounds)
-        camera.setupPreview(in: view)
+        // Store view reference in coordinator for later preview setup
+        context.coordinator.view = view
         return view
     }
     
-    func updateUIView(_ uiView: UIView, context: Context) {}
+    func updateUIView(_ uiView: UIView, context: Context) {
+        // Update coordinator's view reference if needed
+        context.coordinator.view = uiView
+        // Setup preview if session is configured and preview doesn't exist
+        if camera.isSessionConfigured && !camera.hasPreviewLayer {
+            camera.setupPreview(in: uiView)
+        }
+    }
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(camera: camera)
+    }
+    
+    class Coordinator {
+        weak var view: UIView?
+        let camera: CameraController
+        private var cancellable: AnyCancellable?
+        
+        init(camera: CameraController) {
+            self.camera = camera
+            // Observe isSessionConfigured using Combine publisher (not KVO)
+            cancellable = camera.$isSessionConfigured
+                .sink { [weak self] isConfigured in
+                    guard let self = self,
+                          let view = self.view,
+                          isConfigured,
+                          !self.camera.hasPreviewLayer else { return }
+                    self.camera.setupPreview(in: view)
+                }
+        }
+    }
 }
 
 // MARK: - Camera Controller
@@ -388,106 +437,219 @@ struct CameraPreviewView: UIViewRepresentable {
 class CameraController: NSObject, ObservableObject {
     @Published var isCapturing = false
     @Published var scannedBarcode: String?
-    @Published var documentCorners: [CGPoint] = []
+    // documentCorners removed - app only uses still images, not live video processing
+    @Published var isSessionConfigured = false
     
-    private let captureSession = AVCaptureSession()
-    private var videoOutput: AVCaptureVideoDataOutput?
-    private var photoOutput: AVCapturePhotoOutput?
-    private var metadataOutput: AVCaptureMetadataOutput?
-    private var previewLayer: AVCaptureVideoPreviewLayer?
-    private var currentMode: CaptureMode = .photo
+    // AVCaptureSession is thread-safe and should be accessed from sessionQueue, not main actor
+    nonisolated(unsafe) private let captureSession = AVCaptureSession()
+    // Video output removed - app only uses still images
+    nonisolated(unsafe) private var photoOutput: AVCapturePhotoOutput?
+    nonisolated(unsafe) private var metadataOutput: AVCaptureMetadataOutput?
+    nonisolated(unsafe) private var previewLayer: AVCaptureVideoPreviewLayer?
+    nonisolated(unsafe) private var currentMode: CaptureMode = .photo
     
+    // Public property to check if preview layer exists
+    var hasPreviewLayer: Bool {
+        previewLayer != nil
+    }
+    
+    // Simple completion handler - accessed only on main actor
     private var photoCaptureCompletion: ((UIImage?) -> Void)?
-    
     private let sessionQueue = DispatchQueue(label: "camera.session.queue")
     
     override init() {
         super.init()
-        setupSession()
+        // Don't setup session in init - wait for explicit start
+        // Permission might not be requested yet
     }
     
     // MARK: - Setup
     
-    private func setupSession() {
+    func setupSession(completion: (() -> Void)? = nil) {
+        // Check camera permission first
+        let authStatus = AVCaptureDevice.authorizationStatus(for: .video)
+        guard authStatus == .authorized else {
+            print("❌ Camera permission not authorized: \(authStatus.rawValue)")
+            completion?()
+            return
+        }
+        
         sessionQueue.async { [weak self] in
             self?.configureSession()
+            DispatchQueue.main.async { [weak self] in
+                self?.isSessionConfigured = true
+                completion?()
+            }
         }
     }
     
-    private func configureSession() {
+    nonisolated private func configureSession() {
+        print("📸 [CameraController] configureSession() called")
+        guard !captureSession.isRunning else {
+            print("📸 [CameraController] Session already running")
+            return
+        }
+        
+        // Verify permission on session queue
+        let authStatus = AVCaptureDevice.authorizationStatus(for: .video)
+        print("📸 [CameraController] Permission check on session queue: \(authStatus.rawValue)")
+        guard authStatus == .authorized else {
+            print("❌ Permission check failed on session queue")
+            return
+        }
+        
+        print("📸 [CameraController] Beginning session configuration")
         captureSession.beginConfiguration()
         captureSession.sessionPreset = .photo
         
+        // CRITICAL: Remove ALL existing outputs first to prevent stale delegates
+        // This ensures no video output delegates are called (app only uses still images)
+        let existingOutputs = captureSession.outputs
+        for output in existingOutputs {
+            // Remove any video data outputs (should not exist, but remove if present)
+            if output is AVCaptureVideoDataOutput {
+                print("⚠️ [CameraController] Removing existing video output (should not exist)")
+                captureSession.removeOutput(output)
+            }
+        }
+        
+        // Also remove all existing inputs to ensure clean configuration
+        let existingInputs = captureSession.inputs
+        for input in existingInputs {
+            captureSession.removeInput(input)
+        }
+        
         // Add video input
-        guard let videoDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
-              let videoInput = try? AVCaptureDeviceInput(device: videoDevice) else {
+        guard let videoDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) else {
+            print("❌ Failed to get video device")
+            captureSession.commitConfiguration()
+            return
+        }
+        
+        guard let videoInput = try? AVCaptureDeviceInput(device: videoDevice) else {
+            print("❌ Failed to create video input - may need permission")
             captureSession.commitConfiguration()
             return
         }
         
         if captureSession.canAddInput(videoInput) {
             captureSession.addInput(videoInput)
+            print("✅ [CameraController] Added video input")
+        } else {
+            print("⚠️ [CameraController] Cannot add video input")
         }
         
-        // Add photo output
+        // Add photo output - CRITICAL for photo capture
         let photoOutput = AVCapturePhotoOutput()
         if captureSession.canAddOutput(photoOutput) {
             captureSession.addOutput(photoOutput)
             self.photoOutput = photoOutput
+            print("✅ [CameraController] Added photo output")
+        } else {
+            print("❌ [CameraController] Cannot add photo output - this will cause crashes!")
+            captureSession.commitConfiguration()
+            return
         }
         
         // Add metadata output for barcodes
         let metadataOutput = AVCaptureMetadataOutput()
         if captureSession.canAddOutput(metadataOutput) {
             captureSession.addOutput(metadataOutput)
-            metadataOutput.setMetadataObjectsDelegate(self, queue: DispatchQueue.main)
             metadataOutput.metadataObjectTypes = [
                 .ean8, .ean13, .pdf417, .qr, .code128, .code39, .code93, .upce
             ]
             self.metadataOutput = metadataOutput
+            // Set delegate on main actor
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+                metadataOutput.setMetadataObjectsDelegate(self, queue: DispatchQueue.main)
+            }
         }
         
-        // Add video output for document detection
-        let videoOutput = AVCaptureVideoDataOutput()
-        videoOutput.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
-        videoOutput.setSampleBufferDelegate(self, queue: DispatchQueue(label: "video.output.queue"))
-        if captureSession.canAddOutput(videoOutput) {
-            captureSession.addOutput(videoOutput)
-            self.videoOutput = videoOutput
-        }
+        // Video output removed - app only uses still images for analysis
+        // Document detection will be done on captured images, not live video frames
         
         captureSession.commitConfiguration()
+        print("✅ [CameraController] Session configuration committed")
     }
     
     func setupPreview(in view: UIView) {
-        let previewLayer = AVCaptureVideoPreviewLayer(session: captureSession)
-        previewLayer.frame = view.bounds
-        previewLayer.videoGravity = .resizeAspectFill
-        view.layer.addSublayer(previewLayer)
-        self.previewLayer = previewLayer
+        print("📸 [CameraController] setupPreview() called")
+        print("📸 [CameraController] View bounds: \(view.bounds)")
+        print("📸 [CameraController] Session isRunning: \(captureSession.isRunning)")
+        print("📸 [CameraController] Session inputs count: \(captureSession.inputs.count)")
+        print("📸 [CameraController] Session outputs count: \(captureSession.outputs.count)")
+        
+        // Only create preview layer if it doesn't exist
+        guard previewLayer == nil else {
+            // Update frame if preview already exists
+            previewLayer?.frame = view.bounds
+            print("✅ [CameraController] Preview layer frame updated to: \(view.bounds)")
+            return
+        }
+        
+        // Create preview layer - session should already be configured at this point
+        // AVCaptureVideoPreviewLayer can be created on main thread
+        let newPreviewLayer = AVCaptureVideoPreviewLayer(session: captureSession)
+        newPreviewLayer.frame = view.bounds
+        newPreviewLayer.videoGravity = .resizeAspectFill
+        view.layer.addSublayer(newPreviewLayer)
+        self.previewLayer = newPreviewLayer
+        print("✅ [CameraController] Preview layer created and added to view")
+        print("✅ [CameraController] Preview layer frame: \(newPreviewLayer.frame)")
+        print("✅ [CameraController] Preview layer session: \(newPreviewLayer.session != nil ? "attached" : "nil")")
     }
     
     // MARK: - Session Control
     
     func startSession() {
+        print("📸 [CameraController] startSession() called")
+        // Check permission before starting
+        let authStatus = AVCaptureDevice.authorizationStatus(for: .video)
+        print("📸 [CameraController] Permission check in startSession: \(authStatus.rawValue)")
+        guard authStatus == .authorized else {
+            print("❌ Cannot start session - permission not authorized")
+            return
+        }
+        
         sessionQueue.async { [weak self] in
-            self?.captureSession.startRunning()
+            guard let self = self else {
+                print("❌ [CameraController] self is nil in startSession")
+                return
+            }
+            guard !self.captureSession.isRunning else {
+                print("📸 [CameraController] Session already running")
+                return
+            }
+            print("📸 [CameraController] Starting capture session")
+            print("📸 [CameraController] Session inputs before start: \(self.captureSession.inputs.count)")
+            print("📸 [CameraController] Session outputs before start: \(self.captureSession.outputs.count)")
+            self.captureSession.startRunning()
+            print("✅ [CameraController] Capture session started")
+            print("✅ [CameraController] Session isRunning after start: \(self.captureSession.isRunning)")
+            print("✅ [CameraController] Preview layer exists: \(self.previewLayer != nil)")
+            if let preview = self.previewLayer {
+                print("✅ [CameraController] Preview layer frame: \(preview.frame)")
+                print("✅ [CameraController] Preview layer superlayer: \(preview.superlayer != nil ? "exists" : "nil")")
+            }
         }
     }
     
     func stopSession() {
         sessionQueue.async { [weak self] in
-            self?.captureSession.stopRunning()
+            guard let self = self else { return }
+            self.captureSession.stopRunning()
         }
     }
     
     // MARK: - Mode Control
     
     func updateMode(_ mode: CaptureMode) {
+        print("📹 [CameraController] updateMode called: \(mode.rawValue) on queue: \(String(cString: __dispatch_queue_get_label(nil)))")
         currentMode = mode
         DispatchQueue.main.async {
+            print("📹 [CameraController] Clearing scannedBarcode on main queue")
             self.scannedBarcode = nil
-            self.documentCorners = []
         }
     }
     
@@ -508,38 +670,99 @@ class CameraController: NSObject, ObservableObject {
     
     // MARK: - Photo Capture
     
-    func capturePhoto(completion: @escaping (UIImage?) -> Void) {
-        guard let photoOutput = photoOutput else {
+    func capturePhoto(completion: @escaping @Sendable (UIImage?) -> Void) {
+        // Prevent multiple simultaneous captures
+        guard !isCapturing else {
             completion(nil)
             return
         }
         
-        DispatchQueue.main.async {
-            self.isCapturing = true
-        }
+        // Set capturing state and store completion
+        isCapturing = true
         photoCaptureCompletion = completion
         
-        let settings = AVCapturePhotoSettings()
-        settings.flashMode = .auto
-        
-        photoOutput.capturePhoto(with: settings, delegate: self)
+        // Capture photo on session queue
+        sessionQueue.async { [weak self] in
+            guard let self = self else {
+                DispatchQueue.main.async {
+                    completion(nil)
+                }
+                return
+            }
+            
+            // Check if photo output is still valid
+            guard let photoOutput = self.photoOutput else {
+                DispatchQueue.main.async {
+                    self.isCapturing = false
+                    self.photoCaptureCompletion = nil
+                    completion(nil)
+                }
+                return
+            }
+            
+            // Ensure session is running before capturing
+            guard self.captureSession.isRunning else {
+                DispatchQueue.main.async {
+                    self.isCapturing = false
+                    self.photoCaptureCompletion = nil
+                    completion(nil)
+                }
+                return
+            }
+            
+            // Create photo settings
+            let settings = AVCapturePhotoSettings()
+            if photoOutput.isFlashScene {
+                settings.flashMode = .auto
+            }
+            
+            // Capture photo
+            photoOutput.capturePhoto(with: settings, delegate: self)
+        }
     }
 }
 
 // MARK: - AVCapturePhotoCaptureDelegate
 
 extension CameraController: AVCapturePhotoCaptureDelegate {
-    func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
-        DispatchQueue.main.async {
-            self.isCapturing = false
-            
-            guard let data = photo.fileDataRepresentation(),
-                  let image = UIImage(data: data) else {
-                self.photoCaptureCompletion?(nil)
-                return
+    nonisolated func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
+        print("📸 [PhotoOutput] didFinishProcessingPhoto called on queue: \(String(cString: __dispatch_queue_get_label(nil)))")
+        
+        // Handle error first
+        if let error = error {
+            print("❌ [PhotoOutput] Photo capture error: \(error.localizedDescription)")
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+                self.isCapturing = false
+                let completion = self.photoCaptureCompletion
+                self.photoCaptureCompletion = nil
+                completion?(nil)
             }
-            
-            self.photoCaptureCompletion?(image)
+            return
+        }
+        
+        // Process photo data
+        guard let data = photo.fileDataRepresentation(),
+              let image = UIImage(data: data) else {
+            print("❌ [PhotoOutput] Failed to create image from photo data")
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+                self.isCapturing = false
+                let completion = self.photoCaptureCompletion
+                self.photoCaptureCompletion = nil
+                completion?(nil)
+            }
+            return
+        }
+        
+        // Call completion on main thread
+        DispatchQueue.main.async { [weak self] in
+            print("📸 [PhotoOutput] Calling completion on main queue")
+            guard let self = self else { return }
+            self.isCapturing = false
+            let completion = self.photoCaptureCompletion
+            self.photoCaptureCompletion = nil
+            completion?(image)
         }
     }
 }
@@ -547,57 +770,24 @@ extension CameraController: AVCapturePhotoCaptureDelegate {
 // MARK: - AVCaptureMetadataOutputObjectsDelegate
 
 extension CameraController: AVCaptureMetadataOutputObjectsDelegate {
-    func metadataOutput(_ output: AVCaptureMetadataOutput, didOutput metadataObjects: [AVMetadataObject], from connection: AVCaptureConnection) {
+    nonisolated func metadataOutput(_ output: AVCaptureMetadataOutput, didOutput metadataObjects: [AVMetadataObject], from connection: AVCaptureConnection) {
         guard let metadataObject = metadataObjects.first as? AVMetadataMachineReadableCodeObject,
               let stringValue = metadataObject.stringValue else { return }
         
-        DispatchQueue.main.async {
-            if self.currentMode == .barcode && self.scannedBarcode == nil {
+        // Delegate is already called on main queue (set in configureSession)
+        // currentMode is nonisolated(unsafe) so can be accessed directly
+        // scannedBarcode is @Published, so update on main queue
+        if self.currentMode == .barcode {
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self, self.scannedBarcode == nil else { return }
                 self.scannedBarcode = stringValue
             }
         }
     }
 }
 
-// MARK: - AVCaptureVideoDataOutputSampleBufferDelegate
-
-extension CameraController: AVCaptureVideoDataOutputSampleBufferDelegate {
-    func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
-        // Check mode on background thread first
-        guard currentMode == .document else { return }
-        
-        guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
-        
-        let request = VNDetectRectanglesRequest { [weak self] request, error in
-            guard let results = request.results as? [VNRectangleObservation],
-                  let rect = results.first else {
-                DispatchQueue.main.async {
-                    self?.documentCorners = []
-                }
-                return
-            }
-            
-            let corners = [
-                rect.topLeft,
-                rect.topRight,
-                rect.bottomRight,
-                rect.bottomLeft
-            ].map { CGPoint(x: $0.x, y: 1 - $0.y) }
-            
-            DispatchQueue.main.async {
-                self?.documentCorners = corners
-            }
-        }
-        
-        request.minimumAspectRatio = 0.3
-        request.maximumAspectRatio = 1.0
-        request.minimumSize = 0.1
-        request.maximumObservations = 1
-        
-        let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, options: [:])
-        try? handler.perform([request])
-    }
-}
+// Video output delegate removed - app only uses still images for analysis
+// Document detection will be performed on captured images when needed
 
 // MARK: - Overlay Views
 
@@ -836,3 +1026,4 @@ struct DocumentShape: Shape {
         print("Captured: \(result), hint: \(hint ?? "none")")
     }
 }
+

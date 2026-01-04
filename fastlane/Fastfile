@@ -14,16 +14,18 @@ platform :ios do
   # App Store Connect API credentials (must be set via environment variables)
   APP_STORE_CONNECT_KEY_ID = ENV["APP_STORE_CONNECT_API_KEY_ID"]
   APP_STORE_CONNECT_ISSUER_ID = ENV["APP_STORE_CONNECT_ISSUER_ID"]
-  APP_STORE_CONNECT_KEY_FILEPATH = ENV["APP_STORE_CONNECT_KEY_FILEPATH"] || File.expand_path("AuthKey.p8", __dir__)
+  # Use __dir__ directly to get the fastlane directory, then join with AuthKey.p8
+  APP_STORE_CONNECT_KEY_FILEPATH = ENV["APP_STORE_CONNECT_KEY_FILEPATH"] || File.join(__dir__, "AuthKey.p8")
   
   # Helper to get absolute path for API key file
   def get_api_key_filepath
     filepath = APP_STORE_CONNECT_KEY_FILEPATH
     # If relative path, make it absolute relative to fastlane directory
     unless File.absolute_path?(filepath)
-      filepath = File.expand_path(filepath, __dir__)
+      filepath = File.join(__dir__, filepath)
     end
-    filepath
+    # Normalize the path to resolve any double slashes or .. references
+    File.expand_path(filepath)
   end
   
   # AWS CodeCommit credentials (for private Swift packages)

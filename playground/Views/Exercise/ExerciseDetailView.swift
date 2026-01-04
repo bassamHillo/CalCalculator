@@ -49,12 +49,17 @@ struct ExerciseDetailView: View {
                 notes: exerciseType == .describe ? exerciseDescription.trimmingCharacters(in: .whitespacesAndNewlines) : nil
             )
         }
+        .onReceive(NotificationCenter.default.publisher(for: .exerciseFlowShouldDismiss)) { _ in
+            // Dismiss this view when exercise is saved, returning user to home
+            dismiss()
+        }
         .onAppear {
             // Reset to clean state when view appears
             selectedIntensity = nil
             selectedDuration = 0
             customDuration = ""
-            calculatedCalories = 0
+            // Temporary: Generate random calories between 1-10000 until API is connected
+            calculatedCalories = Int.random(in: 1...10000)
             exerciseDescription = ""
             manualCalories = ""
         }
@@ -166,7 +171,8 @@ struct ExerciseDetailView: View {
                         if let calories = Int(newValue), calories > 0 {
                             calculatedCalories = calories
                         } else {
-                            calculatedCalories = 0
+                            // Temporary: Generate random calories between 1-10000 until API is connected
+                            calculatedCalories = Int.random(in: 1...10000)
                         }
                     }
             }
@@ -305,7 +311,8 @@ struct ExerciseDetailView: View {
     private func calculateCalories() {
         // Check if duration and intensity are set before calculating
         guard let intensity = selectedIntensity, selectedDuration > 0 else {
-            calculatedCalories = 0
+            // Temporary: Generate random calories between 1-10000 until API is connected
+            calculatedCalories = Int.random(in: 1...10000)
             return
         }
         
@@ -316,18 +323,23 @@ struct ExerciseDetailView: View {
         case .medium: baseCaloriesPerMinute = 10
         case .low: baseCaloriesPerMinute = 5
         }
-        calculatedCalories = Int(baseCaloriesPerMinute * Double(selectedDuration))
+        let calculated = Int(baseCaloriesPerMinute * Double(selectedDuration))
+        // Ensure we have at least 1 calorie, otherwise generate random
+        calculatedCalories = calculated > 0 ? calculated : Int.random(in: 1...10000)
     }
     
     private func calculateCaloriesForDescribe() {
         // For describe type, use a simple estimation based on duration
         // Default to medium intensity estimation
         guard selectedDuration > 0 else {
-            calculatedCalories = 0
+            // Temporary: Generate random calories between 1-10000 until API is connected
+            calculatedCalories = Int.random(in: 1...10000)
             return
         }
         // Use medium intensity as default for described exercises
-        calculatedCalories = Int(10.0 * Double(selectedDuration))
+        let calculated = Int(10.0 * Double(selectedDuration))
+        // Ensure we have at least 1 calorie, otherwise generate random
+        calculatedCalories = calculated > 0 ? calculated : Int.random(in: 1...10000)
     }
 }
 

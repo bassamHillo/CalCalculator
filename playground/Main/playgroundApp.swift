@@ -6,9 +6,6 @@
 //
 
 import Combine
-import Firebase
-import FirebaseAnalytics
-import MavenCommonSwiftUI
 import SDK
 import SwiftData
 import SwiftUI
@@ -88,6 +85,7 @@ struct playgroundApp: App {
         WindowGroup {
             ContentView()
                 .modelContainer(modelContainer)
+                .environment(sdk)  // Inject SDK using @Observable
                 .preferredColorScheme(appearanceMode.colorScheme)
                 .environment(\.localization, LocalizationManager.shared)
                 .environment(\.layoutDirection, currentLayoutDirection)
@@ -134,9 +132,19 @@ struct playgroundApp: App {
                         }
                     }
                 }
-                .environment(sdk)  // Use direct environment like example app
                 .environment(\.isSubscribed, subscriptionStatus)  // Inject reactive subscription status
                 .task {
+                    // QA Version: In Release builds, automatically enable subscription override
+                    #if !DEBUG
+                    let settings = UserSettings.shared
+                    if !settings.debugOverrideSubscription {
+                        // First time in Release - enable override and set as subscribed
+                        settings.debugOverrideSubscription = true
+                        settings.debugIsSubscribed = true
+                        print("🔧 [QA] Release build: Auto-enabled subscription override (user starts as Pro)")
+                    }
+                    #endif
+                    
                     // Initialize subscription status on app launch (respects debug override)
                     // This ensures debug flag works immediately
                     updateSubscriptionStatus()
@@ -195,29 +203,12 @@ struct playgroundApp: App {
                     // NOTE: Subscription status is ONLY updated when HTML paywall closes
                     // No automatic checks when app becomes active
                     
-                    // Schedule weight reminder when app becomes active
-                    Task {
-                        do {
-                            try await WeightReminderService.shared.scheduleDailyReminder()
-                        } catch {
-                            print("⚠️ Failed to schedule weight reminder: \(error)")
-                        }
-                    }
-                    
                     // Check if widget updated weight and notify ProgressView
                     let appGroupIdentifier = "group.CalCalculatorAiPlaygournd.shared"
                     if let sharedDefaults = UserDefaults(suiteName: appGroupIdentifier),
                        sharedDefaults.bool(forKey: "widget.weightUpdatedFromWidget") {
                         // Post notification so ProgressView can handle it
                         NotificationCenter.default.post(name: .widgetWeightUpdated, object: nil)
-                    }
-                }
-                .task {
-                    // Schedule weight reminder on app launch
-                    do {
-                        try await WeightReminderService.shared.scheduleDailyReminder()
-                    } catch {
-                        print("⚠️ Failed to schedule weight reminder on launch: \(error)")
                     }
                 }
         }
@@ -274,6 +265,7 @@ extension Notification.Name {
     static let nutritionGoalsChanged = Notification.Name("nutritionGoalsChanged")
     static let updateLiveActivity = Notification.Name("updateLiveActivity")
     static let exerciseSaved = Notification.Name("exerciseSaved")
+    static let exerciseFlowShouldDismiss = Notification.Name("exerciseFlowShouldDismiss")
     static let addBurnedCaloriesToggled = Notification.Name("addBurnedCaloriesToggled")
     static let languageChanged = Notification.Name("languageChanged")
     static let mealReminderAction = Notification.Name("mealReminderAction")

@@ -34,27 +34,14 @@ struct LoginView: View {
                 // Logo and branding section
                 VStack(spacing: 20) {
                     // App icon/logo
-                    ZStack {
-                        Circle()
-                            .fill(
-                                LinearGradient(
-                                    colors: [
-                                        Color.accentColor,
-                                        Color.accentColor.opacity(0.7)
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .frame(width: 120, height: 120)
-                            .shadow(color: Color.accentColor.opacity(0.3), radius: 20, x: 0, y: 10)
-                        
-                        Image(systemName: "fork.knife.circle.fill")
-                            .font(.system(size: 60))
-                            .foregroundStyle(.white)
-                    }
-                    .scaleEffect(isAnimating ? 1.0 : 0.8)
-                    .animation(.spring(response: 0.6, dampingFraction: 0.7), value: isAnimating)
+                    Image(.splashLogo)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 120, height: 120)
+                        .clipShape(RoundedRectangle(cornerRadius: 26))
+                        .shadow(color: Color.accentColor.opacity(0.3), radius: 20, x: 0, y: 10)
+                        .scaleEffect(isAnimating ? 1.0 : 0.8)
+                        .animation(.spring(response: 0.6, dampingFraction: 0.7), value: isAnimating)
                     
                     VStack(spacing: 8) {
                         Text(LocalizationManager.shared.localizedString(for: AppStrings.Authentication.calCalculator))

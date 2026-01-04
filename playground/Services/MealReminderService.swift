@@ -30,17 +30,27 @@ final class MealReminderService {
     
     func requestAuthorization() async throws {
         let center = UNUserNotificationCenter.current()
-        let granted = try await center.requestAuthorization(options: [.alert, .sound, .badge])
+        let settings = await center.notificationSettings()
         
-        if !granted {
+        // Only request authorization if not determined
+        if settings.authorizationStatus == .notDetermined {
+            let granted = try await center.requestAuthorization(options: [.alert, .sound, .badge])
+            if !granted {
+                throw MealReminderError.authorizationDenied
+            }
+        } else if settings.authorizationStatus == .denied {
             throw MealReminderError.authorizationDenied
         }
+        // If already authorized, proceed without requesting
     }
     
     // MARK: - Schedule Reminders
     
     /// Schedule all reminders for active diet plans
     func scheduleAllReminders() async throws {
+        // Check and request authorization if needed
+        try await requestAuthorization()
+        
         // Remove all existing notifications first
         await cancelAllReminders()
         
@@ -90,7 +100,7 @@ final class MealReminderService {
             dateComponents.hour = hour
             dateComponents.minute = minute
             
-            guard let scheduledTime = calendar.date(from: dateComponents) else {
+            guard let _ = calendar.date(from: dateComponents) else {
                 continue
             }
             

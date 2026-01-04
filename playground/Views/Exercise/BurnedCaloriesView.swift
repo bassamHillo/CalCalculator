@@ -22,6 +22,11 @@ struct BurnedCaloriesView: View {
     @State private var errorMessage = ""
     @ObservedObject private var localizationManager = LocalizationManager.shared
     
+    // Exercise types that require duration
+    private var requiresDuration: Bool {
+        exerciseType == .run || exerciseType == .weightLifting
+    }
+    
     init(calories: Int, exerciseType: ExerciseType, duration: Int, intensity: ExerciseIntensity? = nil, notes: String? = nil) {
         self.calories = calories
         self.exerciseType = exerciseType
@@ -147,17 +152,23 @@ struct BurnedCaloriesView: View {
             return
         }
         
-        guard duration > 0 else {
-            errorMessage = "Please enter a valid duration."
-            showError = true
-            return
+        // Only validate duration for exercise types that require it
+        if requiresDuration {
+            guard duration > 0 else {
+                errorMessage = "Please enter a valid duration."
+                showError = true
+                return
+            }
         }
         
         do {
+            // Use duration if provided, otherwise use 0 for exercise types that don't require it
+            let exerciseDuration = requiresDuration ? duration : (duration > 0 ? duration : 0)
+            
             let exercise = Exercise(
                 type: exerciseType,
                 calories: editedCalories,
-                duration: duration,
+                duration: exerciseDuration,
                 intensity: intensity,
                 notes: notes
             )
@@ -168,6 +179,9 @@ struct BurnedCaloriesView: View {
             
             // Notify that an exercise was saved so HomeViewModel can refresh burned calories
             NotificationCenter.default.post(name: .exerciseSaved, object: nil)
+            
+            // Notify that exercise flow should be dismissed (dismiss all exercise views back to home)
+            NotificationCenter.default.post(name: .exerciseFlowShouldDismiss, object: nil)
             
             // Provide haptic feedback
             HapticManager.shared.notification(.success)

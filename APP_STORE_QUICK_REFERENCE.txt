@@ -1,0 +1,124 @@
+═══════════════════════════════════════════════════════════════
+APP STORE CONNECT - QUICK REFERENCE
+Copy & Paste Ready Content
+═══════════════════════════════════════════════════════════════
+
+1. PRIMARY CATEGORY
+───────────────────────────────────────────────────────────────
+Select: Health & Fitness
+(Alternative: Food & Drink)
+
+2. KEYWORDS (100 characters max)
+───────────────────────────────────────────────────────────────
+calorie counter, nutrition tracker, food diary, meal logging, diet tracker, macro calculator, weight loss, fitness tracker, health app, meal planner
+
+3. DESCRIPTION (Copy this entire section)
+───────────────────────────────────────────────────────────────
+CalCalculator - Your Smart Calorie & Nutrition Tracker
+
+Track your calories, monitor your macros, and achieve your health goals with CalCalculator - the intelligent nutrition tracking app powered by AI.
+
+KEY FEATURES:
+
+📸 AI-Powered Food Recognition
+Scan your meals with your camera and let our advanced AI identify foods, calculate calories, and track macros automatically. No manual entry needed!
+
+📊 Comprehensive Nutrition Tracking
+Monitor calories, protein, carbs, and fats with detailed daily summaries. Set personalized goals and track your progress over time.
+
+🎯 Smart Diet Plans
+Create personalized meal plans with scheduled meals and track your adherence. Get insights and recommendations to stay on track.
+
+💪 Exercise & Activity Tracking
+Log workouts and track calories burned. Connect with HealthKit to sync steps, weight, and other health data.
+
+📈 Progress Analytics
+View detailed charts and insights about your eating patterns, weight trends, and progress toward your goals.
+
+🏆 Achievements & Badges
+Stay motivated with achievement badges and milestones as you reach your nutrition goals.
+
+✨ PREMIUM FEATURES:
+• Unlimited AI food analysis
+• Advanced diet planning and meal scheduling
+• Detailed progress insights and analytics
+• Customizable nutrition goals
+• Weight tracking with reminders
+• Data export to PDF
+
+WHY CALCALCULATOR?
+
+• Fast & Easy: Scan food in seconds, no tedious manual entry
+• Accurate: AI-powered recognition with comprehensive nutrition database
+• Smart: Personalized recommendations based on your goals
+• Beautiful: Modern, intuitive interface designed for daily use
+• Private: Your data stays secure and private
+
+Perfect for anyone looking to:
+• Lose weight
+• Gain muscle
+• Maintain a healthy lifestyle
+• Track macros for fitness goals
+• Monitor nutrition for medical reasons
+
+Download CalCalculator today and take control of your nutrition journey!
+
+───────────────────────────────────────────────────────────────
+
+4. SUPPORT URL
+───────────────────────────────────────────────────────────────
+✅ YOUR SUPPORT URL:
+https://caloriecount-ai.com/support
+
+5. PRIVACY POLICY URL
+───────────────────────────────────────────────────────────────
+✅ YOUR PRIVACY POLICY URL:
+https://caloriecount-ai.com/privacy
+
+6. TERMS OF SERVICE URL (Optional but recommended)
+───────────────────────────────────────────────────────────────
+✅ YOUR TERMS URL:
+https://caloriecount-ai.com/terms
+
+7. COPYRIGHT
+───────────────────────────────────────────────────────────────
+Format: © 2025 [Your Company Name]
+Example: © 2025 CalCalculator Inc.
+
+8. CONTACT INFORMATION
+───────────────────────────────────────────────────────────────
+Fill in your details:
+- First Name: [Your First Name]
+- Last Name: [Your Last Name]  
+- Phone: [Your Phone Number]
+- Email: [Your Email Address]
+
+═══════════════════════════════════════════════════════════════
+SCREENSHOT REQUIREMENTS
+═══════════════════════════════════════════════════════════════
+
+6.5-inch iPhone (iPhone 11 Pro Max, iPhone XS Max)
+Resolution: 1242 x 2688 pixels (portrait)
+Required: At least 1 screenshot
+
+13-inch iPad (iPad Pro 12.9-inch)
+Resolution: 2048 x 2732 pixels (portrait)
+Required: At least 1 screenshot
+
+HOW TO CAPTURE:
+1. Open Xcode
+2. Select device: iPhone 11 Pro Max or iPad Pro 12.9-inch
+3. Run your app
+4. Navigate to desired screen
+5. Press Cmd+S or Device → Screenshot
+6. Screenshots saved to Desktop
+
+RECOMMENDED SCREENS TO CAPTURE:
+- Home screen with progress
+- Food scanning screen
+- Nutrition dashboard
+- Diet plan view
+- Progress charts
+
+═══════════════════════════════════════════════════════════════
+

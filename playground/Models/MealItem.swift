@@ -48,7 +48,7 @@ final class MealItem {
     }
     
     /// Macro data for this item
-    var macros: MacroData {
+    nonisolated var macros: MacroData {
         MacroData(
             calories: calories,
             proteinG: proteinG,

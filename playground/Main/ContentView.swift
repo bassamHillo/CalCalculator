@@ -8,7 +8,6 @@
 import SwiftUI
 import SwiftData
 import SDK
-import MavenCommonSwiftUI
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
@@ -132,11 +131,9 @@ struct ContentView: View {
                         .mealReminderHandler(scanViewModel: mainTabView.scanViewModel)
                 }
             } else {
-                SplashView()
+                // Initialize repository immediately without splash screen
+                Color.clear
                     .task {
-                        // add delay
-                        try? await Task.sleep(nanoseconds: 2_000_000_000)
-
                         let repoStart = Date()
                         // Pre-warm the model context and database with a simple query
                         // This ensures SwiftData is fully initialized before we start querying

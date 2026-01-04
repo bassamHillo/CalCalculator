@@ -182,8 +182,8 @@ final class ProgressViewModel {
     var sleepHours: Double = 0
     var healthKitAuthorizationDenied: Bool = false
     
-    // Settings Reference
-    private var settings: UserSettings { UserSettings.shared }
+    // Settings Reference - observe changes
+    @MainActor private var settings: UserSettings { UserSettings.shared }
     
     // MARK: - Computed Properties
     
@@ -228,6 +228,12 @@ final class ProgressViewModel {
         settings.displayWeight
     }
     
+    /// Most recent weight from history, or display weight if no history
+    var mostRecentWeight: Double {
+        // weightHistory is sorted ascending (oldest first, newest last)
+        weightHistory.last?.weight ?? displayWeight
+    }
+    
     var displayTargetWeight: Double {
         useMetricUnits ? targetWeight : targetWeight * 2.20462
     }
@@ -260,17 +266,10 @@ final class ProgressViewModel {
         errorMessage = nil
         defer { isLoading = false }
         
-        do {
-            // Load data sequentially to avoid actor isolation issues
-            await loadCaloriesData()
-            await loadWeightHistory()
-            await loadHealthKitData()
-        } catch {
-            self.error = error
-            self.errorMessage = error.localizedDescription
-            self.showError = true
-            print("🔴 [ProgressViewModel] Error loading data: \(error)")
-        }
+        // Load data sequentially to avoid actor isolation issues
+        await loadCaloriesData()
+        await loadWeightHistory()
+        await loadHealthKitData()
     }
     
     func loadWeightHistory() async {
@@ -290,13 +289,18 @@ final class ProgressViewModel {
                 weightEntries = entries
                 
                 // Convert to weight data points
-                weightHistory = entries.map { entry in
+                // Create new array to ensure SwiftUI detects the change
+                let newHistory = entries.map { entry in
                     WeightDataPoint(
                         date: entry.date,
                         weight: useMetricUnits ? entry.weight : entry.weightInPounds,
                         note: entry.note
                     )
                 }
+                
+                // Ensure consistent sorting: ascending by date (oldest first, newest last)
+                // Assign sorted array to trigger SwiftUI update
+                weightHistory = newHistory.sorted { $0.date < $1.date }
                 
                 // Calculate stats
                 calculateWeightStats()
@@ -313,7 +317,9 @@ final class ProgressViewModel {
         // Fallback to HealthKit if no SwiftData entries
         if healthKitManager.isHealthDataAvailable {
             let history = await healthKitManager.fetchWeightHistory(from: startDate)
-            weightHistory = history.map { WeightDataPoint(date: $0.date, weight: $0.weight) }
+            // Create new array and assign sorted to trigger SwiftUI update
+            let newHistory = history.map { WeightDataPoint(date: $0.date, weight: $0.weight) }
+            weightHistory = newHistory.sorted { $0.date < $1.date }
             calculateWeightStats()
         }
         
@@ -340,10 +346,13 @@ final class ProgressViewModel {
             return
         }
         
-        let weights = weightHistory.map { $0.weight }
+        // Ensure weightHistory is sorted (should already be, but double-check)
+        let sortedHistory = weightHistory.sorted { $0.date < $1.date }
+        let weights = sortedHistory.map { $0.weight }
         
-        if let firstWeight = weightHistory.first?.weight,
-           let lastWeight = weightHistory.last?.weight {
+        // Calculate total change: most recent (last) - oldest (first)
+        if let firstWeight = sortedHistory.first?.weight,
+           let lastWeight = sortedHistory.last?.weight {
             totalWeightChange = lastWeight - firstWeight
         }
         
@@ -423,6 +432,7 @@ final class ProgressViewModel {
         let weightInKg = settings.useMetricUnits ? weight : weight / 2.20462
         
         // Update UserSettings (this also updates lastWeightDate)
+        // Since UserSettings is @Observable, this will automatically trigger view updates
         settings.updateWeight(weightInKg)
         
         // Save to SwiftData
@@ -452,6 +462,8 @@ final class ProgressViewModel {
             }
         }
         
+        // Reload weight history to update all views
+        // Since ProgressViewModel is @Observable, this will automatically trigger view updates
         await loadWeightHistory()
     }
     

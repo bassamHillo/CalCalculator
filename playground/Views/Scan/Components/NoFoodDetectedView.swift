@@ -15,6 +15,7 @@ struct NoFoodDetectedView: View {
     @ObservedObject private var localizationManager = LocalizationManager.shared
     
     @State private var showingTips = false
+    @State private var isMessageExpanded = false
     
     var body: some View {
         // Explicitly reference currentLanguage to ensure SwiftUI tracks the dependency
@@ -79,15 +80,42 @@ struct NoFoodDetectedView: View {
                 .fontWeight(.bold)
             
             if let message = message, !message.isEmpty {
-                Text(message)
-                    .font(.body)
-                    .foregroundColor(.primary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
-                    .padding(.vertical, 12)
-                    .frame(maxWidth: .infinity)
-                    .background(Color.orange.opacity(0.1))
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                VStack(spacing: 8) {
+                    Text(message)
+                        .font(.body)
+                        .foregroundColor(.primary)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(isMessageExpanded ? nil : 2)
+                        .fixedSize(horizontal: false, vertical: isMessageExpanded)
+                        .padding(.horizontal)
+                        .padding(.vertical, 12)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .background(Color.orange.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    
+                    // Show expand/collapse button if text is long enough to potentially be truncated
+                    // iOS automatically shows "..." when text exceeds lineLimit(2)
+                    // Estimate: ~50-60 chars per line for body font, so 100+ chars likely needs more than 2 lines
+                    if message.count > 100 {
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                isMessageExpanded.toggle()
+                            }
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text(isMessageExpanded ? 
+                                     localizationManager.localizedString(for: AppStrings.Common.showLess) : 
+                                     localizationManager.localizedString(for: AppStrings.Common.readMore))
+                                    .font(.caption)
+                                    .fontWeight(.medium)
+                                Image(systemName: isMessageExpanded ? "chevron.up" : "chevron.down")
+                                    .font(.caption2)
+                            }
+                            .foregroundColor(.orange)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
             } else {
                 Text(localizationManager.localizedString(for: AppStrings.Scanning.noFoodInImage))
                     .font(.subheadline)

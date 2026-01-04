@@ -231,7 +231,7 @@ final class MealRepository {
             end = rangeEnd
         }
         
-        var descriptor = FetchDescriptor<DaySummary>(
+        let descriptor = FetchDescriptor<DaySummary>(
             predicate: #Predicate<DaySummary> { summary in
                 summary.date >= start && summary.date < end
             },

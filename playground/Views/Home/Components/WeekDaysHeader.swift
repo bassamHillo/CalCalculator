@@ -30,6 +30,7 @@ struct WeekDaysHeader: View {
                 }
                 .padding(.vertical, 8)
                 .padding(.horizontal, 16)
+                .scrollTargetLayout()
             }
             .scrollTargetBehavior(.viewAligned)
             .onAppear {
@@ -139,7 +140,7 @@ struct WeekDayItem: View {
     let today = Date()
     
     let weekDays = (0..<7).map { offset -> WeekDay in
-        let date = calendar.date(byAdding: .day, value: offset - 3, to: today)!
+        let date = calendar.date(byAdding: .day, value: offset - 3, to: today) ?? today
         let dayFormatter = DateFormatter()
         dayFormatter.dateFormat = "EEE"
         dayFormatter.locale = Locale(identifier: LocalizationManager.shared.currentLanguage)

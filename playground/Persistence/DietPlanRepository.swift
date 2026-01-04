@@ -89,14 +89,6 @@ final class DietPlanRepository {
         let calendar = Calendar.current
         let dayOfWeek = calendar.component(.weekday, from: date)
         
-        let descriptor = FetchDescriptor<ScheduledMeal>(
-            predicate: #Predicate<ScheduledMeal> { meal in
-                // Check if meal is scheduled for this day
-                // Note: SwiftData doesn't support array contains directly, so we'll filter in memory
-                meal.daysOfWeek.contains(dayOfWeek)
-            }
-        )
-        
         // Note: Since SwiftData predicate doesn't support array.contains well,
         // we fetch all and filter in memory
         let allMeals = try context.fetch(FetchDescriptor<ScheduledMeal>())
@@ -255,11 +247,11 @@ final class DietPlanRepository {
                 // Check if there's a meal logged around the scheduled time
                 let scheduledTime = scheduledMeal.time
                 let scheduledHour = calendar.component(.hour, from: scheduledTime)
-                let scheduledMinute = calendar.component(.minute, from: scheduledTime)
+                let _ = calendar.component(.minute, from: scheduledTime)
                 
                 let matchingMeal = actualMeals.first { meal in
                     let mealHour = calendar.component(.hour, from: meal.timestamp)
-                    let mealMinute = calendar.component(.minute, from: meal.timestamp)
+                    let _ = calendar.component(.minute, from: meal.timestamp)
                     // Consider it a match if within 2 hours of scheduled time
                     let hourDiff = abs(mealHour - scheduledHour)
                     return hourDiff <= 2 && meal.category == scheduledMeal.category
@@ -285,7 +277,7 @@ final class DietPlanRepository {
         }
         
         // Calculate off-diet calories (meals not part of scheduled meals)
-        let scheduledMealIds = Set(scheduledMeals.map { $0.id })
+        let _ = Set(scheduledMeals.map { $0.id })
         let offDietMeals = actualMeals.filter { meal in
             // Check if meal matches any scheduled meal
             !scheduledMeals.contains { scheduled in

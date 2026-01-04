@@ -15,7 +15,6 @@ struct EmptyMealsView: View {
         // Explicitly reference currentLanguage to ensure SwiftUI tracks the dependency
         let _ = localizationManager.currentLanguage
         
-        return
         VStack(spacing: 12) {
             emptyIcon
             titleText

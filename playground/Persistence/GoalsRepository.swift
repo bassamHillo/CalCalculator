@@ -54,26 +54,22 @@ final class GoalsRepository {
         } else {
             // Calculate from profile data if calorie goal not provided
             baseCalories = 2000
-            var proteinMultiplier = 1.0
+            // Note: proteinMultiplier was set but never used in this branch
+            // Removed to fix warning
             
             // Check for activity level
             if let activityLevel = data["activity_level"] as? String {
                 switch activityLevel.lowercased() {
                 case "sedentary":
                     baseCalories = 1800
-                    proteinMultiplier = 0.8
                 case "lightly_active", "light":
                     baseCalories = 2000
-                    proteinMultiplier = 1.0
                 case "moderately_active", "moderate":
                     baseCalories = 2200
-                    proteinMultiplier = 1.1
                 case "very_active", "active":
                     baseCalories = 2500
-                    proteinMultiplier = 1.2
                 case "extra_active", "athlete":
                     baseCalories = 2800
-                    proteinMultiplier = 1.3
                 default:
                     break
                 }

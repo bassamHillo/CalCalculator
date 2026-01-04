@@ -145,7 +145,7 @@ struct DataExportView: View {
     private func exportWeightDataPDF() {
         isExporting = true
         
-        DispatchQueue.global(qos: .userInitiated).async {
+        Task { @MainActor in
             let pdfData = generateWeightPDF()
             let filename = "weight_history_\(dateString()).pdf"
             sharePDF(pdfData, filename: filename)
@@ -155,7 +155,7 @@ struct DataExportView: View {
     private func exportMealDataPDF() {
         isExporting = true
         
-        DispatchQueue.global(qos: .userInitiated).async {
+        Task { @MainActor in
             let pdfData = generateMealsPDF()
             let filename = "meal_history_\(dateString()).pdf"
             sharePDF(pdfData, filename: filename)
@@ -165,7 +165,7 @@ struct DataExportView: View {
     private func exportDailyNutritionSummaryPDF() {
         isExporting = true
         
-        DispatchQueue.global(qos: .userInitiated).async {
+        Task { @MainActor in
             let pdfData = generateDailyNutritionPDF()
             let filename = "daily_nutrition_\(dateString()).pdf"
             sharePDF(pdfData, filename: filename)
@@ -175,7 +175,7 @@ struct DataExportView: View {
     private func exportAllDataPDF() {
         isExporting = true
         
-        DispatchQueue.global(qos: .userInitiated).async {
+        Task { @MainActor in
             let pdfData = generateComprehensivePDF()
             let filename = "calcalculator_report_\(dateString()).pdf"
             sharePDF(pdfData, filename: filename)

@@ -30,6 +30,10 @@ struct LogExperienceCard: View {
     private var dietPlanRepository: DietPlanRepository {
         DietPlanRepository(context: modelContext)
     }
+    
+    private var isSmallScreen: Bool {
+        UIScreen.main.bounds.width < 375 // iPhone SE and similar small devices
+    }
 
     var body: some View {
         // Explicitly reference currentLanguage to ensure SwiftUI tracks the dependency
@@ -62,7 +66,7 @@ struct LogExperienceCard: View {
             }
 
             // Stats Row
-            HStack(spacing: 24) {
+            HStack(spacing: isSmallScreen ? 12 : 24) {
                 LogStatItem(
                     icon: "fork.knife",
                     value: "\(mealsCount)",
@@ -95,7 +99,7 @@ struct LogExperienceCard: View {
             Divider()
 
             // Quick Actions
-            HStack(spacing: 8) {
+            HStack(spacing: isSmallScreen ? 4 : 8) {
                 // Diet Plan Button - always show (premium feature)
                 if let onViewDiet = onViewDiet {
                     QuickLogButton(
@@ -180,22 +184,30 @@ struct LogStatItem: View {
     let value: String
     let label: String
     let color: Color
+    
+    private var isSmallScreen: Bool {
+        UIScreen.main.bounds.width < 375 // iPhone SE and similar small devices
+    }
 
     var body: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: isSmallScreen ? 4 : 6) {
             HStack(spacing: 4) {
                 Image(systemName: icon)
-                    .font(.caption)
+                    .font(isSmallScreen ? .caption2 : .caption)
                     .foregroundColor(color)
 
                 Text(value)
-                    .font(.headline)
+                    .font(isSmallScreen ? .subheadline : .headline)
                     .fontWeight(.bold)
+                    .minimumScaleFactor(0.8)
+                    .lineLimit(1)
             }
 
             Text(label)
-                .font(.caption2)
+                .font(isSmallScreen ? .caption2 : .caption2)
                 .foregroundColor(.secondary)
+                .minimumScaleFactor(0.9)
+                .lineLimit(1)
         }
         .frame(maxWidth: .infinity)
     }
@@ -208,24 +220,31 @@ struct QuickLogButton: View {
     let title: String
     let color: Color
     let action: () -> Void
+    
+    private var isSmallScreen: Bool {
+        UIScreen.main.bounds.width < 375 // iPhone SE and similar small devices
+    }
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 6) {
+            VStack(spacing: isSmallScreen ? 4 : 6) {
                 ZStack {
                     Circle()
                         .fill(color.opacity(0.15))
-                        .frame(width: 44, height: 44)
+                        .frame(width: isSmallScreen ? 40 : 44, height: isSmallScreen ? 40 : 44)
 
                     Image(systemName: icon)
-                        .font(.system(size: 18, weight: .semibold))
+                        .font(.system(size: isSmallScreen ? 16 : 18, weight: .semibold))
                         .foregroundColor(color)
                 }
 
                 Text(title)
-                    .font(.caption)
+                    .font(isSmallScreen ? .caption2 : .caption)
                     .fontWeight(.medium)
                     .foregroundColor(.primary)
+                    .minimumScaleFactor(0.8)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.center)
             }
             .frame(maxWidth: .infinity)
         }

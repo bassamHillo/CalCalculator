@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Charts
 
 struct HistoryView: View {
 
@@ -198,7 +199,8 @@ struct HistoryView: View {
                         totalMeals: totalMeals,
                         totalCalories: totalCalories,
                         averageCalories: averageCalories,
-                        timeFilter: selectedTimeFilter
+                        timeFilter: selectedTimeFilter,
+                        summaries: filteredSummaries
                     )
                     .transition(.opacity.combined(with: .move(edge: .top)))
                 }
@@ -435,7 +437,9 @@ struct StatsSummaryCard: View {
     let totalCalories: Int
     let averageCalories: Int
     let timeFilter: HistoryTimeFilter
+    let summaries: [DaySummary] // Add summaries for chart
     @ObservedObject private var localizationManager = LocalizationManager.shared
+    @State private var showingChart = false
     
     var body: some View {
         // Explicitly reference currentLanguage to ensure SwiftUI tracks the dependency
@@ -456,9 +460,14 @@ struct StatsSummaryCard: View {
                 
                 Spacer()
                 
-                Image(systemName: "chart.bar.fill")
-                    .font(.title2)
-                    .foregroundColor(.blue.opacity(0.7))
+                Button {
+                    HapticManager.shared.impact(.light)
+                    showingChart = true
+                } label: {
+                    Image(systemName: "chart.bar.fill")
+                        .font(.title2)
+                        .foregroundColor(.blue.opacity(0.7))
+                }
             }
             
             Divider()
@@ -486,6 +495,9 @@ struct StatsSummaryCard: View {
         .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+        .sheet(isPresented: $showingChart) {
+            HistoryChartView(summaries: summaries, timeFilter: timeFilter)
+        }
     }
     
     private func formatNumber(_ number: Int) -> String {
@@ -525,7 +537,6 @@ struct DaySummaryCard: View {
         // Explicitly reference currentLanguage to ensure SwiftUI tracks the dependency
         let _ = localizationManager.currentLanguage
         
-        return
         VStack(spacing: 0) {
             // Header with date
             headerSection

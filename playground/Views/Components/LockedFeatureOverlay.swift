@@ -155,47 +155,12 @@ struct PremiumLockedContent<Content: View>: View {
             SDKView(
                 model: sdk,
                 page: .splash,
-                show: Binding(
-                    get: { showPaywall },
-                    set: { newValue in
-                        if !newValue && showPaywall {
-                            // Paywall was dismissed - THIS IS THE ONLY PLACE WE CHECK SUBSCRIPTION STATUS
-                            Task { @MainActor in
-                                // Update subscription status from SDK
-                                do {
-                                    try await sdk.updateIsSubscribed()
-                                    // Update reactive subscription status in app
-                                    NotificationCenter.default.post(name: .subscriptionStatusUpdated, object: nil)
-                                } catch {
-                                    print("⚠️ Failed to update subscription status: \(error)")
-                                }
-                                
-                                // Check SDK directly - show decline confirmation if not subscribed
-                                if !sdk.isSubscribed {
-                                    showDeclineConfirmation = true
-                                } else {
-                                    // User subscribed - reset analysis count
-                                    AnalysisLimitManager.shared.resetAnalysisCount()
-                                }
-                            }
-                        }
-                        showPaywall = newValue
-                    }
-                ),
+                show: paywallBinding(showPaywall: $showPaywall, sdk: sdk, showDeclineConfirmation: $showDeclineConfirmation),
                 backgroundColor: .white,
                 ignoreSafeArea: true
             )
         }
-        .overlay {
-            // Show confirmation modal on top of everything - no padding/blur around it
-            if showDeclineConfirmation {
-                PaywallDeclineConfirmationView(
-                    isPresented: $showDeclineConfirmation,
-                    showPaywall: $showPaywall
-                )
-                .zIndex(1000) // Ensure it's on top
-            }
-        }
+        .paywallDismissalOverlay(showPaywall: $showPaywall, showDeclineConfirmation: $showDeclineConfirmation)
     }
 }
 

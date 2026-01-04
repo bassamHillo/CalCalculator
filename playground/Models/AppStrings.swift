@@ -49,6 +49,8 @@ struct AppStrings {
         static let optional = "Optional"
         static let tapToViewDetails = "Tap to view details for this day"
         static let enabled = "Enabled"
+        static let readMore = "Read More"
+        static let showLess = "Show Less"
     }
     
     // MARK: - Home
@@ -179,6 +181,8 @@ struct AppStrings {
         static let trackProgressBySaving = "Track your progress by saving your current weight"
         static let total = "Total"
         static let weightChart = "Weight Chart"
+        static let stableThisPeriod = "Stable this period"
+        static let now = "Now"
     }
     
     // MARK: - Food & Meals

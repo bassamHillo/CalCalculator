@@ -12,12 +12,13 @@ struct ProfileView: View {
     
     // MARK: - State
     
+    // Use @State with @Observable - SwiftUI will automatically track changes to viewModel properties
     @State private var viewModel = ProfileViewModel()
-    // Note: ProfileViewModel is @Observable, so changes to its properties will automatically trigger view updates
     @Environment(TheSDK.self) private var sdk
     @Environment(\.localization) private var localization
     @ObservedObject private var localizationManager = LocalizationManager.shared
-    private var settings = UserSettings.shared
+    // Observe UserSettings directly for reactive updates
+    @Bindable private var settings = UserSettings.shared
     
     // Sheet presentation states
     @State private var showingPersonalDetails = false

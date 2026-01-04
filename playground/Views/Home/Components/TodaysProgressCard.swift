@@ -43,7 +43,7 @@ struct TodaysProgressCard: View {
         
         return VStack(spacing: isSmallScreen ? 12 : 16) {
             // Top section - Calories gained vs lost
-            HStack(spacing: isSmallScreen ? 12 : 20) {
+            HStack(spacing: isSmallScreen ? 4 : 20) {
                 // Calories Gained (Consumed)
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 4) {
@@ -56,13 +56,14 @@ struct TodaysProgressCard: View {
                             .foregroundColor(.secondary)
                     }
                     Text("\(consumed)")
-                        .font(.system(size: isSmallScreen ? 24 : 28, weight: .bold, design: .rounded))
-                        .foregroundColor(.primary)
+                        .font(.system(size: isSmallScreen ? 20 : 28, weight: .bold, design: .rounded))
+                        .foregroundStyle(.primary) // White in dark mode, black in light mode
                         .contentTransition(.numericText())
                         .animation(.spring(response: 0.6, dampingFraction: 0.8), value: consumed)
+                        .minimumScaleFactor(0.6)
+                        .lineLimit(1)
                 }
-                
-                Spacer()
+                .frame(maxWidth: .infinity)
                 
                 // Net Calories (Consumed - Burned)
                 VStack(alignment: .center, spacing: 4) {
@@ -71,13 +72,14 @@ struct TodaysProgressCard: View {
                         .foregroundColor(.secondary)
                         
                     Text("\(netCalories)")
-                        .font(.system(size: isSmallScreen ? 28 : 36, weight: .bold, design: .rounded))
-                        .foregroundColor(netCalories >= 0 ? .orange : .green)
+                        .font(.system(size: isSmallScreen ? 18 : 36, weight: .bold, design: .rounded))
+                        .foregroundStyle(netCalories >= 0 ? .orange : .green)
                         .contentTransition(.numericText())
                         .animation(.spring(response: 0.6, dampingFraction: 0.8), value: netCalories)
+                        .minimumScaleFactor(0.5)
+                        .lineLimit(1)
                 }
-                
-                Spacer()
+                .frame(maxWidth: .infinity)
                 
                 // Calories Lost (Burned)
                 VStack(alignment: .trailing, spacing: 4) {
@@ -91,11 +93,14 @@ struct TodaysProgressCard: View {
                             .foregroundColor(.blue)
                     }
                     Text("\(burnedCalories)")
-                        .font(.system(size: isSmallScreen ? 24 : 28, weight: .bold, design: .rounded))
-                        .foregroundColor(.primary)
+                        .font(.system(size: isSmallScreen ? 20 : 28, weight: .bold, design: .rounded))
+                        .foregroundStyle(.primary) // White in dark mode, black in light mode
                         .contentTransition(.numericText())
                         .animation(.spring(response: 0.6, dampingFraction: 0.8), value: burnedCalories)
+                        .minimumScaleFactor(0.6)
+                        .lineLimit(1)
                 }
+                .frame(maxWidth: .infinity)
             }
             
             // Bottom section - Remaining calories and progress
@@ -104,7 +109,7 @@ struct TodaysProgressCard: View {
                 VStack(alignment: .leading, spacing: isSmallScreen ? 4 : 6) {
                     Text("\(remainingCalories)")
                         .font(.system(size: isSmallScreen ? 28 : 36, weight: .bold, design: .rounded))
-                        .foregroundColor(.primary)
+                        .foregroundStyle(.primary) // White in dark mode, black in light mode
                         .contentTransition(.numericText())
                         .animation(.spring(response: 0.6, dampingFraction: 0.8), value: remainingCalories)
                         .minimumScaleFactor(0.8)

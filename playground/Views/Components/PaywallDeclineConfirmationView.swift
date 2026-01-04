@@ -15,6 +15,9 @@ struct PaywallDeclineConfirmationView: View {
     @ObservedObject private var localizationManager = LocalizationManager.shared
     
     @State private var paywallTask: Task<Void, Never>?
+    @State private var animationTask: Task<Void, Never>?
+    @State private var isAnimated: Bool = false
+    @State private var topSafeArea: CGFloat = 44 // Default, updated in onAppear
     
     private var isSmallScreen: Bool {
         UIScreen.main.bounds.width < 375 // iPhone SE and similar small devices
@@ -25,14 +28,12 @@ struct PaywallDeclineConfirmationView: View {
         let _ = localizationManager.currentLanguage
         
         return ZStack {
-            // Dark overlay - no padding
-            Color.black.opacity(0.5)
-                .ignoresSafeArea()
-                .onTapGesture {
-                    isPresented = false
-                }
+            // Full screen semi-transparent overlay - clearer, less blur
+            Color.black.opacity(0.15)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .ignoresSafeArea(.all)
             
-            // Modal card - matching image design exactly
+            // Modal card - centered horizontally, positioned near top
             VStack(spacing: isSmallScreen ? 16 : 20) {
                 // Title - exact text from image
                 Text(localizationManager.localizedString(for: AppStrings.Premium.areYouSure))
@@ -58,14 +59,14 @@ struct PaywallDeclineConfirmationView: View {
                     Button {
                         // Cancel any existing task first
                         paywallTask?.cancel()
-                        // Dismiss the confirmation modal immediately
+                        // Dismiss the confirmation modal first
                         isPresented = false
-                        // Show paywall immediately
+                        // Small delay to ensure modal is dismissed before showing paywall
                         paywallTask = Task { @MainActor in
-                            // Show paywall if task wasn't cancelled
-                            if !Task.isCancelled {
-                                showPaywall = true
-                            }
+                            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 second delay
+                            // Check if task wasn't cancelled before showing paywall
+                            guard !Task.isCancelled else { return }
+                            showPaywall = true
                         }
                     } label: {
                         Text(localizationManager.localizedString(for: AppStrings.Premium.startFreeTrial))
@@ -80,7 +81,7 @@ struct PaywallDeclineConfirmationView: View {
                     .accessibilityLabel(localizationManager.localizedString(for: AppStrings.Premium.startFreeTrial))
                     .accessibilityHint("Opens the premium subscription screen to start your free trial")
                     
-                    // Not now button - also blue as shown in image
+                    // Not now button - grey
                     Button {
                         isPresented = false
                     } label: {
@@ -90,26 +91,54 @@ struct PaywallDeclineConfirmationView: View {
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, isSmallScreen ? 12 : 14)
-                            .background(Color.blue)
+                            .background(Color(uiColor: .systemGray))
                             .cornerRadius(12)
                     }
                     .accessibilityLabel(localizationManager.localizedString(for: AppStrings.Premium.skipFreeTrial))
                     .accessibilityHint("Dismisses this confirmation without starting free trial")
                 }
             }
-            .padding(isSmallScreen ? 20 : 24)
-            .frame(maxWidth: .infinity)
+            .padding(isSmallScreen ? 20 : 24) // Padding only on the modal card content
+            .frame(maxWidth: UIScreen.main.bounds.width - 32) // Horizontal padding from screen edges
             .background(
                 RoundedRectangle(cornerRadius: 20)
                     .fill(Color(.systemBackground))
             )
-            .padding(.horizontal, isSmallScreen ? 16 : 20) // Reduced padding for small screens
             .shadow(color: Color.black.opacity(0.2), radius: 20, x: 0, y: 10)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top) // Center horizontally, align to top
+            .padding(.top, max(topSafeArea + 16, 60)) // Dynamic top padding based on safe area
+            .scaleEffect(isAnimated ? 1.0 : 0.95) // Scale animation
+            .opacity(isAnimated ? 1.0 : 0.0) // Fade animation
+        }
+        .ignoresSafeArea(.all)
+        .onAppear {
+            // Update safe area on main thread
+            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+               let window = windowScene.windows.first {
+                topSafeArea = window.safeAreaInsets.top
+            }
+            
+            // Cancel any existing animation task
+            animationTask?.cancel()
+            
+            // Start animation with proper cancellation handling using Task
+            // This is better than DispatchQueue for Swift concurrency
+            animationTask = Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 10_000_000) // 0.01 seconds
+                // Check if view is still presented and task wasn't cancelled
+                guard isPresented, !Task.isCancelled else { return }
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                    isAnimated = true
+                }
+            }
         }
         .onDisappear {
-            // Cancel task if view is dismissed
+            // Cancel all pending operations
             paywallTask?.cancel()
             paywallTask = nil
+            animationTask?.cancel()
+            animationTask = nil
+            isAnimated = false
         }
     }
 }

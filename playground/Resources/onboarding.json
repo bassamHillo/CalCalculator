@@ -95,10 +95,9 @@
   },
   {
     "id": "notifications",
-    "type": "permission",
-    "title": "Reach your goals with notifications",
-    "description": "Turn on reminders so we can keep you on track.",
-    "permission": "notifications",
+    "type": "info",
+    "title": "Stay on track",
+    "description": "You can enable notifications later in settings to get reminders for meals and weight tracking.",
     "next": "referral"
   },
   {

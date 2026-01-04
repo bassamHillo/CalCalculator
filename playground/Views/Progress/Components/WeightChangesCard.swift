@@ -13,54 +13,104 @@ struct WeightChangesCard: View {
     let useMetricUnits: Bool
     @ObservedObject private var localizationManager = LocalizationManager.shared
     
+    // Force view updates when weight history changes
+    // Use a combination of count, most recent weight, and date to detect changes
+    private var weightHistoryId: String {
+        let count = weightHistory.count
+        let mostRecent = weightHistory.last?.weight ?? currentWeight
+        let mostRecentDate = weightHistory.last?.date.timeIntervalSince1970 ?? Date().timeIntervalSince1970
+        return "\(count)-\(String(format: "%.1f", mostRecent))-\(Int(mostRecentDate))"
+    }
+    
     private var weightUnit: String {
         useMetricUnits ? "kg" : "lbs"
     }
     
+    private var weightChangesTitle: String {
+        localizationManager.localizedString(for: AppStrings.Progress.weightChanges)
+    }
+    
     private func weightChange(for days: Int?) -> (change: Double, hasChange: Bool) {
-        guard let days = days else {
-            // All Time - compare with first weight in history
-            if let firstWeight = weightHistory.first?.weight {
-                let change = currentWeight - firstWeight
-                return (change, abs(change) > 0.01)
-            }
+        // Ensure we have history to work with
+        guard !weightHistory.isEmpty else {
             return (0, false)
+        }
+        
+        // Sort history by date (most recent first), then by weight descending if same date
+        // This ensures we get the latest weight for today if there are multiple entries
+        let sortedHistory = weightHistory.sorted { 
+            if $0.date != $1.date {
+                return $0.date > $1.date
+            }
+            // If same date, prefer the entry with the later timestamp or higher weight
+            return $0.weight > $1.weight
+        }
+        
+        // Get the most recent weight (first in sorted descending order)
+        guard let mostRecentWeight = sortedHistory.first?.weight else {
+            return (0, false)
+        }
+        
+        guard let days = days else {
+            // All Time - compare most recent with oldest weight
+            let oldestHistory = weightHistory.sorted { 
+                if $0.date != $1.date {
+                    return $0.date < $1.date
+                }
+                return $0.weight < $1.weight // If same date, prefer lower weight (older)
+            }
+            guard let oldestWeight = oldestHistory.first?.weight else {
+                return (0, false)
+            }
+            
+            // Show change if weights are different (even if same day - user might have updated weight)
+            let change = mostRecentWeight - oldestWeight
+            return (change, abs(change) > 0.01)
         }
         
         // For specific days, find weight at that point in time
         let cutoffDate = Calendar.current.date(byAdding: .day, value: -days, to: Date()) ?? Date()
+        let cutoffDayStart = Calendar.current.startOfDay(for: cutoffDate)
+        let todayStart = Calendar.current.startOfDay(for: Date())
         
-        // Find the weight entry closest to (but before or at) the cutoff date
-        // Sort by date descending to find the most recent entry before cutoff
-        let sortedHistory = weightHistory.sorted { $0.date > $1.date }
-        if let weightAtDate = sortedHistory.first(where: { $0.date <= cutoffDate })?.weight {
-            let change = currentWeight - weightAtDate
+        // Find entries before today (historical entries)
+        let historicalEntries = sortedHistory.filter { 
+            Calendar.current.startOfDay(for: $0.date) < todayStart 
+        }
+        
+        // Look for a weight entry on or before the cutoff date
+        if let weightAtDate = historicalEntries.first(where: { 
+            Calendar.current.startOfDay(for: $0.date) <= cutoffDayStart 
+        })?.weight {
+            let change = mostRecentWeight - weightAtDate
             return (change, abs(change) > 0.01)
         }
         
-        // If no weight found at that date, check if we have any history
-        // If we have history but nothing at that date, show 0 change
-        if !weightHistory.isEmpty {
-            // Use first weight as baseline if no weight at specific date
-            if let firstWeight = weightHistory.first?.weight {
-                let change = currentWeight - firstWeight
-                return (change, abs(change) > 0.01)
-            }
+        // If no weight found at that date, but we have historical entries, use the oldest historical entry
+        if let oldestHistorical = historicalEntries.sorted(by: { $0.date < $1.date }).first?.weight {
+            let change = mostRecentWeight - oldestHistorical
+            return (change, abs(change) > 0.01)
         }
         
+        // If we only have today's entries, but there are multiple entries with different weights,
+        // compare the most recent with the oldest entry in history (even if same day)
+        if sortedHistory.count > 1 {
+            let oldestEntry = sortedHistory.last!
+            let change = mostRecentWeight - oldestEntry.weight
+            return (change, abs(change) > 0.01)
+        }
+        
+        // If we only have one entry, no change to show
         return (0, false)
     }
     
     var body: some View {
-        // Explicitly reference currentLanguage to ensure SwiftUI tracks the dependency
-        let _ = localizationManager.currentLanguage
-        
-        return VStack(alignment: .leading, spacing: 16) {
-            Text(localizationManager.localizedString(for: AppStrings.Progress.weightChanges))
-                .font(.headline)
-                .foregroundColor(.primary)
+        VStack(alignment: .leading, spacing: 12) {
+            Text(weightChangesTitle)
+                .font(.subheadline)
+                .foregroundColor(.secondary)
             
-            VStack(spacing: 12) {
+            VStack(spacing: 8) {
                 WeightChangeRow(
                     timeframe: localizationManager.localizedString(for: AppStrings.Progress.threeDay),
                     change: weightChange(for: 3),
@@ -104,10 +154,11 @@ struct WeightChangesCard: View {
                 )
             }
         }
-        .padding()
+        .padding(12)
         .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 20))
-        .shadow(color: .black.opacity(0.05), radius: 10, x: 0, y: 4)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: .black.opacity(0.05), radius: 6, x: 0, y: 2)
+        .id(weightHistoryId) // Force view refresh when history changes
     }
 }
 

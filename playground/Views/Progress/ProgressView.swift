@@ -16,6 +16,9 @@ struct ProgressDashboardView: View {
     @Environment(TheSDK.self) private var sdk
     @ObservedObject private var localizationManager = LocalizationManager.shared
     
+    // Observe UserSettings directly for weight updates
+    @Bindable private var settings = UserSettings.shared
+    
     @State private var showWeightInput = false
     @State private var showPaywall = false
     @State private var showDeclineConfirmation = false
@@ -29,12 +32,13 @@ struct ProgressDashboardView: View {
                     FullScreenLoadingView(message: localizationManager.localizedString(for: AppStrings.Progress.loadingProgressData))
                 } else {
                     ScrollView {
-                        VStack(spacing: 20) {
+                        VStack(spacing: 12) {
                             // Current Weight Card
+                            // Use .id() to force re-render when weight or history changes
                             CurrentWeightCard(
-                                weight: viewModel.displayWeight,
+                                weight: settings.displayWeight,
                                 unit: viewModel.weightUnit,
-                                startWeight: viewModel.weightHistory.first?.weight ?? viewModel.displayWeight,
+                                startWeight: viewModel.weightHistory.first?.weight ?? settings.displayWeight,
                                 goalWeight: viewModel.displayTargetWeight,
                                 daysUntilCheck: viewModel.daysUntilNextWeightCheck,
                                 isSubscribed: isSubscribed,
@@ -54,17 +58,23 @@ struct ProgressDashboardView: View {
                                     }
                                 }
                             )
+                            .id("current-weight-\(settings.displayWeight)-\(viewModel.weightHistory.count)")
                             
                             // Weight Chart Card
+                            // Use .id() to force re-render when history changes
                             WeightChartCard(
                                 weightHistory: viewModel.weightHistory,
                                 useMetricUnits: viewModel.useMetricUnits
                             )
+                            .id("weight-chart-\(viewModel.weightHistory.count)-\(viewModel.weightHistory.last?.weight ?? 0)")
                             
                             // Weight Changes Card
+                            // Use the most recent weight from history (last item when sorted ascending),
+                            // or current weight from settings if no history
+                            // Already has .id() modifier in the component
                             WeightChangesCard(
                                 weightHistory: viewModel.weightHistory,
-                                currentWeight: viewModel.displayWeight,
+                                currentWeight: viewModel.mostRecentWeight,
                                 useMetricUnits: viewModel.useMetricUnits
                             )
                             
@@ -108,7 +118,7 @@ struct ProgressDashboardView: View {
                                 )
                             }
                         }
-                        .padding()
+                        .padding(12)
                     }
                 }
             }
@@ -186,7 +196,7 @@ struct ProgressDashboardView: View {
             }
             .sheet(isPresented: $showWeightInput) {
                 WeightInputSheet(
-                    currentWeight: viewModel.displayWeight,
+                    currentWeight: settings.displayWeight,
                     unit: viewModel.weightUnit,
                     onSave: { weight in
                         Task {
@@ -207,6 +217,15 @@ struct ProgressDashboardView: View {
             .onReceive(NotificationCenter.default.publisher(for: .widgetWeightUpdated)) { _ in
                 // Handle weight update from widget (notification from app become active)
                 checkWidgetUpdates()
+            }
+            .onChange(of: settings.currentWeight) { oldValue, newValue in
+                // Reload weight history when weight changes (e.g., from Profile/PersonalDetailsView)
+                // This ensures all weight-related views update when weight is changed elsewhere
+                // Only reload if value actually changed to prevent unnecessary work
+                guard abs(oldValue - newValue) > 0.01 else { return }
+                Task {
+                    await viewModel.loadWeightHistory()
+                }
             }
             .sheet(isPresented: $viewModel.showWeightProgressSheet) {
                 WeightProgressSheet(
@@ -236,47 +255,12 @@ struct ProgressDashboardView: View {
                 SDKView(
                     model: sdk,
                     page: .splash,
-                    show: Binding(
-                        get: { showPaywall },
-                        set: { newValue in
-                            if !newValue && showPaywall {
-                                // Paywall was dismissed - THIS IS THE ONLY PLACE WE CHECK SUBSCRIPTION STATUS
-                                Task { @MainActor in
-                                    // Update subscription status from SDK
-                                    do {
-                                        try await sdk.updateIsSubscribed()
-                                        // Update reactive subscription status in app
-                                        NotificationCenter.default.post(name: .subscriptionStatusUpdated, object: nil)
-                                    } catch {
-                                        print("⚠️ Failed to update subscription status: \(error)")
-                                    }
-                                    
-                                    // Check SDK directly - show decline confirmation if not subscribed
-                                    if !sdk.isSubscribed {
-                                        showDeclineConfirmation = true
-                                    } else {
-                                        // User subscribed - reset analysis count
-                                        AnalysisLimitManager.shared.resetAnalysisCount()
-                                    }
-                                }
-                            }
-                            showPaywall = newValue
-                        }
-                    ),
+                    show: paywallBinding(showPaywall: $showPaywall, sdk: sdk, showDeclineConfirmation: $showDeclineConfirmation),
                     backgroundColor: .white,
                     ignoreSafeArea: true
                 )
             }
-            .overlay {
-                // Show confirmation modal on top of everything - no padding/blur around it
-                if showDeclineConfirmation {
-                    PaywallDeclineConfirmationView(
-                        isPresented: $showDeclineConfirmation,
-                        showPaywall: $showPaywall
-                    )
-                    .zIndex(1000) // Ensure it's on top
-                }
-            }
+            .paywallDismissalOverlay(showPaywall: $showPaywall, showDeclineConfirmation: $showDeclineConfirmation)
         }
     }
     
@@ -329,17 +313,27 @@ struct CurrentWeightCard: View {
     let onShowPaywall: () -> Void
     let onViewProgress: () -> Void
     
-    @ObservedObject private var localizationManager = LocalizationManager.shared
     @State private var currentWeight: Double
     @State private var hasChanges: Bool = false
     
-    // For scrollable picker
     private let minWeight: Double = 20.0
     private let maxWeight: Double = 300.0
     private let step: Double = 0.1
     
-    private var weightValues: [Double] {
-        stride(from: minWeight, through: maxWeight, by: step).map { $0 }
+    private var titleText: String {
+        LocalizationManager.shared.localizedString(for: AppStrings.Progress.currentWeight)
+    }
+    
+    private var saveButtonText: String {
+        LocalizationManager.shared.localizedString(for: AppStrings.Common.save)
+    }
+    
+    private var startWeightText: String {
+        String(format: LocalizationManager.shared.localizedString(for: AppStrings.Progress.startWeightWithUnit), startWeight, unit)
+    }
+    
+    private var goalWeightText: String {
+        String(format: LocalizationManager.shared.localizedString(for: AppStrings.Progress.goalWeightWithUnit), goalWeight, unit)
     }
     
     init(weight: Double, unit: String, startWeight: Double, goalWeight: Double, daysUntilCheck: Int, isSubscribed: Bool, onWeightSave: @escaping (Double) -> Void, onShowPaywall: @escaping () -> Void, onViewProgress: @escaping () -> Void) {
@@ -356,20 +350,18 @@ struct CurrentWeightCard: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text(localizationManager.localizedString(for: AppStrings.Progress.currentWeight))
-                .font(.headline)
-                .foregroundColor(.primary)
+        VStack(alignment: .leading, spacing: 12) {
+            Text(titleText)
+                .font(.subheadline)
+                .foregroundColor(.secondary)
                 .frame(maxWidth: .infinity, alignment: .center)
             
-            // Inline weight picker with +/- buttons
-            HStack(spacing: 16) {
-                // Minus button
+            HStack(spacing: 12) {
                 Button {
                     adjustWeight(-step)
                 } label: {
                     Image(systemName: "minus.circle.fill")
-                        .font(.system(size: 32))
+                        .font(.system(size: 28))
                         .foregroundColor(isSubscribed ? .blue : .gray)
                 }
                 .disabled(!isSubscribed)
@@ -379,40 +371,22 @@ struct CurrentWeightCard: View {
                     }
                 }
                 
-                // Inline weight display (no scroll)
-                VStack(spacing: 4) {
-                    // Weight above (smaller, lighter)
-                    Text(String(format: "%.1f %@", max(minWeight, currentWeight - step), unit))
-                        .font(.system(size: 16, weight: .regular))
-                        .foregroundColor(.secondary.opacity(0.6))
-                    
-                    // Current weight (large, bold, in a field)
-                    Text(String(format: "%.1f %@", currentWeight, unit))
-                        .font(.system(size: 32, weight: .bold, design: .rounded))
-                        .foregroundColor(.primary)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(Color(.tertiarySystemGroupedBackground))
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                    
-                    // Weight below (smaller, lighter)
-                    Text(String(format: "%.1f %@", min(maxWeight, currentWeight + step), unit))
-                        .font(.system(size: 16, weight: .regular))
-                        .foregroundColor(.secondary.opacity(0.6))
-                }
-                .frame(maxWidth: .infinity)
+                Text(String(format: "%.1f %@", currentWeight, unit))
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .foregroundColor(.primary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background(Color(.tertiarySystemGroupedBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
                 .onChange(of: currentWeight) { oldValue, newValue in
-                    // Update hasChanges when currentWeight changes
-                    let difference = abs(newValue - weight)
-                    hasChanges = difference > 0.01
+                    hasChanges = abs(newValue - weight) > 0.01
                 }
                 
-                // Plus button
                 Button {
                     adjustWeight(step)
                 } label: {
                     Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 32))
+                        .font(.system(size: 28))
                         .foregroundColor(isSubscribed ? .blue : .gray)
                 }
                 .disabled(!isSubscribed)
@@ -423,43 +397,40 @@ struct CurrentWeightCard: View {
                 }
             }
             
-            // Save button (only shown when there are changes)
             if hasChanges {
                 Button {
                     saveWeight()
                 } label: {
-                    Text(localizationManager.localizedString(for: AppStrings.Common.save))
-                        .font(.headline)
+                    Text(saveButtonText)
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
+                        .padding(.vertical, 10)
                         .background(Color.blue)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
                 }
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
             
-            // Start and Goal weights
             HStack {
-                Text(String(format: localizationManager.localizedString(for: AppStrings.Progress.startWeightWithUnit), startWeight, unit))
-                    .font(.caption)
+                Text(startWeightText)
+                    .font(.caption2)
                     .foregroundColor(.secondary)
                 
                 Spacer()
                 
-                Text(String(format: localizationManager.localizedString(for: AppStrings.Progress.goalWeightWithUnit), goalWeight, unit))
-                    .font(.caption)
+                Text(goalWeightText)
+                    .font(.caption2)
                     .foregroundColor(.secondary)
             }
         }
-        .padding()
+        .padding(12)
         .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 20))
-        .shadow(color: .black.opacity(0.05), radius: 10, x: 0, y: 4)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: .black.opacity(0.05), radius: 6, x: 0, y: 2)
         .onChange(of: weight) { oldValue, newValue in
-            // Update currentWeight when weight changes externally (after save)
             currentWeight = newValue
-            // Reset hasChanges since weight is now synced
             hasChanges = false
         }
     }
@@ -471,10 +442,8 @@ struct CurrentWeightCard: View {
         }
         
         let newWeight = max(minWeight, min(maxWeight, currentWeight + delta))
-        // Round to nearest step
         let roundedWeight = round(newWeight / step) * step
         currentWeight = roundedWeight
-        // Update hasChanges
         hasChanges = abs(roundedWeight - weight) > 0.01
         
         HapticManager.shared.impact(.light)
@@ -482,19 +451,10 @@ struct CurrentWeightCard: View {
     
     private func saveWeight() {
         guard hasChanges else { return }
-        // Round to nearest step before saving
         let roundedWeight = round(currentWeight / step) * step
-        
-        // Temporarily disable hasChanges to prevent double-save
         hasChanges = false
-        
-        // Call the save handler
         onWeightSave(roundedWeight)
-        
-        // Provide haptic feedback
         HapticManager.shared.notification(.success)
-        
-        // Note: hasChanges will be reset when weight prop updates via onChange
     }
 }
 
@@ -515,7 +475,7 @@ struct BMICard: View {
     }
     
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 12) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(localizationManager.localizedString(for: AppStrings.Progress.bodyMassIndex))
@@ -524,7 +484,7 @@ struct BMICard: View {
                     
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         Text(String(format: "%.1f", bmi))
-                            .font(.system(size: 36, weight: .bold, design: .rounded))
+                            .font(.system(size: 28, weight: .bold, design: .rounded))
                             .foregroundColor(.primary)
                         
                         HStack(spacing: 4) {
@@ -590,10 +550,10 @@ struct BMICard: View {
                 .font(.caption)
                 .foregroundColor(.secondary)
         }
-        .padding()
+        .padding(12)
         .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 20))
-        .shadow(color: .black.opacity(0.05), radius: 10, x: 0, y: 4)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: .black.opacity(0.05), radius: 6, x: 0, y: 2)
     }
     
     private func bmiPosition(in width: CGFloat) -> CGFloat {
@@ -628,7 +588,7 @@ struct DailyCaloriesCard: View {
     }
     
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 12) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(localizationManager.localizedString(for: AppStrings.Progress.dailyAverageCalories))
@@ -637,7 +597,7 @@ struct DailyCaloriesCard: View {
                     
                     HStack(alignment: .firstTextBaseline, spacing: 4) {
                         Text("\(averageCalories)")
-                            .font(.system(size: 36, weight: .bold, design: .rounded))
+                            .font(.system(size: 28, weight: .bold, design: .rounded))
                             .foregroundColor(.primary)
                         
                         Text(localizationManager.localizedString(for: AppStrings.Progress.cal))
@@ -690,10 +650,10 @@ struct DailyCaloriesCard: View {
                 .foregroundColor(.orange)
             }
         }
-        .padding()
+        .padding(12)
         .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 20))
-        .shadow(color: .black.opacity(0.05), radius: 10, x: 0, y: 4)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: .black.opacity(0.05), radius: 6, x: 0, y: 2)
     }
 }
 
@@ -789,10 +749,10 @@ struct HealthDataSection: View {
                 )
             }
         }
-        .padding()
+        .padding(12)
         .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 20))
-        .shadow(color: .black.opacity(0.05), radius: 10, x: 0, y: 4)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: .black.opacity(0.05), radius: 6, x: 0, y: 2)
     }
     
     private func formatNumber(_ number: Int) -> String {
@@ -843,11 +803,11 @@ struct HealthMetricCard: View {
                     .foregroundColor(.secondary)
             }
         }
-        .padding()
-        .frame(height: 110)
+        .padding(10)
+        .frame(height: 90)
         .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .shadow(color: .black.opacity(0.03), radius: 5, x: 0, y: 2)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .shadow(color: .black.opacity(0.03), radius: 4, x: 0, y: 1)
     }
 }
 
@@ -881,7 +841,7 @@ struct HealthKitSettingsPromptCard: View {
     }
     
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 12) {
             HStack(spacing: 16) {
                 ZStack {
                     Circle()
@@ -942,10 +902,10 @@ struct HealthKitSettingsPromptCard: View {
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
         }
-        .padding()
+        .padding(12)
         .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 20))
-        .shadow(color: .black.opacity(0.05), radius: 10, x: 0, y: 4)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: .black.opacity(0.05), radius: 6, x: 0, y: 2)
     }
 }
 

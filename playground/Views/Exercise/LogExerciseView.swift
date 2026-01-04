@@ -79,6 +79,10 @@ struct LogExerciseView: View {
             .navigationDestination(item: $selectedType) { type in
                 ExerciseDetailView(exerciseType: type)
             }
+            .onReceive(NotificationCenter.default.publisher(for: .exerciseFlowShouldDismiss)) { _ in
+                // Dismiss this sheet when exercise is saved, returning user to home
+                dismiss()
+            }
         }
     }
 }

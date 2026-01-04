@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SwiftData
 import PhotosUI
 
 struct PersonalDetailsView: View {
@@ -15,6 +16,7 @@ struct PersonalDetailsView: View {
     @Bindable var viewModel: ProfileViewModel
     @ObservedObject private var localizationManager = LocalizationManager.shared
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
     
     // Editing states
     @State private var isEditingWeight = false
@@ -528,7 +530,42 @@ struct PersonalDetailsView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(localizationManager.localizedString(for: AppStrings.Common.save)) {
+                        // Update the weight in ProfileViewModel (this updates UserSettings)
                         viewModel.currentWeight = tempWeight
+                        
+                        // Also create or update a WeightEntry in SwiftData so ProgressView can see the change
+                        // Convert to kg (ProfileViewModel stores weight in lbs)
+                        let weightInKg = tempWeight * 0.453592
+                        let calendar = Calendar.current
+                        let today = calendar.startOfDay(for: Date())
+                        let tomorrow = calendar.date(byAdding: .day, value: 1, to: today) ?? today
+                        
+                        // Check if an entry for today already exists
+                        // WeightEntry.init normalizes dates to start of day, so we can use a date range
+                        let descriptor = FetchDescriptor<WeightEntry>(
+                            predicate: #Predicate<WeightEntry> { entry in
+                                entry.date >= today && entry.date < tomorrow
+                            },
+                            sortBy: [SortDescriptor(\.date, order: .reverse)]
+                        )
+                        
+                        do {
+                            let existingEntries = try modelContext.fetch(descriptor)
+                            if let existingEntry = existingEntries.first {
+                                // Update existing entry - keep the date normalized to start of day
+                                existingEntry.weight = weightInKg
+                                // Don't update the date - keep it normalized to start of day for consistency
+                            } else {
+                                // Create new entry
+                                let entry = WeightEntry(weight: weightInKg, date: Date())
+                                modelContext.insert(entry)
+                            }
+                            
+                            try modelContext.save()
+                        } catch {
+                            print("Failed to save weight entry: \(error)")
+                        }
+                        
                         isEditingWeight = false
                         HapticManager.shared.notification(.success)
                     }

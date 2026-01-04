@@ -16,7 +16,6 @@ struct CaptureOptionsView: View {
         // Explicitly reference currentLanguage to ensure SwiftUI tracks the dependency
         let _ = localizationManager.currentLanguage
         
-        return
         VStack(spacing: 32) {
             Spacer()
             iconView

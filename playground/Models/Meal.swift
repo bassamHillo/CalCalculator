@@ -84,26 +84,32 @@ final class Meal: Identifiable {
     }
     
     /// Computed total macros from all items
-    var totalMacros: MacroData {
+    nonisolated var totalMacros: MacroData {
         items.reduce(MacroData.zero) { result, item in
             result + item.macros
         }
     }
     
     /// Total calories from all items
-    var totalCalories: Int {
+    nonisolated var totalCalories: Int {
         totalMacros.calories
     }
     
     /// Formatted time string
-    var formattedTime: String {
+    nonisolated var formattedTime: String {
         timestamp.timeString
     }
     
     /// Formatted date string
-    var formattedDate: String {
+    nonisolated var formattedDate: String {
         timestamp.mediumDateString
     }
 }
+
+// MARK: - Sendable Conformance
+// Note: SwiftData's @Model macro adds Sendable conformance, but explicit extension is needed
+// for Swift 6.0 strict concurrency when returning from main actor-isolated methods.
+// The redundant conformance warning from the macro can be safely ignored.
+extension Meal: @unchecked Sendable {}
 
 // Note: MealAnalysisResponse moved to FoodAnalysisService.swift for API integration

@@ -18,6 +18,7 @@ struct ScanView: View {
     @Environment(TheSDK.self) private var sdk
     
     @State private var showPaywall = false
+    @State private var showDeclineConfirmation = false
     @State private var previousViewState: ViewState? // Store previous view state before opening settings
     
     enum ViewState {
@@ -84,11 +85,12 @@ struct ScanView: View {
                     SDKView(
                         model: sdk,
                         page: .splash,
-                        show: $showPaywall,
+                        show: paywallBinding(showPaywall: $showPaywall, sdk: sdk, showDeclineConfirmation: $showDeclineConfirmation),
                         backgroundColor: .white,
                         ignoreSafeArea: true
                     )
                 }
+                .paywallDismissalOverlay(showPaywall: $showPaywall, showDeclineConfirmation: $showDeclineConfirmation)
         }
     }
     
@@ -164,24 +166,8 @@ struct ScanView: View {
                     return
                 }
                 
-                // Check subscription before analyzing
-                guard isSubscribed else {
-                    // Store the image first so we can show it when paywall closes
-                    switch result {
-                    case .image(let image):
-                        viewModel.selectedImage = image
-                    case .barcode(_, let previewImage):
-                        if let image = previewImage {
-                            viewModel.selectedImage = image
-                        }
-                    case .document(let image):
-                        viewModel.selectedImage = image
-                    case .cancelled:
-                        break
-                    }
-                    showPaywall = true
-                    return
-                }
+                // Photo taking is FREE - no subscription check needed
+                // Only analysis requires subscription (handled in analyzeImage)
                 await viewModel.handleCaptureResult(result, hint: hint)
             }
         }

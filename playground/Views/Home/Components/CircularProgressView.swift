@@ -19,7 +19,7 @@ struct CircularProgressView: View {
         } else if progress >= 0.5 {
             return .orange
         } else {
-            return .black
+            return .blue // Use blue instead of black for visibility in dark mode
         }
     }
     
@@ -43,6 +43,7 @@ struct CircularProgressView: View {
             VStack(spacing: 2) {
                 Text("\(Int(min(progress, 1.0) * 100))%")
                     .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .foregroundStyle(.primary) // White in dark mode, black in light mode
                 
                 if progress > 1.0 {
                     Text("+\(Int((progress - 1.0) * 100))%")

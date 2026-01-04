@@ -24,6 +24,7 @@ struct HistoryOrDietView: View {
         [DietPlan]
     @State private var showingCreateDiet = false
     @State private var showingPaywall = false
+    @State private var showDeclineConfirmation = false
     @State private var showingWelcome = false
 
     private var hasActiveDiet: Bool {
@@ -110,11 +111,12 @@ struct HistoryOrDietView: View {
             SDKView(
                 model: sdk,
                 page: .splash,
-                show: $showingPaywall,
+                show: paywallBinding(showPaywall: $showingPaywall, sdk: sdk, showDeclineConfirmation: $showDeclineConfirmation),
                 backgroundColor: .white,
                 ignoreSafeArea: true
             )
         }
+        .paywallDismissalOverlay(showPaywall: $showingPaywall, showDeclineConfirmation: $showDeclineConfirmation)
         .overlay {
             if showingWelcome {
                 DietWelcomeView(isPresented: $showingWelcome)
@@ -134,367 +136,6 @@ struct HistoryOrDietView: View {
                 UserSettings.shared.hasSeenDietWelcome = true
             }
         }
-    }
-}
-
-// MARK: - Combined Diet and History View
-
-struct CombinedDietAndHistoryView: View {
-    @Bindable var viewModel: HistoryViewModel
-    let repository: MealRepository
-    let isSubscribed: Bool
-    let hasActiveDiet: Bool
-    let onCreateDiet: () -> Void
-    @ObservedObject private var localizationManager = LocalizationManager.shared
-    
-    @State private var selectedDate: SelectedDate?
-    @State private var searchText: String = ""
-    @State private var selectedTimeFilter: HistoryTimeFilter = .all
-    @State private var showingFilterSheet = false
-    
-    private var filteredSummaries: [DaySummary] {
-        var summaries = viewModel.allDaySummaries
-        
-        if selectedTimeFilter != .all {
-            let cutoffDate = selectedTimeFilter.startDate
-            summaries = summaries.filter { $0.date >= cutoffDate }
-        }
-        
-        if !searchText.isEmpty {
-            let lowercasedSearch = searchText.lowercased()
-            summaries = summaries.filter { summary in
-                let formatter = DateFormatter()
-                formatter.locale = Locale(identifier: localizationManager.currentLanguage)
-                formatter.dateStyle = .medium
-                let dateString = formatter.string(from: summary.date).lowercased()
-                
-                formatter.dateFormat = "EEEE"
-                let dayName = formatter.string(from: summary.date).lowercased()
-                
-                formatter.dateFormat = "MMMM"
-                let monthName = formatter.string(from: summary.date).lowercased()
-                
-                return dateString.contains(lowercasedSearch) ||
-                       dayName.contains(lowercasedSearch) ||
-                       monthName.contains(lowercasedSearch)
-            }
-        }
-        
-        return summaries
-    }
-    
-    var body: some View {
-        NavigationStack {
-            ZStack(alignment: .bottom) {
-                content
-                
-                // Diet creation prompt at bottom
-                if !hasActiveDiet {
-                    dietPromptCard
-                        .padding()
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                }
-            }
-            .navigationTitle(localizationManager.localizedString(for: AppStrings.History.title))
-                
-            .background(Color(.systemGroupedBackground))
-            .searchable(text: $searchText, prompt: Text(localizationManager.localizedString(for: AppStrings.History.searchByDateDayMonth)))
-                
-            .refreshable {
-                await viewModel.loadData()
-            }
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    if !hasActiveDiet {
-                        Button {
-                            onCreateDiet()
-                        } label: {
-                            Image(systemName: "calendar.badge.plus")
-                        }
-                    } else {
-                        filterMenuButton
-                    }
-                }
-            }
-            .safeAreaInset(edge: .top, spacing: 0) {
-                if hasActiveFilters {
-                    activeFiltersSection
-                }
-            }
-            .fullScreenCover(item: $selectedDate) { selected in
-                MealsListSheet(
-                    selectedDate: selected.date,
-                    repository: repository,
-                    onDismiss: {
-                        selectedDate = nil
-                    }
-                )
-            }
-            .task {
-                await viewModel.loadData()
-            }
-        }
-    }
-    
-    private var hasActiveFilters: Bool {
-        selectedTimeFilter != .all || !searchText.isEmpty
-    }
-    
-    private var activeFiltersSection: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                if selectedTimeFilter != .all {
-                    FilterTag(
-                        text: selectedTimeFilter.displayName,
-                        onRemove: {
-                            withAnimation {
-                                selectedTimeFilter = .all
-                            }
-                        }
-                    )
-                }
-                
-                if !searchText.isEmpty {
-                    FilterTag(
-                        text: "\"\(searchText)\"",
-                        onRemove: {
-                            withAnimation {
-                                searchText = ""
-                            }
-                        }
-                    )
-                }
-            }
-            .padding(.horizontal)
-            .padding(.vertical, 8)
-        }
-        .background(Color(.systemGroupedBackground))
-    }
-    
-    private var filterMenuButton: some View {
-        Menu {
-            ForEach(HistoryTimeFilter.allCases, id: \.self) { filter in
-                Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        selectedTimeFilter = filter
-                    }
-                    HapticManager.shared.impact(.light)
-                } label: {
-                    HStack {
-                        Text(filter.displayName)
-                        if selectedTimeFilter == filter {
-                            Image(systemName: "checkmark")
-                        }
-                    }
-                }
-            }
-        } label: {
-            HStack(spacing: 4) {
-                Image(systemName: "line.3.horizontal.decrease.circle")
-                Text(selectedTimeFilter.shortName)
-                    .font(.caption)
-                    .fontWeight(.medium)
-            }
-            .foregroundColor(.blue)
-        }
-    }
-    
-    @ViewBuilder
-    private var content: some View {
-        if viewModel.isLoading {
-            loadingView
-        } else if viewModel.showError {
-            errorView
-        } else if viewModel.allDaySummaries.isEmpty {
-            emptyStateView
-        } else if filteredSummaries.isEmpty {
-            noResultsView
-        } else {
-            historyList
-        }
-    }
-    
-    private var historyList: some View {
-        ScrollView {
-            LazyVStack(spacing: 16) {
-                if !filteredSummaries.isEmpty {
-                    StatsSummaryCard(
-                        daysCount: filteredSummaries.count,
-                        totalMeals: totalMeals,
-                        totalCalories: totalCalories,
-                        averageCalories: averageCalories,
-                        timeFilter: selectedTimeFilter
-                    )
-                    .transition(.opacity.combined(with: .move(edge: .top)))
-                }
-                
-                ForEach(filteredSummaries, id: \.id) { summary in
-                    DaySummaryCard(summary: summary)
-                        .onTapGesture {
-                            HapticManager.shared.impact(.light)
-                            selectedDate = SelectedDate(date: summary.date)
-                        }
-                        .transition(.opacity.combined(with: .scale(scale: 0.95)))
-                }
-            }
-            .padding(.horizontal)
-            .padding(.vertical, 8)
-            .padding(.bottom, hasActiveDiet ? 8 : 100) // Extra padding for diet prompt
-            .animation(.easeInOut(duration: 0.2), value: filteredSummaries.count)
-        }
-    }
-    
-    private var totalCalories: Int {
-        filteredSummaries.reduce(0) { $0 + $1.totalCalories }
-    }
-    
-    private var totalMeals: Int {
-        filteredSummaries.reduce(0) { $0 + $1.mealCount }
-    }
-    
-    private var averageCalories: Int {
-        guard !filteredSummaries.isEmpty else { return 0 }
-        return totalCalories / filteredSummaries.count
-    }
-    
-    @ViewBuilder
-    private var loadingView: some View {
-        VStack(spacing: 20) {
-            ProgressView()
-                .scaleEffect(1.5)
-            Text(localizationManager.localizedString(for: AppStrings.History.loadingHistory))
-                
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-    
-    @ViewBuilder
-    private var errorView: some View {
-        if viewModel.showError, let error = viewModel.error {
-            FullScreenErrorView(
-                error: error,
-                retry: {
-                    Task {
-                        await viewModel.loadData()
-                    }
-                },
-                dismiss: {
-                    viewModel.showError = false
-                }
-            )
-        }
-    }
-
-    private var emptyStateView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "calendar.badge.clock")
-                .font(.system(size: 64))
-                .foregroundStyle(.secondary)
-            
-            Text(localizationManager.localizedString(for: AppStrings.History.noHistoryYet))
-                
-                .font(.title2)
-                .fontWeight(.semibold)
-            
-            Text(localizationManager.localizedString(for: AppStrings.History.historyDescription))
-                
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(.systemGroupedBackground))
-    }
-    
-    private var noResultsView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 48))
-                .foregroundStyle(.secondary)
-            
-            Text(localizationManager.localizedString(for: AppStrings.History.noResults))
-                
-                .font(.title2)
-                .fontWeight(.semibold)
-            
-            if !searchText.isEmpty {
-                Text(localizationManager.localizedString(for: "No entries found for \"%@\"", arguments: searchText))
-                    
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-            } else {
-                Text(localizationManager.localizedString(for: AppStrings.History.noEntriesFound))
-                    
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-            
-            Button {
-                withAnimation {
-                    searchText = ""
-                    selectedTimeFilter = .all
-                }
-            } label: {
-                Text(localizationManager.localizedString(for: AppStrings.History.clearFilters))
-                    
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-            }
-            .padding(.top, 8)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(.systemGroupedBackground))
-    }
-    
-    private var dietPromptCard: some View {
-        VStack(spacing: 12) {
-            HStack {
-                Image(systemName: "calendar.badge.clock")
-                    .font(.title2)
-                    .foregroundColor(.blue)
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(isSubscribed ? localizationManager.localizedString(for: AppStrings.History.createYourDietPlan) : localizationManager.localizedString(for: AppStrings.History.unlockDietPlans))
-                        
-                        .font(.headline)
-                    
-                    Text(isSubscribed 
-                        ? localizationManager.localizedString(for: AppStrings.History.scheduleRepetitiveMeals)
-                        : localizationManager.localizedString(for: AppStrings.History.subscribeToCreateDietPlans))
-                        
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                
-                Spacer()
-            }
-            
-            Button {
-                onCreateDiet()
-            } label: {
-                HStack {
-                    if !isSubscribed {
-                        Image(systemName: "crown.fill")
-                    }
-                    Text(isSubscribed ? localizationManager.localizedString(for: AppStrings.History.createDietPlan) : localizationManager.localizedString(for: AppStrings.History.subscribeCreate))
-                        
-                        .fontWeight(.semibold)
-                }
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(isSubscribed ? Color.blue : Color.orange)
-                .foregroundColor(.white)
-                .cornerRadius(12)
-            }
-        }
-        .padding()
-        .background(Color(.secondarySystemGroupedBackground))
-        .cornerRadius(16)
-        .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: -2)
     }
 }
 
@@ -582,7 +223,7 @@ struct CombinedDietAndHistoryView: View {
                 ToolbarItem(placement: .primaryAction) {
                     HStack(spacing: 16) {
                         Button {
-                            if let plan = activePlans.first {
+                            if activePlans.first != nil {
                                 showingEditPlan = true
                             }
                         } label: {
@@ -1233,7 +874,8 @@ struct CombinedDietAndHistoryView: View {
                     totalMeals: totalMeals,
                     totalCalories: totalCalories,
                     averageCalories: averageCalories,
-                    timeFilter: selectedTimeFilter
+                    timeFilter: selectedTimeFilter,
+                    summaries: filteredSummaries
                 )
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }

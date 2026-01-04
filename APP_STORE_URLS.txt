@@ -1,0 +1,33 @@
+═══════════════════════════════════════════════════════════════
+APP STORE CONNECT - YOUR ACTUAL URLs
+Copy & Paste These Directly
+═══════════════════════════════════════════════════════════════
+
+✅ SUPPORT URL (Required):
+https://caloriecount-ai.com/support
+
+✅ PRIVACY POLICY URL (Required):
+https://caloriecount-ai.com/privacy
+
+✅ TERMS OF SERVICE URL (Optional but recommended):
+https://caloriecount-ai.com/terms
+
+═══════════════════════════════════════════════════════════════
+WHERE TO USE THESE IN APP STORE CONNECT:
+═══════════════════════════════════════════════════════════════
+
+1. Support URL:
+   → App Information → Support URL
+   → Paste: https://caloriecount-ai.com/support
+
+2. Privacy Policy URL:
+   → App Information → Privacy Policy URL
+   → Paste: https://caloriecount-ai.com/privacy
+
+3. Terms of Service (if asked):
+   → App Information → Terms of Service URL
+   → Paste: https://caloriecount-ai.com/terms
+
+═══════════════════════════════════════════════════════════════
+
+

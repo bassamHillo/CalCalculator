@@ -134,62 +134,73 @@ struct LogHistoryView: View {
     // MARK: - Summary Header
 
     private var summaryHeader: some View {
-        VStack(spacing: 16) {
-            HStack(spacing: 32) {
+        let isSmallScreen = UIScreen.main.bounds.width < 375 // iPhone SE and similar small devices
+        
+        return VStack(spacing: isSmallScreen ? 12 : 16) {
+            HStack(spacing: isSmallScreen ? 8 : 32) {
                 // Consumed
                 VStack(spacing: 4) {
-                    HStack(spacing: 4) {
+                    HStack(spacing: isSmallScreen ? 2 : 4) {
                         Image(systemName: "flame.fill")
+                            .font(isSmallScreen ? .caption2 : .caption)
                             .foregroundColor(.orange)
                         Text("\(totalCaloriesConsumed)")
-                            .font(.title2)
-                            .fontWeight(.bold)
+                            .font(.system(size: isSmallScreen ? 18 : 22, weight: .bold, design: .rounded))
+                            .minimumScaleFactor(0.6)
+                            .lineLimit(1)
                     }
                     Text(localizationManager.localizedString(for: AppStrings.Home.consumed))
                         .id("consumed-\(localizationManager.currentLanguage)")
-                        .font(.caption)
+                        .font(isSmallScreen ? .caption2 : .caption)
                         .foregroundColor(.secondary)
                 }
+                .frame(maxWidth: .infinity)
 
                 // Divider
                 Rectangle()
                     .fill(Color.gray.opacity(0.3))
-                    .frame(width: 1, height: 40)
+                    .frame(width: 1, height: isSmallScreen ? 30 : 40)
 
                 // Burned
                 VStack(spacing: 4) {
-                    HStack(spacing: 4) {
+                    HStack(spacing: isSmallScreen ? 2 : 4) {
                         Image(systemName: "bolt.fill")
+                            .font(isSmallScreen ? .caption2 : .caption)
                             .foregroundColor(.green)
                         Text("\(totalCaloriesBurned)")
-                            .font(.title2)
-                            .fontWeight(.bold)
+                            .font(.system(size: isSmallScreen ? 18 : 22, weight: .bold, design: .rounded))
+                            .minimumScaleFactor(0.6)
+                            .lineLimit(1)
                     }
                     Text(localizationManager.localizedString(for: AppStrings.Home.burned))
                         .id("burned-\(localizationManager.currentLanguage)")
-                        .font(.caption)
+                        .font(isSmallScreen ? .caption2 : .caption)
                         .foregroundColor(.secondary)
                 }
+                .frame(maxWidth: .infinity)
 
                 // Divider
                 Rectangle()
                     .fill(Color.gray.opacity(0.3))
-                    .frame(width: 1, height: 40)
+                    .frame(width: 1, height: isSmallScreen ? 30 : 40)
 
                 // Net
                 VStack(spacing: 4) {
-                    HStack(spacing: 4) {
+                    HStack(spacing: isSmallScreen ? 2 : 4) {
                         Image(systemName: "equal.circle.fill")
+                            .font(isSmallScreen ? .caption2 : .caption)
                             .foregroundColor(.blue)
                         Text("\(netCalories)")
-                            .font(.title2)
-                            .fontWeight(.bold)
+                            .font(.system(size: isSmallScreen ? 16 : 22, weight: .bold, design: .rounded))
+                            .minimumScaleFactor(0.5)
+                            .lineLimit(1)
                     }
                     Text(localizationManager.localizedString(for: AppStrings.Home.net))
                         .id("net-label-\(localizationManager.currentLanguage)")
-                        .font(.caption)
+                        .font(isSmallScreen ? .caption2 : .caption)
                         .foregroundColor(.secondary)
                 }
+                .frame(maxWidth: .infinity)
             }
 
             // Entry count

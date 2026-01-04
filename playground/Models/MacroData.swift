@@ -21,7 +21,7 @@ struct MacroData: Codable, Equatable, Hashable {
         case fatG = "fat_g"
     }
     
-    init(calories: Int = 0, proteinG: Double = 0, carbsG: Double = 0, fatG: Double = 0) {
+    nonisolated init(calories: Int = 0, proteinG: Double = 0, carbsG: Double = 0, fatG: Double = 0) {
         self.calories = calories
         self.proteinG = proteinG
         self.carbsG = carbsG
@@ -39,7 +39,7 @@ struct MacroData: Codable, Equatable, Hashable {
     }
     
     /// Adds two MacroData instances together
-    static func + (lhs: MacroData, rhs: MacroData) -> MacroData {
+    nonisolated static func + (lhs: MacroData, rhs: MacroData) -> MacroData {
         MacroData(
             calories: lhs.calories + rhs.calories,
             proteinG: lhs.proteinG + rhs.proteinG,
@@ -48,5 +48,5 @@ struct MacroData: Codable, Equatable, Hashable {
         )
     }
     
-    static let zero = MacroData()
+    nonisolated static let zero = MacroData(calories: 0, proteinG: 0, carbsG: 0, fatG: 0)
 }

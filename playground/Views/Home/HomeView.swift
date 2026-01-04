@@ -5,10 +5,10 @@
 //  CalAI Clone - Main home screen
 //
 
-import MavenCommonSwiftUI
 import SDK
 import SwiftUI
 import SwiftData
+import UserNotifications
 
 struct HomeView: View {
     @Bindable var viewModel: HomeViewModel
@@ -34,6 +34,7 @@ struct HomeView: View {
     @State private var showBadgeAlert = false
     @State private var showingCreateDiet = false
     @State private var showingPaywall = false
+    @State private var showDeclineConfirmation = false
     @Environment(\.modelContext) private var modelContext
     @Query(filter: #Predicate<DietPlan> { $0.isActive == true }) private var activeDietPlans: [DietPlan]
 
@@ -53,11 +54,10 @@ struct HomeView: View {
         // Explicitly reference currentLanguage to ensure SwiftUI tracks the dependency
         let _ = localizationManager.currentLanguage
         
-        let baseView =
-            mainContent
-
-        return
-            baseView
+        let baseView = mainContent
+        
+        // Break up the modifier chain into smaller sub-expressions
+        let withRefreshAndTasks = baseView
             .refreshable {
                 HapticManager.shared.impact(.light)
                 await viewModel.refreshTodayData()
@@ -73,6 +73,24 @@ struct HomeView: View {
                     "🟢 [HomeView] .task completed - total time: \(String(format: "%.3f", elapsed))s"
                 )
                 checkForBadges()
+                
+                // Request notification permission when user first reaches homepage
+                // Only request if status is not determined (first time)
+                await requestNotificationPermissionIfNeeded()
+                
+                // QA Version: Check real subscription status from SDK (for monitoring)
+                #if !DEBUG
+                Task { @MainActor in
+                    do {
+                        _ = try await sdk.updateIsSubscribed()
+                        let realStatus = sdk.isSubscribed
+                        print("🔍 [QA] Real SDK subscription status: \(realStatus ? "Subscribed" : "Not Subscribed")")
+                        // Note: We don't update the override - this is just for QA monitoring
+                    } catch {
+                        print("⚠️ [QA] Failed to check real SDK subscription status: \(error)")
+                    }
+                }
+                #endif
             }
             .task(id: viewModel.weekDays.count) {
                 // Re-check badges when week days are loaded
@@ -80,6 +98,8 @@ struct HomeView: View {
                     checkForBadges()
                 }
             }
+        
+        let withDataObservers = withRefreshAndTasks
             .onChange(of: viewModel.recentMeals.count) { _, _ in
                 checkForBadges()
                 // Update Live Activity when meals change
@@ -93,6 +113,8 @@ struct HomeView: View {
                 // Update Live Activity when burned calories change
                 viewModel.updateLiveActivityIfNeeded()
             }
+        
+        let withNotifications = withDataObservers
             .onReceive(NotificationCenter.default.publisher(for: .updateLiveActivity)) { _ in
                 // Update Live Activity when requested (e.g., from preferences toggle)
                 viewModel.updateLiveActivityIfNeeded()
@@ -134,6 +156,9 @@ struct HomeView: View {
                     await viewModel.loadData()
                 }
             }
+        
+        // Break up sheets and overlays into separate expression
+        let withSheets = withNotifications
             // No need for onChange - SwiftUI automatically re-evaluates views when
             // @ObservedObject properties change. Since localizationManager.currentLanguage
             // is @Published, all views using localizationManager will update automatically.
@@ -178,36 +203,14 @@ struct HomeView: View {
                 SDKView(
                     model: sdk,
                     page: .splash,
-                    show: Binding(
-                        get: { showingPaywall },
-                        set: { newValue in
-                            if !newValue && showingPaywall {
-                                // Paywall was dismissed - THIS IS THE ONLY PLACE WE CHECK SUBSCRIPTION STATUS
-                                Task { @MainActor in
-                                    // Update subscription status from SDK
-                                    do {
-                                        try await sdk.updateIsSubscribed()
-                                        // Update reactive subscription status in app
-                                        NotificationCenter.default.post(name: .subscriptionStatusUpdated, object: nil)
-                                    } catch {
-                                        print("⚠️ Failed to update subscription status: \(error)")
-                                    }
-                                    
-                                    // Check SDK directly
-                                    if sdk.isSubscribed {
-                                        // User subscribed - reset analysis count
-                                        AnalysisLimitManager.shared.resetAnalysisCount()
-                                    }
-                                }
-                            }
-                            showingPaywall = newValue
-                        }
-                    ),
+                    show: paywallBinding(showPaywall: $showingPaywall, sdk: sdk, showDeclineConfirmation: $showDeclineConfirmation),
                     backgroundColor: .white,
                     ignoreSafeArea: true
                 )
             }
-            .confettiCannon(trigger: $confettiCounter)
+        
+        let withOverlays = withSheets
+            .paywallDismissalOverlay(showPaywall: $showingPaywall, showDeclineConfirmation: $showDeclineConfirmation)
             .overlay {
                 if badgeManager.showBadgeAlert, let badge = badgeManager.newlyEarnedBadge {
                     BadgeAlertView(badge: badge) {
@@ -215,9 +218,11 @@ struct HomeView: View {
                     }
                 }
             }
-            .overlay(alignment: .bottomTrailing) {
+            .overlay(alignment: Alignment.bottomTrailing) {
                 floatingMenuOverlay
             }
+        
+        return withOverlays
             .onChange(of: badgeManager.showBadgeAlert) { _, newValue in
                 if newValue {
                     confettiCounter += 1
@@ -298,11 +303,19 @@ struct HomeView: View {
     @State private var selectedDietPlan: DietPlan?
     
     private var logExperienceSection: some View {
-        LogExperienceCard(
+        // Use selected date's burned calories, or today's if selected date is today
+        let burnedCalories = Calendar.current.isDateInToday(viewModel.selectedDate) 
+            ? viewModel.todaysBurnedCalories 
+            : viewModel.selectedDateBurnedCalories
+        
+        // Use selected date's exercise count from viewModel
+        let exercisesCount = viewModel.selectedDateExercisesCount
+        
+        return LogExperienceCard(
             mealsCount: viewModel.recentMeals.count,
-            exercisesCount: (try? repository.fetchTodaysExercises().count) ?? 0,
+            exercisesCount: exercisesCount,
             totalCaloriesConsumed: viewModel.todaysSummary?.totalCalories ?? 0,
-            totalCaloriesBurned: viewModel.todaysBurnedCalories,
+            totalCaloriesBurned: burnedCalories,
             onLogFood: {
                 showLogFoodSheet = true
             },
@@ -404,13 +417,18 @@ struct HomeView: View {
     }
 
     private var progressSection: some View {
-        TodaysProgressCard(
+        // Use selected date's burned calories, or today's if selected date is today
+        let burnedCalories = Calendar.current.isDateInToday(viewModel.selectedDate) 
+            ? viewModel.todaysBurnedCalories 
+            : viewModel.selectedDateBurnedCalories
+        
+        return TodaysProgressCard(
             summary: viewModel.todaysSummary,
             calorieGoal: viewModel.effectiveCalorieGoal,
             remainingCalories: viewModel.remainingCalories,
             progress: viewModel.calorieProgress,
             goalAdjustment: viewModel.goalAdjustmentDescription,
-            burnedCalories: viewModel.todaysBurnedCalories
+            burnedCalories: burnedCalories
         )
         .opacity((viewModel.hasDataLoaded) ? 1.0 : 0.3)
         .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
@@ -501,6 +519,33 @@ struct HomeView: View {
             }
         )
         .transition(.opacity.combined(with: .move(edge: .bottom)))
+    }
+    
+    // MARK: - Notification Permission
+    
+    /// Request notification permission when user first reaches homepage
+    /// Only requests if status is .notDetermined (first time)
+    @MainActor
+    private func requestNotificationPermissionIfNeeded() async {
+        let center = UNUserNotificationCenter.current()
+        let settings = await center.notificationSettings()
+        
+        // Only request if status is not determined (first time user sees homepage)
+        guard settings.authorizationStatus == .notDetermined else {
+            return
+        }
+        
+        // Request permission (this will show the system dialog)
+        do {
+            let granted = try await center.requestAuthorization(options: [.alert, .sound, .badge])
+            if granted {
+                print("✅ [HomeView] Notification permission granted")
+            } else {
+                print("⚠️ [HomeView] Notification permission denied")
+            }
+        } catch {
+            print("❌ [HomeView] Failed to request notification permission: \(error)")
+        }
     }
 }
 

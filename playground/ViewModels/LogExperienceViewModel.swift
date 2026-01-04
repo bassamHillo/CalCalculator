@@ -186,26 +186,19 @@ final class LogExperienceViewModel {
         // Set initial progress
         analysisProgress = 0.1
 
-        do {
-            // If we have an analysis service, use it
-            // For now, we'll create a simple estimate based on text
-            let foods = estimateFoodsFromText(textInput)
+        // If we have an analysis service, use it
+        // For now, we'll create a simple estimate based on text
+        let foods = estimateFoodsFromText(textInput)
 
-            analysisProgress = 1.0
+        analysisProgress = 1.0
 
-            analyzedFoods = foods
+        analyzedFoods = foods
 
-            if foods.isEmpty {
-                errorMessage = "Could not identify any foods. Please try again with more details."
-                showError = true
-            }
-
+        if foods.isEmpty {
+            errorMessage = "Could not identify any foods. Please try again with more details."
+            showError = true
+        } else {
             HapticManager.shared.notification(.success)
-        } catch {
-            self.error = error
-            self.errorMessage = error.localizedDescription
-            self.showError = true
-            HapticManager.shared.notification(.error)
         }
 
         isAnalyzing = false

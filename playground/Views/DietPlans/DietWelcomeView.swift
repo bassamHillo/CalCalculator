@@ -16,7 +16,6 @@ struct DietWelcomeView: View {
         // Explicitly reference currentLanguage to ensure SwiftUI tracks the dependency
         let _ = localizationManager.currentLanguage
         
-        return
         ZStack {
             Color.black.opacity(0.4)
                 .ignoresSafeArea()

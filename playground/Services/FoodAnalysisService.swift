@@ -14,7 +14,7 @@ enum APIConfiguration {
     static let baseURL = "https://app.caloriecount-ai.com"
     static let analyzeEndpoint = "/calories/analyze"
     static let imageCompressionQuality: CGFloat = 0.8
-    static let requestTimeoutInterval: TimeInterval = 60
+    static let requestTimeoutInterval: TimeInterval = 90  // Increased to 90 seconds for barcode analysis
     static let maxImageSizeBytes = 4 * 1024 * 1024  // 4MB
 }
 
@@ -44,10 +44,18 @@ final class CaloriesAPIService: FoodAnalysisServiceProtocol {
     private let decoder = JSONDecoder()
 
     init(
-        session: URLSession = .shared,
+        session: URLSession? = nil,
         authManager: AuthenticationManager = .shared
     ) {
-        self.session = session
+        // Create a custom URLSession with proper timeout configuration
+        // This ensures timeouts are respected even for long-running requests like barcode analysis
+        let configuration = URLSessionConfiguration.default
+        configuration.timeoutIntervalForRequest = APIConfiguration.requestTimeoutInterval
+        configuration.timeoutIntervalForResource = APIConfiguration.requestTimeoutInterval * 2 // Allow 2x for resource timeout
+        configuration.waitsForConnectivity = true
+        configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
+        
+        self.session = session ?? URLSession(configuration: configuration)
         self.authManager = authManager
     }
 
@@ -128,7 +136,13 @@ final class CaloriesAPIService: FoodAnalysisServiceProtocol {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        request.timeoutInterval = APIConfiguration.requestTimeoutInterval
+        // Set timeout on the request (URLSession configuration also has timeout)
+        // Allow longer timeout for barcode analysis which may take more time
+        if mode == .barcode {
+            request.timeoutInterval = APIConfiguration.requestTimeoutInterval * 1.5  // 135 seconds for barcode
+        } else {
+            request.timeoutInterval = APIConfiguration.requestTimeoutInterval
+        }
 
         let requestBody = AnalyzeRequest(
             image: base64Image,
@@ -137,6 +151,12 @@ final class CaloriesAPIService: FoodAnalysisServiceProtocol {
             foodHint: foodHint
         )
         request.httpBody = try encoder.encode(requestBody)
+        
+        // Log request details for debugging
+        print("🔵 [FoodAnalysis] Request URL: \(url.absoluteString)")
+        print("🔵 [FoodAnalysis] Request timeout: \(request.timeoutInterval) seconds")
+        print("🔵 [FoodAnalysis] Request mode: \(mode.rawValue)")
+        print("🔵 [FoodAnalysis] Request body size: \(request.httpBody?.count ?? 0) bytes")
 
         return request
     }
@@ -147,6 +167,7 @@ final class CaloriesAPIService: FoodAnalysisServiceProtocol {
         // Log request details
         print("🔵 [FoodAnalysis] Starting request to: \(request.url?.absoluteString ?? "unknown")")
         print("🔵 [FoodAnalysis] Method: \(request.httpMethod ?? "unknown")")
+        print("🔵 [FoodAnalysis] Timeout: \(request.timeoutInterval) seconds")
         print("🔵 [FoodAnalysis] Headers: \(request.allHTTPHeaderFields ?? [:])")
         if let body = request.httpBody {
             print("🔵 [FoodAnalysis] Request body size: \(body.count) bytes")
@@ -157,6 +178,7 @@ final class CaloriesAPIService: FoodAnalysisServiceProtocol {
         }
         
         do {
+            // Use async/await with proper timeout handling
             let (data, response) = try await session.data(for: request)
             
             // Log response details

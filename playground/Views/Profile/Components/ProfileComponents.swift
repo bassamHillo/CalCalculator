@@ -300,7 +300,6 @@ struct AppearanceModeButton: View {
         // Explicitly reference currentLanguage to ensure SwiftUI tracks the dependency
         let _ = localizationManager.currentLanguage
         
-        return
         Button(action: action) {
             VStack(spacing: 8) {
                 // Preview

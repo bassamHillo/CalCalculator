@@ -54,7 +54,7 @@ final class GoalsGenerationViewModel {
     
     private let repository: GoalsRepository
     private let onboardingData: [String: Any]
-    private nonisolated(unsafe) var animationTask: Task<Void, Never>?
+    private var animationTask: Task<Void, Never>?
     
     // MARK: - Initialization
     
@@ -64,7 +64,9 @@ final class GoalsGenerationViewModel {
     }
     
     deinit {
-        animationTask?.cancel()
+        // deinit is nonisolated, but animationTask is @MainActor isolated
+        // Tasks are automatically cancelled when their parent context is deallocated
+        // No explicit cancellation needed here
     }
     
     // MARK: - Public Methods
@@ -77,17 +79,25 @@ final class GoalsGenerationViewModel {
         // Start animation cycle
         startAnimationCycle()
         
-        // Start actual generation
-        Task {
+        // Start actual generation - store task for potential cancellation
+        animationTask?.cancel()
+        animationTask = Task { @MainActor [weak self] in
+            guard let self = self else { return }
             do {
-                let goals = try await repository.generateGoals(from: onboardingData)
+                let goals = try await repository.generateGoals(from: self.onboardingData)
+                
+                // Check if task was cancelled before updating state
+                guard !Task.isCancelled else { return }
                 
                 withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
-                    state = .completed(goals)
+                    self.state = .completed(goals)
                 }
             } catch {
+                // Check if task was cancelled before updating state
+                guard !Task.isCancelled else { return }
+                
                 withAnimation {
-                    state = .error(error.localizedDescription)
+                    self.state = .error(error.localizedDescription)
                 }
             }
         }

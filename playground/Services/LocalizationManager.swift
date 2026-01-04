@@ -305,7 +305,8 @@ extension String {
 extension LocalizedStringKey {
     /// Create a LocalizedStringKey from a string that will be localized
     init(_ key: String, comment: String = "") {
-        self.init(key, comment: comment)
+        // Use String interpolation to avoid infinite recursion
+        self = LocalizedStringKey(stringLiteral: key)
     }
 }
 

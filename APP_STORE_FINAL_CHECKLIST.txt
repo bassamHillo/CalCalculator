@@ -1,0 +1,44 @@
+═══════════════════════════════════════════════════════════════
+APP STORE CONNECT - FINAL CHECKLIST
+All Required Fields with Your Actual URLs
+═══════════════════════════════════════════════════════════════
+
+✅ 1. PRIMARY CATEGORY
+   Select: Health & Fitness
+
+✅ 2. SUPPORT URL (Required)
+   https://caloriecount-ai.com/support
+
+✅ 3. PRIVACY POLICY URL (Required)
+   https://caloriecount-ai.com/privacy
+
+✅ 4. KEYWORDS (100 characters max)
+   calorie counter, nutrition tracker, food diary, meal logging, diet tracker, macro calculator, weight loss, fitness tracker, health app, meal planner
+
+✅ 5. DESCRIPTION
+   (See APP_STORE_QUICK_REFERENCE.txt for full text)
+
+✅ 6. COPYRIGHT
+   Format: © 2025 [Your Company Name]
+
+✅ 7. CONTACT INFORMATION
+   Fill in your personal details
+
+✅ 8. SCREENSHOTS
+   [ ] 6.5-inch iPhone (1242 x 2688) - At least 1
+   [ ] 13-inch iPad (2048 x 2732) - At least 1
+
+═══════════════════════════════════════════════════════════════
+QUICK COPY-PASTE URLs:
+═══════════════════════════════════════════════════════════════
+
+Support URL:
+https://caloriecount-ai.com/support
+
+Privacy Policy URL:
+https://caloriecount-ai.com/privacy
+
+Terms URL (if needed):
+https://caloriecount-ai.com/terms
+
+═══════════════════════════════════════════════════════════════

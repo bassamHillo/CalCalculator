@@ -5,21 +5,12 @@
 //  Created by OpenCode on 22/12/2025.
 //
 
-import FacebookCore
-import FirebaseAnalytics
-import FirebaseCore
 import UIKit
 import UserNotifications
 import SwiftUI
 
 class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
-        // Initialize Facebook SDK
-        ApplicationDelegate.shared.application(
-            application,
-            didFinishLaunchingWithOptions: launchOptions
-        )
-        
         // Set up notification delegate
         UNUserNotificationCenter.current().delegate = self
         
@@ -34,12 +25,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
         open url: URL,
         options: [UIApplication.OpenURLOptionsKey: Any] = [:]
     ) -> Bool {
-        ApplicationDelegate.shared.application(
-            app,
-            open: url,
-            sourceApplication: options[UIApplication.OpenURLOptionsKey.sourceApplication] as? String,
-            annotation: options[UIApplication.OpenURLOptionsKey.annotation]
-        )
+        // SDK handles URL opening
+        return true
     }
     
     // MARK: - Notification Categories
@@ -131,7 +118,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
               let scheduledMealId = UUID(uuidString: scheduledMealIdString),
               let mealName = userInfo["mealName"] as? String,
               let categoryString = userInfo["category"] as? String,
-              let category = MealCategory(rawValue: categoryString) else {
+              let _ = MealCategory(rawValue: categoryString) else {
             return
         }
         

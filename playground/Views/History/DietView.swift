@@ -76,7 +76,7 @@ struct DietView: View {
                 ToolbarItem(placement: .primaryAction) {
                     HStack(spacing: 16) {
                         Button {
-                            if let plan = activePlans.first {
+                            if activePlans.first != nil {
                                 showingEditPlan = true
                             }
                         } label: {

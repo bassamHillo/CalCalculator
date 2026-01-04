@@ -11,9 +11,9 @@ import WidgetKit
 
 @available(iOS 16.0, *)
 struct LogWeightIntent: AppIntent {
-    static var title: LocalizedStringResource = "Log Weight"
-    static var description = IntentDescription("Open the app to log your weight")
-    static var openAppWhenRun: Bool = true
+    nonisolated(unsafe) static var title: LocalizedStringResource = "Log Weight"
+    nonisolated(unsafe) static var description = IntentDescription("Open the app to log your weight")
+    nonisolated(unsafe) static var openAppWhenRun: Bool = true
     
     func perform() async throws -> some IntentResult {
         // Open the app with a deep link to weight logging

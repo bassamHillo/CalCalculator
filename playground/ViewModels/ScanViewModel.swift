@@ -136,8 +136,9 @@ final class ScanViewModel {
         // Simulate smooth progress that continues until API call completes
         let progressTask = Task {
             var currentProgress: Double = analysisProgress // Start from current progress
-            let increment: Double = 0.02 // 2% increments
-            let interval: UInt64 = 100_000_000 // 100ms intervals
+            let increment: Double = 0.015 // 1.5% increments
+            let interval: UInt64 = 150_000_000 // 150ms intervals (smooth but not too fast)
+            let maxProgress: Double = 0.90 // Stop at 90% to leave room for completion
             
             // Ensure we're at least at 10% to show immediate feedback
             if currentProgress < 0.1 {
@@ -147,9 +148,20 @@ final class ScanViewModel {
                 currentProgress = 0.1
             }
             
-            // Continue progress smoothly up to 90%
-            // Removed sleep - progress updates will be driven by actual API response
-            // Progress will be set to 1.0 when API completes
+            // Continue progress smoothly up to 90% while waiting for API
+            while currentProgress < maxProgress && !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: interval)
+                
+                guard !Task.isCancelled else { break }
+                
+                currentProgress = min(currentProgress + increment, maxProgress)
+                
+                await MainActor.run {
+                    withAnimation(.easeOut(duration: 0.2)) {
+                        analysisProgress = currentProgress
+                    }
+                }
+            }
         }
 
         do {

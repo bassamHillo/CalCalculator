@@ -196,7 +196,7 @@ struct WeightProgressSheet: View {
     
     private var statsGrid: some View {
         HStack(spacing: 12) {
-            StatCard(
+            WeightStatCard(
                 title: localizationManager.localizedString(for: AppStrings.Progress.average),
                 value: String(format: "%.1f", averageWeight),
                 unit: weightUnit,
@@ -204,7 +204,7 @@ struct WeightProgressSheet: View {
                 color: .blue
             )
             
-            StatCard(
+            WeightStatCard(
                 title: localizationManager.localizedString(for: AppStrings.Progress.lowest),
                 value: String(format: "%.1f", lowestWeight),
                 unit: weightUnit,
@@ -212,7 +212,7 @@ struct WeightProgressSheet: View {
                 color: .green
             )
             
-            StatCard(
+            WeightStatCard(
                 title: localizationManager.localizedString(for: AppStrings.Progress.highest),
                 value: String(format: "%.1f", highestWeight),
                 unit: weightUnit,
@@ -220,7 +220,7 @@ struct WeightProgressSheet: View {
                 color: .orange
             )
             
-            StatCard(
+            WeightStatCard(
                 title: localizationManager.localizedString(for: AppStrings.Progress.entriesLabel),
                 value: "\(displayWeights.count)",
                 unit: nil,
@@ -403,7 +403,7 @@ struct WeightProgressSheet: View {
 
 // MARK: - Stat Card
 
-private struct StatCard: View {
+private struct WeightStatCard: View {
     let title: String
     let value: String
     let unit: String?

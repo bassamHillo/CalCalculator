@@ -76,6 +76,8 @@ final class HomeViewModel {
     
     // MARK: - Burned/Rollover Calories State
     var todaysBurnedCalories: Int = 0
+    var selectedDateBurnedCalories: Int = 0 // Burned calories for the currently selected date
+    var selectedDateExercisesCount: Int = 0 // Exercise count for the currently selected date
     var rolloverCaloriesFromYesterday: Int = 0
     
     // MARK: - Error State
@@ -85,6 +87,8 @@ final class HomeViewModel {
     // MARK: - Keys for UserDefaults
     private let rolloverCaloriesKey = "rolloverCalories_lastDate"
     private let rolloverCaloriesAmountKey = "rolloverCalories_amount"
+    private let burnedCaloriesKey = "burnedCalories_lastDate"
+    private let burnedCaloriesAmountKey = "burnedCalories_amount"
     
     init(
         repository: MealRepository,
@@ -94,6 +98,8 @@ final class HomeViewModel {
         self.imageStorage = imageStorage
         // Initialize with placeholder week days so header appears immediately
         self.weekDays = buildPlaceholderWeekDays()
+        // Load cached burned calories immediately (before async fetch)
+        loadCachedBurnedCalories()
     }
     
     /// Build placeholder week days structure (appears immediately, data fills in later)
@@ -170,6 +176,18 @@ final class HomeViewModel {
     func refreshTodayData() async {
         let startTime = Date()
         print("🟢 [HomeViewModel] refreshTodayData() started")
+        
+        // Check if day changed and invalidate cache if needed
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        if let lastCachedDate = UserDefaults.standard.object(forKey: burnedCaloriesKey) as? Date,
+           !calendar.isDate(lastCachedDate, inSameDayAs: today) {
+            // Day changed - clear old cache
+            todaysBurnedCalories = 0
+            UserDefaults.standard.removeObject(forKey: burnedCaloriesKey)
+            UserDefaults.standard.removeObject(forKey: burnedCaloriesAmountKey)
+        }
+        
         await fetchData()
         let elapsed = Date().timeIntervalSince(startTime)
         print("🟢 [HomeViewModel] refreshTodayData() completed in \(String(format: "%.3f", elapsed))s")
@@ -226,6 +244,12 @@ final class HomeViewModel {
             let meals = try repository.fetchMeals(for: targetDate)
             recentMeals = meals.sorted { $0.timestamp > $1.timestamp }
             
+            // Load exercises for selected date
+            let exercises = try repository.fetchExercises(for: targetDate)
+            let burned = exercises.reduce(0) { $0 + $1.calories }
+            selectedDateBurnedCalories = burned
+            selectedDateExercisesCount = exercises.count
+            
             // Update UI with animation
             withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
                 hasDataLoaded = true
@@ -266,10 +290,17 @@ final class HomeViewModel {
                     ? try repository.fetchTodaySummary()
                     : try repository.fetchDaySummary(for: targetDate)
                 async let mealsTask = try repository.fetchMeals(for: targetDate)
+                async let exercisesTask = try repository.fetchExercises(for: targetDate)
                 
-                // Wait for both
+                // Wait for all
                 let summary = try await summaryTask
                 let meals = try await mealsTask
+                let exercises = try await exercisesTask
+                
+                // Calculate burned calories and count for selected date
+                let burned = exercises.reduce(0) { $0 + $1.calories }
+                self.selectedDateBurnedCalories = burned
+                self.selectedDateExercisesCount = exercises.count
                 
                 // Update UI with animation
                 withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
@@ -318,8 +349,9 @@ final class HomeViewModel {
                 let exercises = try await exercisesTask
                 let burned = exercises.reduce(0) { $0 + $1.calories }
                 
-                // Update burned calories
+                // Update burned calories and cache it
                 self.todaysBurnedCalories = burned
+                self.cacheBurnedCalories(burned)
                 
                 // Build week days and calculate rollover (fast operations)
                 let newWeekDays = self.buildWeekDays(from: weekSummaries, selectedDate: self.selectedDate)
@@ -388,6 +420,40 @@ final class HomeViewModel {
     }
     
     // MARK: - Burned Calories
+    
+    /// Load cached burned calories from UserDefaults (for immediate display on app start)
+    private func loadCachedBurnedCalories() {
+        let defaults = UserDefaults.standard
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        
+        // Check if burned calories were cached for today
+        if let lastCachedDate = defaults.object(forKey: burnedCaloriesKey) as? Date {
+            if calendar.isDate(lastCachedDate, inSameDayAs: today) {
+                // Use cached value if it's for today
+                todaysBurnedCalories = defaults.integer(forKey: burnedCaloriesAmountKey)
+                print("✅ [HomeViewModel] Loaded cached burned calories: \(todaysBurnedCalories) cal")
+            } else {
+                // Cache is for a different day, clear it
+                todaysBurnedCalories = 0
+                defaults.removeObject(forKey: burnedCaloriesKey)
+                defaults.removeObject(forKey: burnedCaloriesAmountKey)
+            }
+        } else {
+            // No cache available
+            todaysBurnedCalories = 0
+        }
+    }
+    
+    /// Cache today's burned calories to UserDefaults for persistence between app runs
+    private func cacheBurnedCalories(_ calories: Int) {
+        let defaults = UserDefaults.standard
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        
+        defaults.set(today, forKey: burnedCaloriesKey)
+        defaults.set(calories, forKey: burnedCaloriesAmountKey)
+    }
     
     private func fetchTodaysBurnedCalories() async {
         // This is now handled in loadBackgroundData() directly
@@ -530,6 +596,7 @@ final class HomeViewModel {
             let burned = exercises.reduce(0) { $0 + $1.calories }
             await MainActor.run {
                 self.todaysBurnedCalories = burned
+                self.cacheBurnedCalories(burned)
                 print("✅ [HomeViewModel] Refreshed burned calories: \(burned) cal")
             }
         } catch {
@@ -595,16 +662,21 @@ final class HomeViewModel {
     }
     
     /// Effective calorie goal accounting for burned and rollover calories
+    /// Uses selected date's burned calories when viewing different dates
     var effectiveCalorieGoal: Int {
         var goal = baseCalorieGoal
+        let calendar = Calendar.current
+        let isToday = calendar.isDateInToday(selectedDate)
         
         // Add burned calories if setting is enabled
+        // Use selected date's burned calories when viewing different dates
         if UserProfileRepository.shared.getAddBurnedCalories() {
-            goal += todaysBurnedCalories
+            let burned = isToday ? todaysBurnedCalories : selectedDateBurnedCalories
+            goal += burned
         }
         
-        // Add rollover calories if setting is enabled
-        if UserProfileRepository.shared.getRolloverCalories() {
+        // Add rollover calories if setting is enabled (only applies to today)
+        if UserProfileRepository.shared.getRolloverCalories() && isToday {
             goal += rolloverCaloriesFromYesterday
         }
         
@@ -636,15 +708,21 @@ final class HomeViewModel {
     }
     
     /// Description of goal adjustments for display - clearly shows added vs subtracted
+    /// Uses selected date's burned calories when viewing different dates
     var goalAdjustmentDescription: String? {
         var adjustments: [String] = []
+        let calendar = Calendar.current
+        let isToday = calendar.isDateInToday(selectedDate)
         
         // Added calories (positive adjustments)
-        if isBurnedCaloriesEnabled && todaysBurnedCalories > 0 {
-            adjustments.append("+\(todaysBurnedCalories) burned")
+        // Use selected date's burned calories when viewing different dates
+        let burned = isToday ? todaysBurnedCalories : selectedDateBurnedCalories
+        if isBurnedCaloriesEnabled && burned > 0 {
+            adjustments.append("+\(burned) burned")
         }
         
-        if isRolloverCaloriesEnabled && rolloverCaloriesFromYesterday > 0 {
+        // Rollover only applies to today
+        if isRolloverCaloriesEnabled && isToday && rolloverCaloriesFromYesterday > 0 {
             adjustments.append("+\(rolloverCaloriesFromYesterday) rollover")
         }
         

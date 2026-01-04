@@ -34,7 +34,13 @@ final class ProfileViewModel {
     }
     
     var currentWeight: Double {
-        didSet { repository.setCurrentWeight(currentWeight) }
+        didSet {
+            repository.setCurrentWeight(currentWeight)
+            // Also update UserSettings to keep it in sync
+            // Since both are @Observable, views observing them will automatically update
+            let weightInKg = currentWeight * 0.453592
+            UserSettings.shared.updateWeight(weightInKg)
+        }
     }
     
     var goalWeight: Double {
@@ -353,7 +359,7 @@ final class ProfileViewModel {
         let activityLevel = "moderately_active" // Default
         
         // Build data dictionary matching onboarding structure
-        var data: [String: Any] = [
+        let data: [String: Any] = [
             "goal": goalType,
             "activity_level": activityLevel,
             "calorie_goal": calorieGoal, // Include current calorie goal

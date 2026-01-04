@@ -11,9 +11,9 @@ import WidgetKit
 
 @available(iOS 16.0, *)
 struct AdjustWeightIntent: AppIntent {
-    static var title: LocalizedStringResource = "Adjust Weight"
-    static var description = IntentDescription("Adjust your weight by a small amount")
-    static var openAppWhenRun: Bool = false
+    nonisolated(unsafe) static var title: LocalizedStringResource = "Adjust Weight"
+    nonisolated(unsafe) static var description = IntentDescription("Adjust your weight by a small amount")
+    nonisolated(unsafe) static var openAppWhenRun: Bool = false
     
     @Parameter(title: "Adjustment", description: "Amount to adjust weight (positive or negative)")
     var adjustment: Double
