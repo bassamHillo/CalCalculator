@@ -20,10 +20,25 @@ platform :ios do
   # Helper to get absolute path for API key file
   def get_api_key_filepath
     filepath = APP_STORE_CONNECT_KEY_FILEPATH
-    # If relative path, make it absolute relative to fastlane directory
-    unless File.absolute_path?(filepath)
-      filepath = File.join(__dir__, filepath)
+    
+    # If it's already an absolute path, use it as-is
+    if File.absolute_path?(filepath)
+      return File.expand_path(filepath)
     end
+    
+    # Handle relative paths
+    # If path starts with ./fastlane/ or fastlane/, remove that prefix
+    filepath = filepath.gsub(/^\.\/fastlane\//, '').gsub(/^fastlane\//, '')
+    
+    # If path is just a filename (like "AuthKey.p8"), join with fastlane directory
+    if filepath == File.basename(filepath)
+      filepath = File.join(__dir__, filepath)
+    else
+      # Otherwise, treat as relative to project root
+      project_root = File.expand_path("..", __dir__)
+      filepath = File.join(project_root, filepath)
+    end
+    
     # Normalize the path to resolve any double slashes or .. references
     File.expand_path(filepath)
   end
