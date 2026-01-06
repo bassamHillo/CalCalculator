@@ -128,6 +128,10 @@ struct OnboardingWebViewRepresentable: UIViewRepresentable {
             case "step_view":
                 print("📱 [OnboardingWebView] Viewing step: \(payload["stepId"] ?? "unknown")")
 
+            case "generate_goals_via_native":
+                print("📱 [OnboardingWebView] Generate goals via native requested")
+                handleGenerateGoalsViaNative(payload: payload)
+
             case "complete":
                 handleComplete(payload: payload)
 
@@ -136,6 +140,103 @@ struct OnboardingWebViewRepresentable: UIViewRepresentable {
             }
         }
 
+        private func handleGenerateGoalsViaNative(payload: [String: Any]) {
+            print("📱 [OnboardingWebView] ===== Generate Goals Via Native Handler ======")
+            print("📱 [OnboardingWebView] Full payload: \(payload)")
+            print("📱 [OnboardingWebView] Payload keys: \(payload.keys)")
+            
+            guard let answers = payload["answers"] as? [String: Any] else {
+                print("❌ [OnboardingWebView] Missing answers in payload")
+                print("❌ [OnboardingWebView] Payload content: \(payload)")
+                postGoalsGeneratedToJS(ok: false, error: "Missing answers data")
+                return
+            }
+            
+            print("📱 [OnboardingWebView] Answers extracted: \(answers)")
+            print("📱 [OnboardingWebView] Answers keys: \(answers.keys)")
+            
+            Task {
+                do {
+                    print("🔵 [OnboardingWebView] Calling GoalsGenerationService...")
+                    let goals = try await GoalsGenerationService.shared.generateGoals(from: answers)
+                    
+                    print("✅ [OnboardingWebView] Goals generated successfully via native")
+                    print("   - Calories: \(goals.calories)")
+                    print("   - Protein: \(goals.proteinG)g")
+                    print("   - Carbs: \(goals.carbsG)g")
+                    print("   - Fat: \(goals.fatG)g")
+                    
+                    // Send success response back to JavaScript
+                    let goalsData: [String: Any] = [
+                        "calories": goals.calories,
+                        "proteinG": goals.proteinG,
+                        "carbsG": goals.carbsG,
+                        "fatG": goals.fatG
+                    ]
+                    
+                    postGoalsGeneratedToJS(ok: true, goals: goalsData)
+                } catch {
+                    print("❌ [OnboardingWebView] Failed to generate goals via native: \(error)")
+                    print("❌ [OnboardingWebView] Error type: \(type(of: error))")
+                    print("❌ [OnboardingWebView] Error description: \(error.localizedDescription)")
+                    if let nsError = error as NSError? {
+                        print("❌ [OnboardingWebView] NSError domain: \(nsError.domain)")
+                        print("❌ [OnboardingWebView] NSError code: \(nsError.code)")
+                        print("❌ [OnboardingWebView] NSError userInfo: \(nsError.userInfo)")
+                    }
+                    let errorMsg = (error as? GoalsGenerationError)?.errorDescription ?? error.localizedDescription
+                    postGoalsGeneratedToJS(ok: false, error: errorMsg)
+                }
+            }
+        }
+        
+        private func postGoalsGeneratedToJS(ok: Bool, goals: [String: Any]? = nil, error: String? = nil) {
+            DispatchQueue.main.async { [weak self] in
+                guard let webView = self?.webView else {
+                    print("⚠️ [OnboardingWebView] WebView is nil, cannot post goals to JS")
+                    return
+                }
+                
+                var payload: [String: Any] = ["ok": ok]
+                if let goals = goals {
+                    payload["goals"] = goals
+                }
+                if let error = error {
+                    payload["error"] = error
+                }
+                
+                // Serialize to JSON and encode as base64 for safe transmission
+                guard let jsonData = try? JSONSerialization.data(withJSONObject: payload, options: []),
+                      let jsonString = String(data: jsonData, encoding: .utf8) else {
+                    print("❌ [OnboardingWebView] Failed to serialize payload to JSON")
+                    return
+                }
+                
+                // Encode JSON string as base64 to avoid escaping issues
+                let base64String = jsonData.base64EncodedString()
+                
+                let message = """
+                    (function() {
+                        try {
+                            var jsonString = atob('\(base64String)');
+                            var detail = JSON.parse(jsonString);
+                            window.dispatchEvent(new CustomEvent('goals_generated_native', { detail: detail }));
+                        } catch (e) {
+                            console.error('Failed to parse goals data:', e);
+                        }
+                    })();
+                """
+                
+                webView.evaluateJavaScript(message) { result, error in
+                    if let error = error {
+                        print("❌ [OnboardingWebView] Failed to post goals to JS: \(error.localizedDescription)")
+                    } else {
+                        print("✅ [OnboardingWebView] Posted goals to JS successfully")
+                    }
+                }
+            }
+        }
+        
         private func handleComplete(payload: [String: Any]) {
             print("📱 [OnboardingWebView] Onboarding complete!")
 

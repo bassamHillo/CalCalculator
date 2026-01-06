@@ -153,6 +153,54 @@
     if (!Number.isFinite(v)) return null;
     return unit === "lb" ? v * 0.453592 : v;
   }
+  
+  // Try to generate goals via native Swift code (bypasses CORS)
+  function tryGenerateGoalsViaNative() {
+    return new Promise((resolve) => {
+      console.log("🔵 [tryGenerateGoalsViaNative] Requesting goals generation via native...");
+      
+      const timeout = setTimeout(() => {
+        window.removeEventListener("goals_generated_native", handler);
+        console.warn("⚠️ [tryGenerateGoalsViaNative] Timeout waiting for native response");
+        resolve({ success: false, error: "Timeout waiting for native response" });
+      }, 25000);
+      
+      const handler = (event) => {
+        clearTimeout(timeout);
+        window.removeEventListener("goals_generated_native", handler);
+        
+        const detail = event.detail || {};
+        console.log("🔵 [tryGenerateGoalsViaNative] Received native response:", detail);
+        
+        if (detail.ok === true && detail.goals) {
+          console.log("✅ [tryGenerateGoalsViaNative] Native generation successful");
+          const goals = detail.goals;
+          resolve({
+            success: true,
+            goals: {
+              daily_calories: goals.calories,
+              macros: {
+                protein_g: goals.proteinG,
+                carbs_g: goals.carbsG,
+                fat_g: goals.fatG,
+                fiber_g: goals.fiberG || null
+              }
+            }
+          });
+        } else {
+          const error = detail.error || "Unknown error from native";
+          console.error("❌ [tryGenerateGoalsViaNative] Native generation failed:", error);
+          resolve({ success: false, error: error });
+        }
+      };
+      
+      window.addEventListener("goals_generated_native", handler);
+      
+      // Request native generation
+      console.log("🔵 [tryGenerateGoalsViaNative] Posting request to native...");
+      postToNative("generate_goals_via_native", { answers: state.answers });
+    });
+  }
 
   function calculateAge(birthdate) {
     const birth = new Date(birthdate);
@@ -960,7 +1008,61 @@ async function generateGoalsViaApi() {
     }, 650);
 
     (async () => {
+      // Try native first (bypasses CORS)
+      console.log("🔵 [startGoalsGeneration] Attempting to generate goals via native...");
+      const nativeResult = await tryGenerateGoalsViaNative();
+      
+      if (nativeResult.success) {
+        console.log("✅ [startGoalsGeneration] Goals generated successfully via native");
+        const apiGoals = nativeResult.goals;
+        
+        // Map API response to the UI's expected keys
+        const g = apiGoals || {};
+        const m = g.macros || {};
+
+        state.generatedGoals = {
+          calories: Math.round(Number(g.daily_calories || g.calories || 0)),
+          proteinG: Math.round(Number(m.protein_g || g.proteinG || 0)),
+          carbsG: Math.round(Number(m.carbs_g || g.carbsG || 0)),
+          fatG: Math.round(Number(m.fat_g || g.fatG || 0)),
+
+          // Keep extra fields
+          fiberG: Number(m.fiber_g || g.fiberG) ?? null,
+          bmi: g.bmi ?? null,
+          bmr: g.bmr ?? null,
+          tdee: g.tdee ?? null,
+          calorie_adjustment: g.calorie_adjustment ?? null,
+          time_to_goal_weeks: g.time_to_goal_weeks ?? null,
+          notes: g.notes ?? null,
+          _raw: g._raw ?? null,
+        };
+
+        // Keep normalized (metric) values for convenience
+        const hw = state.answers["height_weight"] || {};
+        const heightVal = hw.height ?? 170;
+        const heightUnit = hw["height__unit"] || "cm";
+        const weightVal = hw.weight ?? 70;
+        const weightUnit = hw["weight__unit"] || "kg";
+
+        state.answers._normalized = {
+          height_cm: toCm(heightVal, heightUnit),
+          weight_kg: toKg(weightVal, weightUnit),
+        };
+
+        clearInterval(msgInterval);
+        showGoalsResults(state.generatedGoals);
+
+        console.log("✅ [Goals API] Goals generated successfully, posting to native");
+        postToNative("goals_generated", { ok: true, goals: state.generatedGoals });
+        return; // Exit early, don't try JavaScript API
+      } else {
+        console.warn("⚠️ [startGoalsGeneration] Native generation failed, falling back to JavaScript API");
+        console.warn("⚠️ [startGoalsGeneration] Error: ", nativeResult.error);
+      }
+      
+      // Fallback to JavaScript API if native fails
       try {
+        console.log("🔵 [startGoalsGeneration] Calling generateGoalsViaApi()...");
         const apiGoals = await generateGoalsViaApi();
 
         // Map API response to the UI's expected keys
