@@ -98,6 +98,14 @@
     "type": "info",
     "title": "Stay on track",
     "description": "You can enable notifications later in settings to get reminders for meals and weight tracking.",
+    "next": "tracking"
+  },
+  {
+    "id": "tracking",
+    "type": "permission",
+    "title": "Help us improve",
+    "description": "Allow tracking to help us improve the app experience.",
+    "permission": "tracking",
     "next": "referral"
   },
   {

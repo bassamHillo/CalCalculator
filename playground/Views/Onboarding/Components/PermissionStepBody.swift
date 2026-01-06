@@ -7,6 +7,8 @@
 
 import SwiftUI
 import UserNotifications
+import AppTrackingTransparency
+import AdSupport
 
 struct PermissionStepBody: View {
     let step: OnboardingStep
@@ -18,9 +20,9 @@ struct PermissionStepBody: View {
 
     var body: some View {
         VStack(spacing: 32) {
-            Image(systemName: "bell.badge.fill")
+            Image(systemName: step.permission == .tracking ? "hand.raised.fill" : "bell.badge.fill")
                 .font(.system(size: 80))
-                .foregroundStyle(.orange)
+                .foregroundStyle(step.permission == .tracking ? .blue : .orange)
                 .padding(.top, 40)
             
             Text(localizationManager.localizedString(for: AppStrings.Profile.youCanChangeThisAnytime))
@@ -38,8 +40,10 @@ struct PermissionStepBody: View {
                             ProgressView()
                                 .tint(.white)
                         } else {
-                            Text(localizationManager.localizedString(for: AppStrings.Onboarding.allowNotifications))
-                                .id("allow-notifications-\(localizationManager.currentLanguage)")
+                            Text(step.permission == .tracking 
+                                 ? localizationManager.localizedString(for: AppStrings.Onboarding.allowTracking)
+                                 : localizationManager.localizedString(for: AppStrings.Onboarding.allowNotifications))
+                                .id(step.permission == .tracking ? "allow-tracking-\(localizationManager.currentLanguage)" : "allow-notifications-\(localizationManager.currentLanguage)")
                                 .font(.system(size: 17, weight: .semibold))
                         }
                     }
@@ -70,19 +74,28 @@ struct PermissionStepBody: View {
     }
 
     private func requestPermission() {
-        guard step.permission == .notifications else {
+        if step.permission == .notifications {
+            isRequesting = true
+            UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, _ in
+                DispatchQueue.main.async {
+                    store.setStepAnswer(stepID: step.id, value: .bool(granted))
+                    isRequesting = false
+                    onNext()
+                }
+            }
+        } else if step.permission == .tracking {
+            isRequesting = true
+            ATTrackingManager.requestTrackingAuthorization { status in
+                DispatchQueue.main.async {
+                    let granted = status == .authorized
+                    store.setStepAnswer(stepID: step.id, value: .bool(granted))
+                    isRequesting = false
+                    onNext()
+                }
+            }
+        } else {
             store.setStepAnswer(stepID: step.id, value: .bool(false))
             onNext()
-            return
-        }
-
-        isRequesting = true
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, _ in
-            DispatchQueue.main.async {
-                store.setStepAnswer(stepID: step.id, value: .bool(granted))
-                isRequesting = false
-                onNext()
-            }
         }
     }
 }
