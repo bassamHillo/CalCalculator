@@ -77,6 +77,7 @@ enum InputType: String, Codable, Hashable {
 
 enum PermissionType: String, Codable, Hashable {
     case notifications
+    case tracking
 }
 
 struct ButtonConfig: Codable, Hashable {

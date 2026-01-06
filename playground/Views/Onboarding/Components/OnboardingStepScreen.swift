@@ -152,7 +152,7 @@ struct OnboardingStepScreen: View {
         step: OnboardingStep(
             id: "welcome",
             type: .info,
-            title: "Welcome to CalCalculator",
+            title: "Welcome to CalorieVisionAI",
             description: "Let's set up your personalized nutrition tracking experience",
             next: "gender",
             fields: nil,
