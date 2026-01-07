@@ -146,13 +146,17 @@
 
   function toCm(height, unit) {
     const v = Number(height);
-    if (!Number.isFinite(v)) return null;
+    if (!Number.isFinite(v) || v <= 0) {
+      return null;
+    }
     return unit === "ft" ? v * 30.48 : v;
   }
   function toKg(weight, unit) {
     const v = Number(weight);
-    if (!Number.isFinite(v)) return null;
-    return unit === "lb" ? v * 0.453592 : v;
+    if (!Number.isFinite(v) || v <= 0) {
+      return null;
+    }
+    return unit === "lb" || unit === "lbs" ? v * 0.453592 : v;
   }
   
   // Try to generate goals via native Swift code (bypasses CORS)
@@ -603,7 +607,28 @@ async function generateGoalsViaApi() {
         input.autocomplete = "bday";
       }
 
-      input.value = saved[field.id] ?? "";
+      // Load saved value - convert number to string for input.value
+      const savedValue = saved[field.id];
+      
+      // Load saved value if it exists and is valid
+      // For number fields, only load if it's a valid finite number
+      // For other fields, load if it's not null/undefined/empty
+      if (savedValue != null && savedValue !== "") {
+        if (field.input.type === "number") {
+          const numValue = Number(savedValue);
+          // Only load if it's a valid finite number
+          // Don't load obviously invalid values (NaN, Infinity, or extremely small/large values)
+          if (Number.isFinite(numValue)) {
+            input.value = String(savedValue);
+          } else {
+            input.value = "";
+          }
+        } else {
+          input.value = String(savedValue);
+        }
+      } else {
+        input.value = "";
+      }
       control.appendChild(input);
 
       let unitSelect = null;
@@ -629,7 +654,9 @@ async function generateGoalsViaApi() {
 
       const onChange = () => {
         const obj = state.answers[step.id] || {};
-        obj[field.id] = input.value;
+        // Convert to number if field type is number, otherwise keep as string
+        const value = field.input.type === "number" ? Number(input.value) : input.value;
+        obj[field.id] = value;
         if (unitSelect) obj[`${field.id}__unit`] = unitSelect.value;
         state.answers[step.id] = obj;
         validateStep(step, { soft: true });
@@ -1314,17 +1341,115 @@ function showGoalsError(message, apiUrl) {
       return;
     }
 
+    // For form steps, explicitly save all field values before proceeding
+    // This ensures values are saved even if onChange wasn't triggered
+    if (step.type === "form") {
+      const obj = state.answers[step.id] || {};
+      step.fields.forEach((field) => {
+        const input = content.querySelector(`#in_${step.id}_${field.id}`);
+        if (input) {
+          // Only save if the input has a non-empty value
+          // This prevents saving default/placeholder values
+          const rawValue = input.value.trim();
+          
+          if (rawValue && rawValue !== "") {
+            // Convert to number if field type is number, otherwise keep as string
+            const value = field.input.type === "number" ? Number(rawValue) : rawValue;
+            
+            // Only save if the value is valid (not NaN for numbers, not empty for strings)
+            if (field.input.type === "number") {
+              // For number fields, validate that it's a finite number
+              // Note: We allow 0 for some fields (like age could theoretically be 0 for newborns)
+              // But for height/weight, we validate > 0 in the normalization step
+              if (Number.isFinite(value)) {
+                obj[field.id] = value;
+              }
+            } else {
+              // For non-number fields, save the trimmed value
+              obj[field.id] = value;
+            }
+            
+            // Save unit if field has unit options
+            const unitSelect = input.parentElement?.querySelector("select");
+            if (unitSelect) {
+              obj[`${field.id}__unit`] = unitSelect.value;
+            }
+          }
+        }
+      });
+      state.answers[step.id] = obj;
+    }
+
     state.stack.push(step.id);
 
     if (step.id === "height_weight") {
       const a = state.answers[step.id] || {};
-      const h = a.height, hu = a["height__unit"] || "cm";
-      const w = a.weight, wu = a["weight__unit"] || "kg";
-      const cm = toCm(h, hu);
-      const kg = toKg(w, wu);
-      state.answers._normalized = state.answers._normalized || {};
-      state.answers._normalized.height_cm = cm;
-      state.answers._normalized.weight_kg = kg;
+      
+      // Get height and weight values - check both saved answers and input fields
+      let h = a.height;
+      let hu = a["height__unit"];
+      let w = a.weight;
+      let wu = a["weight__unit"];
+      
+      // Fallback: Try to get values directly from input fields if saved values are missing
+      // This handles edge cases where values weren't saved properly in the form step above
+      if (!h || !w) {
+        const heightInput = content.querySelector(`#in_${step.id}_height`);
+        const weightInput = content.querySelector(`#in_${step.id}_weight`);
+        
+        if (!h && heightInput && heightInput.value) {
+          const trimmedHeight = heightInput.value.trim();
+          if (trimmedHeight !== "") {
+            const heightValue = Number(trimmedHeight);
+            if (Number.isFinite(heightValue) && heightValue > 0) {
+              h = heightValue;
+            }
+          }
+        }
+        
+        if (!w && weightInput && weightInput.value) {
+          const trimmedWeight = weightInput.value.trim();
+          if (trimmedWeight !== "") {
+            const weightValue = Number(trimmedWeight);
+            if (Number.isFinite(weightValue) && weightValue > 0) {
+              w = weightValue;
+            }
+          }
+        }
+        
+        // Get units from selects if not already saved
+        if (!hu && heightInput) {
+          const heightUnitSelect = heightInput.parentElement?.querySelector("select");
+          if (heightUnitSelect && heightUnitSelect.value) {
+            hu = heightUnitSelect.value;
+          }
+        }
+        
+        if (!wu && weightInput) {
+          const weightUnitSelect = weightInput.parentElement?.querySelector("select");
+          if (weightUnitSelect && weightUnitSelect.value) {
+            wu = weightUnitSelect.value;
+          }
+        }
+      }
+      
+      // Convert to numbers and set defaults
+      const hNum = Number(h) || 0;
+      const wNum = Number(w) || 0;
+      const huFinal = hu || "cm";
+      const wuFinal = wu || "kg";
+      
+      // Only normalize if we have valid values
+      if (hNum > 0 && wNum > 0) {
+        const cm = toCm(hNum, huFinal);
+        const kg = toKg(wNum, wuFinal);
+        
+        if (cm && kg) {
+          state.answers._normalized = state.answers._normalized || {};
+          state.answers._normalized.height_cm = cm;
+          state.answers._normalized.weight_kg = kg;
+        }
+      }
     }
 
     goTo(step.next);

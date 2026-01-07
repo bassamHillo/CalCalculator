@@ -376,6 +376,58 @@ final class ProgressViewModel {
             }
         }
         
+        // If no weight history exists, create initial entry from UserSettings (onboarding data)
+        // This ensures ProgressView can display the starting weight even if no weight history exists
+        // Only create if currentWeight is valid (greater than 0)
+        if weightHistory.isEmpty, let context = modelContext, currentWeight > 0 && currentWeight < 1000 {
+            let calendar = Calendar.current
+            let today = calendar.startOfDay(for: Date())
+            let tomorrow = calendar.date(byAdding: .day, value: 1, to: today) ?? today
+            
+            // Check if an entry for today already exists
+            let descriptor = FetchDescriptor<WeightEntry>(
+                predicate: #Predicate<WeightEntry> { entry in
+                    entry.date >= today && entry.date < tomorrow
+                },
+                sortBy: [SortDescriptor(\.date, order: .reverse)]
+            )
+            
+            do {
+                let existingEntries = try context.fetch(descriptor)
+                if existingEntries.isEmpty {
+                    // Create initial entry from UserSettings (onboarding weight)
+                    let entry = WeightEntry(weight: currentWeight, date: Date())
+                    context.insert(entry)
+                    try context.save()
+                    
+                    // Reload weight history to include the new entry
+                    let reloadDescriptor = FetchDescriptor<WeightEntry>(
+                        predicate: #Predicate<WeightEntry> { entry in
+                            entry.date >= startDate
+                        },
+                        sortBy: [SortDescriptor(\.date, order: .forward)]
+                    )
+                    let entries = try context.fetch(reloadDescriptor)
+                    let extractedData: [(date: Date, weight: Double, note: String?)] = entries.map { entry in
+                        (date: entry.date, weight: entry.weight, note: entry.note)
+                    }
+                    weightEntries = entries
+                    let newHistory = extractedData.map { data in
+                        WeightDataPoint(
+                            date: data.date,
+                            weight: useMetricUnits ? data.weight : data.weight * 2.20462,
+                            note: data.note
+                        )
+                    }
+                    weightHistory = newHistory.sorted { $0.date < $1.date }
+                    calculateWeightStats()
+                    return
+                }
+            } catch {
+                // Silently fail - if we can't create the entry, the user can still add it manually
+            }
+        }
+        
         // Fallback to HealthKit if no SwiftData entries exist
         // This handles migration from HealthKit-only storage to SwiftData
         // IMPORTANT: We only use HealthKit as fallback - our data always takes precedence

@@ -597,10 +597,12 @@ struct HomeView: View {
     }
 
     private var healthKitSection: some View {
-        HealthKitCard()
-            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-            .listRowSeparator(.hidden)
-            .listRowBackground(Color.clear)
+        PremiumLockedContent {
+            HealthKitCard()
+        }
+        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
     }
 
     // Recently uploaded empty section - shown when no meals are logged for today
