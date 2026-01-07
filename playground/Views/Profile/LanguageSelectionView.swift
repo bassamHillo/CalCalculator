@@ -23,7 +23,10 @@ struct LanguageSelectionView: View {
                         isSelected: viewModel.selectedLanguage == language.name,
                         onSelect: {
                             // Update language immediately
+                            print("🌐 [LanguageSelectionView] User selected language: '\(language.name)'")
+                            print("🌐 [LanguageSelectionView] Current selectedLanguage: '\(viewModel.selectedLanguage)'")
                             viewModel.selectedLanguage = language.name
+                            print("🌐 [LanguageSelectionView] After update, selectedLanguage: '\(viewModel.selectedLanguage)'")
                             
                             // Close the sheet after language change with a small delay
                             // This ensures the language change is processed before dismissing
