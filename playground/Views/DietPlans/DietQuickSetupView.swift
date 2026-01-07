@@ -581,10 +581,18 @@ struct DietQuickSetupView: View {
             
             try dietPlanRepository.saveDietPlan(plan)
             
-            Task {
-                let reminderService = MealReminderService.shared(context: modelContext)
-                try? await reminderService.requestAuthorization()
-                try? await reminderService.scheduleAllReminders()
+            // Schedule reminders before dismissing
+            let reminderService = MealReminderService.shared(context: modelContext)
+            do {
+                try await reminderService.requestAuthorization()
+                try await reminderService.scheduleAllReminders()
+                
+                // Count scheduled reminders for feedback
+                let totalReminders = meals.count
+                print("✅ Successfully scheduled \(totalReminders) meal reminders")
+            } catch {
+                print("⚠️ Failed to schedule reminders: \(error)")
+                // Continue anyway - diet plan is saved
             }
             
             NotificationCenter.default.post(name: .dietPlanChanged, object: nil)

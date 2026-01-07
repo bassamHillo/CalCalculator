@@ -455,18 +455,19 @@ struct DietPlanEditorView: View {
                 try repository.saveDietPlan(newPlan)
             }
             
-            Task {
-                let reminderService = MealReminderService.shared(context: modelContext)
-                do {
-                    try await reminderService.requestAuthorization()
-                } catch {
-                    print("Notification authorization failed: \(error)")
-                }
-                do {
-                    try await reminderService.scheduleAllReminders()
-                } catch {
-                    print("Failed to schedule reminders: \(error)")
-                }
+            // Schedule reminders before dismissing
+            let reminderService = MealReminderService.shared(context: modelContext)
+            do {
+                try await reminderService.requestAuthorization()
+                try await reminderService.scheduleAllReminders()
+                
+                // Count scheduled reminders for feedback
+                let activePlans = try repository.fetchActiveDietPlans()
+                let totalReminders = activePlans.reduce(0) { $0 + $1.scheduledMeals.count }
+                print("✅ Successfully scheduled \(totalReminders) meal reminders")
+            } catch {
+                print("⚠️ Failed to schedule reminders: \(error)")
+                // Continue anyway - diet plan is saved
             }
             
             NotificationCenter.default.post(name: .dietPlanChanged, object: nil)
