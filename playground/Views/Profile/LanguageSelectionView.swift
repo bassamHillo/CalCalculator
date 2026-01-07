@@ -25,10 +25,9 @@ struct LanguageSelectionView: View {
                             // Update language immediately
                             viewModel.selectedLanguage = language.name
                             
-                            // Dismiss immediately
-                            Task { @MainActor in
-                                dismiss()
-                            }
+                            // Don't dismiss - stay in profile view to see the language change
+                            // The sheet will remain open but the language will update
+                            // User can manually close it if needed
                         }
                     )
                 }
