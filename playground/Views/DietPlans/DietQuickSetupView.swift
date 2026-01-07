@@ -564,7 +564,7 @@ struct DietQuickSetupView: View {
     
     // MARK: - Actions
     
-    private func createPlan() {
+    private func createPlan() async {
         // Check premium subscription before saving
         guard isSubscribed else {
             showingPaywall = true
