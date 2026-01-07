@@ -458,6 +458,22 @@ struct DietPlansListView: View {
             print("Failed to delete diet plan: \(error)")
         }
     }
+    
+    // MARK: - Paywall View
+    
+    private var paywallView: some View {
+        SDKView(
+            model: sdk,
+            page: .splash,
+            show: paywallBinding(
+                showPaywall: $showingPaywall,
+                sdk: sdk,
+                showDeclineConfirmation: $showDeclineConfirmation
+            ),
+            backgroundColor: .white,
+            ignoreSafeArea: true
+        )
+    }
 }
 
 // MARK: - Supporting Views
