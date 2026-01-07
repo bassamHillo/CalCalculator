@@ -117,6 +117,15 @@ struct DietPlansListView: View {
                     showingWelcome = true
                 }
             }
+            .onChange(of: hasActivePlan) { oldValue, newValue in
+                // Show welcome view when a plan is first created (transition from no plan to having plan)
+                if !oldValue && newValue && !UserSettings.shared.hasSeenDietWelcome {
+                    // Small delay to ensure the view is ready
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        showingWelcome = true
+                    }
+                }
+            }
         }
     }
     
