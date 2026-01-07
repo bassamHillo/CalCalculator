@@ -188,6 +188,13 @@ struct MainTabView: View {
             }
         }
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: networkMonitor.isConnected)
+        .onAppear {
+            // Ensure selectedTabRaw is synced with storedTab on appear
+            // This prevents tab selection from resetting when view updates
+            if selectedTabRaw != storedTab {
+                selectedTabRaw = storedTab
+            }
+        }
         .onChange(of: selectedTabRaw) { oldValue, newValue in
             // Persist tab selection to AppStorage
             storedTab = newValue
@@ -199,6 +206,13 @@ struct MainTabView: View {
                     try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
                     scrollHomeToTopTrigger = UUID()
                 }
+            }
+        }
+        .onChange(of: localizationManager.currentLanguage) { oldValue, newValue in
+            // When language changes, preserve the current tab selection
+            // This prevents navigation to home tab when language changes
+            if selectedTabRaw != storedTab {
+                selectedTabRaw = storedTab
             }
         }
         .onChange(of: hasActiveDiet) { oldValue, newValue in
