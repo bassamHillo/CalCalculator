@@ -644,14 +644,33 @@ final class HomeViewModel {
     
     /// Refreshes today's burned calories from the database
     /// Called when exercises are added/removed to update the calorie goal adjustment
+    /// Also updates selected date burned calories if viewing today
     func refreshBurnedCalories() async {
         do {
-            let exercises = try repository.fetchTodaysExercises()
-            let burned = exercises.reduce(0) { $0 + $1.calories }
-            await MainActor.run {
-                self.todaysBurnedCalories = burned
-                self.cacheBurnedCalories(burned) // Cache for persistence
-                print("✅ [HomeViewModel] Refreshed burned calories: \(burned) cal")
+            let calendar = Calendar.current
+            let isToday = calendar.isDateInToday(selectedDate)
+            
+            if isToday {
+                // If viewing today, update both today's and selected date's burned calories
+                let exercises = try repository.fetchTodaysExercises()
+                let burned = exercises.reduce(0) { $0 + $1.calories }
+                await MainActor.run {
+                    self.todaysBurnedCalories = burned
+                    self.selectedDateBurnedCalories = burned
+                    self.selectedDateExercisesCount = exercises.count
+                    self.cacheBurnedCalories(burned) // Cache for persistence
+                    print("✅ [HomeViewModel] Refreshed burned calories: \(burned) cal")
+                }
+            } else {
+                // If viewing a different date, update that date's burned calories
+                let targetDate = calendar.startOfDay(for: selectedDate)
+                let exercises = try repository.fetchExercises(for: targetDate)
+                let burned = exercises.reduce(0) { $0 + $1.calories }
+                await MainActor.run {
+                    self.selectedDateBurnedCalories = burned
+                    self.selectedDateExercisesCount = exercises.count
+                    print("✅ [HomeViewModel] Refreshed burned calories for selected date: \(burned) cal")
+                }
             }
         } catch {
             print("⚠️ [HomeViewModel] Failed to refresh burned calories: \(error)")
