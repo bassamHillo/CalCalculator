@@ -330,8 +330,7 @@ struct DietView: View {
         let missedMealIds = Set(data.missedMeals.map { $0.id })
 
         VStack(spacing: 8) {
-            ForEach(Array(0..<sortedMeals.count), id: \.self) { index in
-                let meal = sortedMeals[index]
+            ForEach(Array(sortedMeals.enumerated()), id: \.offset) { index, meal in
                 let isCompleted = data.completedMeals.contains(meal.id)
                 let isMissed = missedMealIds.contains(meal.id)
                 let goalAchieved = data.goalAchievedMeals.contains(meal.id)
@@ -347,11 +346,11 @@ struct DietView: View {
                         if !isCompleted {
                             // Show meal verification view to allow image upload and analysis
                             showingMealVerification = meal
+                        } else {
+                            // If completed, allow deletion
+                            deleteCompletedMeal(meal)
                         }
-                    },
-                    onDelete: isCompleted ? {
-                        deleteCompletedMeal(meal)
-                    } : nil
+                    }
                 )
             }
         }

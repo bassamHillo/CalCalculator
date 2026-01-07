@@ -69,9 +69,19 @@ final class MyDietViewModel {
         guard let repository = dietPlanRepository else { return }
         
         let calendar = Calendar.current
-        let startDate = selectedTimeRange.startDate
+        guard let startDate = selectedTimeRange.startDate else {
+            // For "allDays" range, use a very old date as start
+            let veryOldDate = calendar.date(byAdding: .year, value: -10, to: Date()) ?? Date()
+            await loadAdherenceFromDate(veryOldDate, to: Date(), repository: repository)
+            return
+        }
         let endDate = Date()
         
+        await loadAdherenceFromDate(startDate, to: endDate, repository: repository)
+    }
+    
+    private func loadAdherenceFromDate(_ startDate: Date, to endDate: Date, repository: DietPlanRepository) async {
+        let calendar = Calendar.current
         var adherence: [DailyAdherence] = []
         
         var currentDate = startDate

@@ -470,39 +470,50 @@ struct EnhancedDietSummaryContent: View {
     private func loadWeeklyAdherence() {
         Task {
             let calendar = Calendar.current
-            let startDate = selectedTimeRange.startDate
+            guard let startDate = selectedTimeRange.startDate else {
+                // For "allDays" range, we need a different approach
+                // For now, use a very old date as start
+                let veryOldDate = calendar.date(byAdding: .year, value: -10, to: Date()) ?? Date()
+                await loadAdherenceFromDate(veryOldDate, to: Date())
+                return
+            }
             let endDate = Date()
             
-            var adherence: [DailyAdherence] = []
-            
-            var currentDate = startDate
-            while currentDate <= endDate {
-                do {
-                    let data = try dietPlanRepository.getDietAdherence(
-                        for: currentDate,
-                        activePlans: activePlans
-                    )
-                    
-                    adherence.append(DailyAdherence(
-                        date: currentDate,
-                        completionRate: data.completionRate,
-                        completedMeals: data.completedMeals.count,
-                        totalMeals: data.scheduledMeals.count,
-                        goalAchievementRate: data.goalAchievementRate
-                    ))
-                } catch {
-                    print("Failed to load adherence for \(currentDate): \(error)")
-                }
+            await loadAdherenceFromDate(startDate, to: endDate)
+        }
+    }
+    
+    private func loadAdherenceFromDate(_ startDate: Date, to endDate: Date) async {
+        let calendar = Calendar.current
+        var adherence: [DailyAdherence] = []
+        
+        var currentDate = startDate
+        while currentDate <= endDate {
+            do {
+                let data = try dietPlanRepository.getDietAdherence(
+                    for: currentDate,
+                    activePlans: activePlans
+                )
                 
-                guard let nextDate = calendar.date(byAdding: .day, value: 1, to: currentDate) else {
-                    break
-                }
-                currentDate = nextDate
+                adherence.append(DailyAdherence(
+                    date: currentDate,
+                    completionRate: data.completionRate,
+                    completedMeals: data.completedMeals.count,
+                    totalMeals: data.scheduledMeals.count,
+                    goalAchievementRate: data.goalAchievementRate
+                ))
+            } catch {
+                print("Failed to load adherence for \(currentDate): \(error)")
             }
             
-            await MainActor.run {
-                weeklyAdherence = adherence
+            guard let nextDate = calendar.date(byAdding: .day, value: 1, to: currentDate) else {
+                break
             }
+            currentDate = nextDate
+        }
+        
+        await MainActor.run {
+            weeklyAdherence = adherence
         }
     }
     
