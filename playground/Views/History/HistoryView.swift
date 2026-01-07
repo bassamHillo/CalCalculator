@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import SwiftData
 import Charts
 
 // MARK: - HistoryView (with NavigationStack - for standalone use)
@@ -15,6 +14,7 @@ struct HistoryView: View {
     @Bindable var viewModel: HistoryViewModel
     let repository: MealRepository
     let isSubscribed: Bool
+    let hasActiveDiet: Bool
     let onCreateDiet: () -> Void
     
     var body: some View {
@@ -23,6 +23,7 @@ struct HistoryView: View {
                 viewModel: viewModel,
                 repository: repository,
                 isSubscribed: isSubscribed,
+                hasActiveDiet: hasActiveDiet,
                 onCreateDiet: onCreateDiet
             )
         }
@@ -36,36 +37,14 @@ struct HistoryViewContent: View {
     @Bindable var viewModel: HistoryViewModel
     let repository: MealRepository
     let isSubscribed: Bool
-    let scrollToTopTrigger: UUID
+    let hasActiveDiet: Bool
     let onCreateDiet: () -> Void
     @ObservedObject private var localizationManager = LocalizationManager.shared
-    
-    // Single source of truth - query active diet plans directly
-    @Query(filter: #Predicate<DietPlan> { $0.isActive == true }) private var activeDietPlans: [DietPlan]
 
     @State private var selectedDate: SelectedDate?
     @State private var searchText: String = ""
     @State private var selectedTimeFilter: HistoryTimeFilter = .all
     @State private var showingFilterSheet = false
-    
-    // Computed property - single source of truth
-    private var hasActiveDiet: Bool {
-        !activeDietPlans.isEmpty && isSubscribed
-    }
-    
-    init(
-        viewModel: HistoryViewModel,
-        repository: MealRepository,
-        isSubscribed: Bool,
-        scrollToTopTrigger: UUID = UUID(),
-        onCreateDiet: @escaping () -> Void
-    ) {
-        self.viewModel = viewModel
-        self.repository = repository
-        self.isSubscribed = isSubscribed
-        self.scrollToTopTrigger = scrollToTopTrigger
-        self.onCreateDiet = onCreateDiet
-    }
 
     private var filteredSummaries: [DaySummary] {
         var summaries = viewModel.allDaySummaries
@@ -234,21 +213,19 @@ struct HistoryViewContent: View {
     }
 
     private var historyList: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                LazyVStack(spacing: 16) {
-                    if !filteredSummaries.isEmpty {
-                        StatsSummaryCard(
-                            daysCount: filteredSummaries.count,
-                            totalMeals: totalMeals,
-                            totalCalories: totalCalories,
-                            averageCalories: averageCalories,
-                            timeFilter: selectedTimeFilter,
-                            summaries: filteredSummaries
-                        )
-                        .id("history-top") // Anchor point for scrolling to top
-                        .transition(.opacity.combined(with: .move(edge: .top)))
-                    }
+        ScrollView {
+            LazyVStack(spacing: 16) {
+                if !filteredSummaries.isEmpty {
+                    StatsSummaryCard(
+                        daysCount: filteredSummaries.count,
+                        totalMeals: totalMeals,
+                        totalCalories: totalCalories,
+                        averageCalories: averageCalories,
+                        timeFilter: selectedTimeFilter,
+                        summaries: filteredSummaries
+                    )
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+                }
                 
                 ForEach(filteredSummaries, id: \.id) { summary in
                     DaySummaryCard(summary: summary)
@@ -263,13 +240,6 @@ struct HistoryViewContent: View {
             .padding(.vertical, 8)
             .padding(.bottom, hasActiveDiet ? 8 : 100) // Extra padding for diet prompt
             .animation(.easeInOut(duration: 0.2), value: filteredSummaries.count)
-            }
-            .onChange(of: scrollToTopTrigger) { _, _ in
-                // Scroll to top when history tab is tapped (trigger changes)
-                withAnimation(.easeInOut(duration: 0.3)) {
-                    proxy.scrollTo("history-top", anchor: .top)
-                }
-            }
         }
     }
 

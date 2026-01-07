@@ -11,19 +11,31 @@ import SDK
 import UIKit
 import ObjectiveC
 
+// MARK: - Tab Enum
+/// Stable tab identifiers that don't change based on which tabs are visible
+enum MainTab: String, CaseIterable {
+    case home
+    case progress
+    case myDiet
+    case history
+    case profile
+}
+
 struct MainTabView: View {
     var repository: MealRepository
     @ObservedObject private var localizationManager = LocalizationManager.shared
-    @Environment(\.modelContext) private var modelContext
 
-    @State private var selectedTab = 0
+    /// Persistent storage for the selected tab
+    @AppStorage("selectedMainTab") private var storedTab = MainTab.home.rawValue
+    /// Local state for immediate UI updates - synced with AppStorage
+    @State private var selectedTabRaw: String = MainTab.home.rawValue
     @State private var scrollHomeToTopTrigger = UUID()
-    @State private var scrollProgressToTopTrigger = UUID()
-    @State private var scrollHistoryToTopTrigger = UUID()
+    @StateObject private var networkMonitor = NetworkMonitor.shared
+    
+    // Diet creation state (for History tab's create diet prompt)
     @State private var showingCreateDiet = false
     @State private var showingPaywall = false
     @State private var showDeclineConfirmation = false
-    @StateObject private var networkMonitor = NetworkMonitor.shared
     @Environment(TheSDK.self) private var sdk
 
     @State var homeViewModel: HomeViewModel
@@ -31,17 +43,30 @@ struct MainTabView: View {
     @State var historyViewModel: HistoryViewModel
     @State var progressViewModel: ProgressViewModel
     @State var settingsViewModel: SettingsViewModel
+    @State var myDietViewModel: MyDietViewModel
     
     @Environment(\.isSubscribed) private var isSubscribed
     @Query(filter: #Predicate<DietPlan> { $0.isActive == true }) private var activeDietPlans: [DietPlan]
     
+    /// User has premium subscription AND has at least one active diet plan
     private var hasActiveDiet: Bool {
         !activeDietPlans.isEmpty && isSubscribed
+    }
+    
+    /// Convert the raw string back to a MainTab enum
+    private var selectedTab: MainTab {
+        get { MainTab(rawValue: selectedTabRaw) ?? .home }
+        nonmutating set { selectedTabRaw = newValue.rawValue }
     }
     
     init(repository: MealRepository) {
         let initStart = Date()
         self.repository = repository
+        
+        // Initialize selectedTabRaw from stored value
+        let stored = UserDefaults.standard.string(forKey: "selectedMainTab") ?? MainTab.home.rawValue
+        _selectedTabRaw = State(initialValue: stored)
+        
         _homeViewModel = State(
             initialValue: HomeViewModel(
                 repository: repository,
@@ -71,6 +96,9 @@ struct MainTabView: View {
                 imageStorage: .shared
             )
         )
+        _myDietViewModel = State(
+            initialValue: MyDietViewModel()
+        )
         let initTime = Date().timeIntervalSince(initStart)
         if initTime > 0.1 {
             print("⚠️ [MainTabView] Initialization took \(String(format: "%.3f", initTime))s")
@@ -79,77 +107,67 @@ struct MainTabView: View {
     
     var body: some View {
         // Explicitly reference currentLanguage to ensure SwiftUI tracks the dependency
-        // This forces the view to update when the language changes
         let _ = localizationManager.currentLanguage
         
         return ZStack(alignment: .top) {
-            TabView(selection: $selectedTab) {
-            HomeView(
-                viewModel: homeViewModel,
-                repository: repository,
-                scanViewModel: scanViewModel,
-                scrollToTopTrigger: scrollHomeToTopTrigger,
-                onMealSaved: {
-                    // Refresh all relevant data when a meal is saved
-                    // This ensures Home, History, and Progress views stay in sync
-                    Task {
-                        await homeViewModel.refreshTodayData()
-                        // Update Live Activity after data refresh
-                        homeViewModel.updateLiveActivityIfNeeded()
-                        await historyViewModel.loadData()
-                        await progressViewModel.loadData()
-                    }
-                }
-            )
-            .tabItem {
-                Label(localizationManager.localizedString(for: AppStrings.Home.title), systemImage: "house.fill")
-            }
-            .tag(0)
-            
-            ProgressDashboardView(
-                viewModel: progressViewModel,
-                scrollToTopTrigger: scrollProgressToTopTrigger
-            )
-                .tabItem {
-                    Label(localizationManager.localizedString(for: AppStrings.Progress.title), systemImage: "chart.line.uptrend.xyaxis")
-                }
-                .tag(1)
-            
-            Group {
-                if hasActiveDiet {
-                    MyDietView(
-                        viewModel: MyDietViewModel()
-                    )
-                } else {
-                    HistoryViewContent(
-                        viewModel: historyViewModel,
-                        repository: repository,
-                        isSubscribed: isSubscribed,
-                        scrollToTopTrigger: scrollHistoryToTopTrigger,
-                        onCreateDiet: {
-                            if isSubscribed {
-                                showingCreateDiet = true
-                            } else {
-                                showingPaywall = true
-                            }
+            TabView(selection: $selectedTabRaw) {
+                HomeView(
+                    viewModel: homeViewModel,
+                    repository: repository,
+                    scanViewModel: scanViewModel,
+                    scrollToTopTrigger: scrollHomeToTopTrigger,
+                    onMealSaved: {
+                        Task {
+                            await homeViewModel.refreshTodayData()
+                            // Update Live Activity after data refresh
+                            homeViewModel.updateLiveActivityIfNeeded()
+                            await historyViewModel.loadData()
+                            await progressViewModel.loadData()
                         }
-                    )
-                }
-            }
+                    }
+                )
                 .tabItem {
-                    Label(hasActiveDiet ? localizationManager.localizedString(for: AppStrings.DietPlan.myDiet) : localizationManager.localizedString(for: AppStrings.History.title), systemImage: "calendar")
+                    Label(localizationManager.localizedString(for: AppStrings.Home.title), systemImage: "house.fill")
                 }
-                .tag(2)
+                .tag(MainTab.home.rawValue)
+                
+                ProgressDashboardView(viewModel: progressViewModel)
+                    .tabItem {
+                        Label(localizationManager.localizedString(for: AppStrings.Progress.title), systemImage: "chart.line.uptrend.xyaxis")
+                    }
+                    .tag(MainTab.progress.rawValue)
+                
+                // My Diet tab - only shown when user has premium AND active diet
+                if hasActiveDiet {
+                    MyDietView(viewModel: myDietViewModel)
+                        .tabItem {
+                            Label(localizationManager.localizedString(for: AppStrings.DietPlan.myDiet), systemImage: "calendar")
+                        }
+                        .tag(MainTab.myDiet.rawValue)
+                }
+                
+                // History tab - always visible, standalone
+                HistoryView(
+                    viewModel: historyViewModel,
+                    repository: repository,
+                    isSubscribed: isSubscribed,
+                    hasActiveDiet: hasActiveDiet,
+                    onCreateDiet: handleCreateDiet
+                )
+                .tabItem {
+                    Label(localizationManager.localizedString(for: AppStrings.History.title), systemImage: "clock.arrow.circlepath")
+                }
+                .tag(MainTab.history.rawValue)
 
-            ProfileView()
-                .tabItem {
-                    Label(localizationManager.localizedString(for: AppStrings.Profile.title), systemImage: "person.fill")
-                }
-                .tag(3)
+                ProfileView()
+                    .tabItem {
+                        Label(localizationManager.localizedString(for: AppStrings.Profile.title), systemImage: "person.fill")
+                    }
+                    .tag(MainTab.profile.rawValue)
             }
+            // Removed .id("main-tab-view") - this was causing issues with tab selection state
             
-            // Offline banner - shown when network connection is unavailable
-            // Displays at the top of the screen to inform users of connectivity issues
+            // Offline banner
             if !networkMonitor.isConnected {
                 VStack {
                     HStack {
@@ -170,85 +188,86 @@ struct MainTabView: View {
             }
         }
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: networkMonitor.isConnected)
-        .onChange(of: selectedTab) { oldValue, newValue in
-            // When a tab is selected (switched to), trigger scroll to top
-            // This ensures users always start at the top when switching tabs
-            Task { @MainActor in
-                // Small delay to ensure the view is fully loaded before scrolling
-                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
-                switch newValue {
-                case 0:
+        .onChange(of: selectedTabRaw) { oldValue, newValue in
+            // Persist tab selection to AppStorage
+            storedTab = newValue
+            
+            // When home tab is selected, trigger scroll to top
+            if newValue == MainTab.home.rawValue {
+                // Small delay to ensure view is ready, then scroll
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
                     scrollHomeToTopTrigger = UUID()
-                case 1:
-                    scrollProgressToTopTrigger = UUID()
-                case 2:
-                    scrollHistoryToTopTrigger = UUID()
-                default:
-                    break
                 }
             }
         }
-        .background(TabBarTapDetector(
-            onHomeTabTapped: {
-                scrollHomeToTopTrigger = UUID()
-            },
-            onProgressTabTapped: {
-                scrollProgressToTopTrigger = UUID()
-            },
-            onHistoryTabTapped: {
-                scrollHistoryToTopTrigger = UUID()
+        .onChange(of: hasActiveDiet) { oldValue, newValue in
+            // When diet tab is removed, redirect user if they were on it
+            if oldValue && !newValue && selectedTabRaw == MainTab.myDiet.rawValue {
+                // User was on diet tab which is now hidden, move to history
+                selectedTabRaw = MainTab.history.rawValue
             }
-        ))
-        .onChange(of: localizationManager.currentLanguage) { _, _ in
-            // Language changed - views will automatically update via @ObservedObject
-            // No need to recreate the entire hierarchy - this keeps the user in their current view
+            // Note: When diet tab appears, no adjustment needed since tabs use stable identifiers
         }
+        .background(TabBarTapDetector(onHomeTabTapped: {
+            // Home tab was tapped (even if already selected)
+            scrollHomeToTopTrigger = UUID()
+        }))
         .sheet(isPresented: $showingCreateDiet) {
-            if let existingPlan = activeDietPlans.first {
-                // If plan exists, show editor directly
-                DietPlanEditorView(plan: existingPlan, repository: DietPlanRepository(context: modelContext))
-            } else {
-                // If no plan, show list to create one
-                DietPlansListView()
-            }
+            DietPlansListView()
         }
         .fullScreenCover(isPresented: $showingPaywall) {
-            SDKView(
-                model: sdk,
-                page: .splash,
-                show: paywallBinding(showPaywall: $showingPaywall, sdk: sdk, showDeclineConfirmation: $showDeclineConfirmation),
-                backgroundColor: .white,
-                ignoreSafeArea: true
-            )
-            .paywallDismissalOverlay(showPaywall: $showingPaywall, showDeclineConfirmation: $showDeclineConfirmation)
+            paywallView
         }
+        .paywallDismissalOverlay(
+            showPaywall: $showingPaywall,
+            showDeclineConfirmation: $showDeclineConfirmation
+        )
+        // No need for onChange - SwiftUI automatically re-evaluates views when
+        // @ObservedObject properties change. Since localizationManager.currentLanguage
+        // is @Published, all views using localizationManager will update automatically.
+    }
+    
+    // MARK: - Actions
+    
+    private func handleCreateDiet() {
+        if isSubscribed {
+            showingCreateDiet = true
+        } else {
+            showingPaywall = true
+        }
+    }
+    
+    // MARK: - Paywall View
+    
+    private var paywallView: some View {
+        SDKView(
+            model: sdk,
+            page: .splash,
+            show: paywallBinding(
+                showPaywall: $showingPaywall,
+                sdk: sdk,
+                showDeclineConfirmation: $showDeclineConfirmation
+            ),
+            backgroundColor: .white,
+            ignoreSafeArea: true
+        )
     }
 }
 
 // MARK: - TabBar Tap Detector
 
-/// UIViewControllerRepresentable wrapper that detects re-taps on tab bar items
-/// Uses UITabBarControllerDelegate to detect when a user taps an already-selected tab
-/// This enables scroll-to-top functionality when re-tapping the same tab
 struct TabBarTapDetector: UIViewControllerRepresentable {
     let onHomeTabTapped: () -> Void
-    let onProgressTabTapped: () -> Void
-    let onHistoryTabTapped: () -> Void
     
     func makeUIViewController(context: Context) -> UIViewController {
         let controller = UIViewController()
         DispatchQueue.main.async {
-            // Find the UITabBarController in the view hierarchy
             if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
                let window = windowScene.windows.first,
                let tabBarController = window.rootViewController as? UITabBarController ?? findTabBarController(in: window.rootViewController) {
-                let delegate = TabBarTapDelegate(
-                    onHomeTabTapped: onHomeTabTapped,
-                    onProgressTabTapped: onProgressTabTapped,
-                    onHistoryTabTapped: onHistoryTabTapped
-                )
-                // Store delegate using associated object to keep it alive
-                // This prevents the delegate from being deallocated
+                let delegate = TabBarTapDelegate(onHomeTabTapped: onHomeTabTapped)
+                // Store delegate to keep it alive
                 objc_setAssociatedObject(tabBarController, "tabBarTapDelegate", delegate, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
                 tabBarController.delegate = delegate
             }
@@ -258,14 +277,11 @@ struct TabBarTapDetector: UIViewControllerRepresentable {
     
     func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}
     
-    /// Recursively searches the view controller hierarchy to find UITabBarController
-    /// This handles cases where the tab bar controller is nested in other view controllers
     private func findTabBarController(in viewController: UIViewController?) -> UITabBarController? {
         guard let viewController = viewController else { return nil }
         if let tabBarController = viewController as? UITabBarController {
             return tabBarController
         }
-        // Recursively search child view controllers
         for child in viewController.children {
             if let tabBarController = findTabBarController(in: child) {
                 return tabBarController
@@ -277,45 +293,25 @@ struct TabBarTapDetector: UIViewControllerRepresentable {
 
 // MARK: - TabBar Tap Delegate
 
-/// UITabBarControllerDelegate implementation that detects re-taps on selected tabs
-/// When a user taps a tab that is already selected, this triggers the scroll-to-top action
 class TabBarTapDelegate: NSObject, UITabBarControllerDelegate {
     let onHomeTabTapped: () -> Void
-    let onProgressTabTapped: () -> Void
-    let onHistoryTabTapped: () -> Void
-    private var lastSelectedIndex: Int = 0 // Tracks the previously selected tab index
+    private var lastSelectedIndex: Int = 0
     
-    init(
-        onHomeTabTapped: @escaping () -> Void,
-        onProgressTabTapped: @escaping () -> Void,
-        onHistoryTabTapped: @escaping () -> Void
-    ) {
+    init(onHomeTabTapped: @escaping () -> Void) {
         self.onHomeTabTapped = onHomeTabTapped
-        self.onProgressTabTapped = onProgressTabTapped
-        self.onHistoryTabTapped = onHistoryTabTapped
         super.init()
     }
     
     func tabBarController(_ tabBarController: UITabBarController, shouldSelect viewController: UIViewController) -> Bool {
         let newIndex = tabBarController.viewControllers?.firstIndex(of: viewController) ?? -1
         
-        // If a tab is tapped and it was already selected (re-tap), trigger scroll to top
-        // This enables the scroll-to-top functionality when re-tapping the same tab
-        if newIndex == lastSelectedIndex {
-            switch newIndex {
-            case 0:
-                onHomeTabTapped()
-            case 1:
-                onProgressTabTapped()
-            case 2:
-                onHistoryTabTapped()
-            default:
-                break
-            }
+        // If home tab (index 0) is tapped and it was already selected, trigger scroll
+        if newIndex == 0 && lastSelectedIndex == 0 {
+            onHomeTabTapped()
         }
         
         lastSelectedIndex = newIndex
-        return true // Always allow the selection
+        return true
     }
 }
 

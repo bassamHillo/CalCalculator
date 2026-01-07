@@ -75,10 +75,7 @@ struct MyDietView: View {
         .sheet(isPresented: $showingInsights) {
             DietInsightsView(activePlans: activeDietPlans, repository: dietPlanRepository)
         }
-        .sheet(isPresented: Binding(
-            get: { showingEditPlan && !activeDietPlans.isEmpty },
-            set: { showingEditPlan = $0 }
-        )) {
+        .sheet(isPresented: $showingEditPlan) {
             if let plan = activeDietPlans.first {
                 DietPlanEditorView(plan: plan, repository: dietPlanRepository)
             }
@@ -112,13 +109,10 @@ struct MyDietView: View {
         ToolbarItem(placement: .topBarTrailing) {
             HStack(spacing: 16) {
                 Button {
-                    if !activeDietPlans.isEmpty {
-                        showingEditPlan = true
-                    }
+                    showingEditPlan = true
                 } label: {
                     Image(systemName: "pencil")
                 }
-                .disabled(activeDietPlans.isEmpty)
                 
                 Button {
                     showingInsights = true

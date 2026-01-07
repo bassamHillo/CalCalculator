@@ -69,10 +69,7 @@ final class MyDietViewModel {
         guard let repository = dietPlanRepository else { return }
         
         let calendar = Calendar.current
-        guard let startDate = selectedTimeRange.startDate else {
-            weeklyAdherence = []
-            return
-        }
+        let startDate = selectedTimeRange.startDate
         let endDate = Date()
         
         var adherence: [DailyAdherence] = []
