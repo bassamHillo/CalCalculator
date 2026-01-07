@@ -158,7 +158,9 @@ struct TemplatePreviewView: View {
                     
                     // Use template button
                     Button {
-                        useTemplate()
+                        Task {
+                            await useTemplate()
+                        }
                     } label: {
                         Label(localizationManager.localizedString(for: AppStrings.DietPlan.useThisTemplate), systemImage: "checkmark.circle.fill")
                             
@@ -186,7 +188,7 @@ struct TemplatePreviewView: View {
         }
     }
     
-    private func useTemplate() {
+    private func useTemplate() async {
         do {
             let plan = template.createDietPlan()
             try dietPlanRepository.saveDietPlan(plan)
