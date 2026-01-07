@@ -843,8 +843,6 @@ struct AppStrings {
         static let calorieVisionAI = "CalorieVisionAI"
         static let trackNutritionWithEase = "Track your nutrition with ease"
         static let getStarted = "Get Started"
-        static let alreadyHaveAccount = "Already have an account?"
-        static let signIn = "Sign In"
     }
     
     // MARK: - Main
