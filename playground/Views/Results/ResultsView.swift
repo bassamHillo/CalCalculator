@@ -122,7 +122,9 @@ struct ResultsView: View {
 
     @ViewBuilder
     private var confidenceSection: some View {
-        if resultsVM.meal.confidence > 0 {
+        // Only show confidence indicator if confidence is not high (>= 0.8)
+        // High confidence doesn't need an indicator
+        if resultsVM.meal.confidence > 0 && resultsVM.meal.confidence < 0.8 {
             ConfidenceIndicator(confidence: resultsVM.meal.confidence)
                 .padding(.horizontal)
         }

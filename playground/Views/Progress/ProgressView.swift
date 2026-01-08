@@ -40,7 +40,10 @@ struct ProgressDashboardView: View {
                                 CurrentWeightCard(
                                     weight: settings.displayWeight,
                                     unit: viewModel.weightUnit,
-                                    startWeight: viewModel.weightHistory.first?.weight ?? settings.displayWeight,
+                                    // Use first weight entry if available, otherwise use current weight as start weight
+                                    // This ensures we always have a valid start weight for progress calculation
+                                    // Note: currentWeight is already in kg, so we convert to display units if needed
+                                    startWeight: viewModel.weightHistory.first?.weight ?? (viewModel.useMetricUnits ? settings.currentWeight : settings.currentWeight * 2.20462),
                                     goalWeight: viewModel.displayTargetWeight,
                                     daysUntilCheck: viewModel.daysUntilNextWeightCheck,
                                     isSubscribed: isSubscribed,

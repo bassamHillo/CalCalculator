@@ -20,6 +20,7 @@ struct DietInsightsView: View {
     @State private var insights: DietInsights?
     @State private var isLoading = true
     @State private var selectedPeriod: InsightPeriod = .month
+    @State private var showingEditPlan = false
     
     enum InsightPeriod: String, CaseIterable {
         case week = "Last Week"
@@ -108,6 +109,11 @@ struct DietInsightsView: View {
             .onChange(of: selectedPeriod) { _, _ in
                 Task {
                     await loadInsights()
+                }
+            }
+            .sheet(isPresented: $showingEditPlan) {
+                if let plan = activePlans.first {
+                    DietPlanEditorView(plan: plan, repository: repository)
                 }
             }
         }
@@ -258,7 +264,15 @@ struct DietInsightsView: View {
                 .font(.headline)
             
             ForEach(insights.recommendations, id: \.id) { recommendation in
-                RecommendationCard(recommendation: recommendation)
+                RecommendationCard(
+                    recommendation: recommendation,
+                    onTap: {
+                        // If recommendation is about reminders (bell icon), open diet editor
+                        if recommendation.icon == "bell.fill" {
+                            showingEditPlan = true
+                        }
+                    }
+                )
             }
         }
     }
@@ -590,34 +604,40 @@ struct PatternCard: View {
 
 struct RecommendationCard: View {
     let recommendation: Recommendation
+    var onTap: (() -> Void)? = nil
     
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: recommendation.icon)
-                .foregroundColor(recommendation.priority.color)
-                .font(.title3)
-                .frame(width: 40)
-            
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text(recommendation.title)
-                        .font(.headline)
-                    
-                    Spacer()
-                    
-                    Circle()
-                        .fill(recommendation.priority.color)
-                        .frame(width: 8, height: 8)
-                }
+        Button(action: {
+            onTap?()
+        }) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: recommendation.icon)
+                    .foregroundColor(recommendation.priority.color)
+                    .font(.title3)
+                    .frame(width: 40)
                 
-                Text(recommendation.description)
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text(recommendation.title)
+                            .font(.headline)
+                        
+                        Spacer()
+                        
+                        Circle()
+                            .fill(recommendation.priority.color)
+                            .frame(width: 8, height: 8)
+                    }
+                    
+                    Text(recommendation.description)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
             }
+            .padding()
+            .background(Color(.secondarySystemGroupedBackground))
+            .cornerRadius(12)
         }
-        .padding()
-        .background(Color(.secondarySystemGroupedBackground))
-        .cornerRadius(12)
+        .buttonStyle(.plain)
     }
 }
 

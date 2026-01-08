@@ -107,13 +107,17 @@ final class ProfileViewModel {
         didSet {
             // Only reset if language actually changed
             if oldValue != selectedLanguage {
+                print("🌐 [ProfileViewModel] Language changed from '\(oldValue)' to '\(selectedLanguage)'")
                 repository.setSelectedLanguage(selectedLanguage)
                 // Apply language change immediately
                 let languageCode = LocalizationManager.languageCode(from: selectedLanguage)
+                print("🌐 [ProfileViewModel] Mapped to language code: '\(languageCode)'")
                 LocalizationManager.shared.setLanguage(languageCode)
                 
                 // Reset choices/state when language changes
                 resetChoicesOnLanguageChange()
+            } else {
+                print("🌐 [ProfileViewModel] Language unchanged: '\(selectedLanguage)'")
             }
         }
     }

@@ -63,8 +63,12 @@ struct ContentView: View {
                         // Save generated goals
                         saveGeneratedGoals(result.goals)
                         
-                        // Mark onboarding as completed
+                        // Mark onboarding as completed and save the completion date
                         settings.completeOnboarding()
+                        // Set the onboarding completion date from the result
+                        if settings.onboardingCompletedDate == nil {
+                            settings.onboardingCompletedDate = Calendar.current.startOfDay(for: result.completedAt)
+                        }
                         
                         // Log for debugging
                         print("📱 [ContentView] Onboarding completed at: \(result.completedAt)")
@@ -143,33 +147,131 @@ struct ContentView: View {
         let settings = UserSettings.shared
         let answers = result.answers
         
-        // Extract normalized height and weight from _normalized
-        if let normalized = answers["_normalized"] as? [String: Any] {
-            if let heightCm = normalized["height_cm"] as? Double {
-                settings.height = heightCm
+        
+        var initialWeightKg: Double?
+        var initialHeightCm: Double?
+        
+        // Priority 1: Try to extract from height_weight directly (most reliable)
+        if let heightWeight = answers["height_weight"] as? [String: Any] {
+            // Extract height
+            if let height = heightWeight["height"],
+               let heightUnit = heightWeight["height__unit"] as? String {
+                let heightValue = (height as? NSNumber)?.doubleValue ?? (height as? Double) ?? 0
+                
+                // Convert to cm
+                if heightUnit.lowercased() == "ft" {
+                    // Convert feet to cm (1 ft = 30.48 cm)
+                    initialHeightCm = heightValue * 30.48
+                } else {
+                    initialHeightCm = heightValue
+                }
+                
+                if let heightCm = initialHeightCm, heightCm > 0 {
+                    settings.height = heightCm
+                }
             }
-            if let weightKg = normalized["weight_kg"] as? Double {
+            
+            // Extract weight
+            if let weight = heightWeight["weight"],
+               let weightUnit = heightWeight["weight__unit"] as? String {
+                let weightValue = (weight as? NSNumber)?.doubleValue ?? (weight as? Double) ?? 0
+                
+                // Convert to kg
+                if weightUnit.lowercased() == "lb" || weightUnit.lowercased() == "lbs" {
+                    initialWeightKg = weightValue / 2.20462
+                } else {
+                    initialWeightKg = weightValue
+                }
+                
+                if let weightKg = initialWeightKg, weightKg > 0 {
+                    settings.updateWeight(weightKg)
+                }
+            }
+        }
+        
+        // Priority 2: Fallback to _normalized if height_weight didn't provide valid values
+        // Only use _normalized if we didn't get valid values from height_weight
+        // Add bounds checking to prevent invalid data
+        if (initialWeightKg == nil || initialWeightKg == 0 || initialHeightCm == nil || initialHeightCm == 0),
+           let normalized = answers["_normalized"] as? [String: Any] {
+            if (initialHeightCm == nil || initialHeightCm == 0),
+               let heightCm = normalized["height_cm"] as? Double,
+               heightCm > 0 && heightCm < 300 {
+                settings.height = heightCm
+                initialHeightCm = heightCm
+            }
+            
+            if (initialWeightKg == nil || initialWeightKg == 0),
+               let weightKg = normalized["weight_kg"] as? Double,
+               weightKg > 0 && weightKg < 1000 {
+                initialWeightKg = weightKg
                 settings.updateWeight(weightKg)
             }
         }
         
         // Extract desired weight from "desired_weight" step
-        if let desiredWeightData = answers["desired_weight"] as? [String: Any],
-           let desiredWeightValue = desiredWeightData["value"] as? Double {
-            settings.targetWeight = desiredWeightValue
+        // Note: desired_weight can be in kg or lbs depending on user's unit preference
+        if let desiredWeightData = answers["desired_weight"] as? [String: Any] {
+            // Handle both Double and Int values
+            let desiredWeightValue: Double
+            if let value = desiredWeightData["value"] as? Double {
+                desiredWeightValue = value
+            } else if let value = desiredWeightData["value"] as? Int {
+                desiredWeightValue = Double(value)
+            } else if let value = desiredWeightData["value"] as? NSNumber {
+                desiredWeightValue = value.doubleValue
+            } else {
+                desiredWeightValue = 0
+            }
+            
+            if desiredWeightValue > 0 {
+                // Check the unit - if it's lbs, convert to kg
+                let unit = desiredWeightData["unit"] as? String ?? "kg"
+                let targetWeightKg: Double
+                if unit.lowercased() == "lb" || unit.lowercased() == "lbs" {
+                    // Convert from lbs to kg
+                    targetWeightKg = desiredWeightValue / 2.20462
+                } else {
+                    // Already in kg
+                    targetWeightKg = desiredWeightValue
+                }
+                settings.targetWeight = targetWeightKg
+            }
         }
         
-        // Extract goal type
-        if let goalData = answers["goal"] as? [String: Any],
-           let goalValue = goalData["value"] as? String {
-            // Map goal to settings if needed
-            print("📱 [ContentView] User goal: \(goalValue)")
+        // Create initial WeightEntry from onboarding data
+        // This ensures ProgressView can display the starting weight
+        if let weightKg = initialWeightKg {
+            createInitialWeightEntry(weight: weightKg)
         }
+    }
+    
+    /// Creates an initial WeightEntry from onboarding weight data
+    /// This ensures ProgressView can display the starting weight even if no weight history exists
+    private func createInitialWeightEntry(weight: Double) {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: today) ?? today
         
-        // Extract activity level
-        if let activityData = answers["activity_level"] as? [String: Any],
-           let activityValue = activityData["value"] as? String {
-            print("📱 [ContentView] Activity level: \(activityValue)")
+        // Check if an entry for today already exists
+        let descriptor = FetchDescriptor<WeightEntry>(
+            predicate: #Predicate<WeightEntry> { entry in
+                entry.date >= today && entry.date < tomorrow
+            },
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        )
+        
+        do {
+            let existingEntries = try modelContext.fetch(descriptor)
+            if existingEntries.isEmpty {
+                // Create initial entry from onboarding weight
+                let entry = WeightEntry(weight: weight, date: Date())
+                modelContext.insert(entry)
+                try modelContext.save()
+            }
+        } catch {
+            // Silently fail - if we can't create the entry, the user can still add it manually
+            // The ProgressViewModel will handle creating it if needed
         }
     }
 

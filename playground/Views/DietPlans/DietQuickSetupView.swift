@@ -6,10 +6,13 @@
 
 import SwiftUI
 import SwiftData
+import SDK
 
 struct DietQuickSetupView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.isSubscribed) private var isSubscribed
+    @Environment(TheSDK.self) private var sdk
     @ObservedObject private var localizationManager = LocalizationManager.shared
     
     @State private var currentStep = 0
@@ -18,6 +21,8 @@ struct DietQuickSetupView: View {
     @State private var meals: [ScheduledMeal] = []
     @State private var showingMealEditor = false
     @State private var editingMeal: ScheduledMeal?
+    @State private var showingPaywall = false
+    @State private var showDeclineConfirmation = false
     
     private var dietPlanRepository: DietPlanRepository {
         DietPlanRepository(context: modelContext)
@@ -529,7 +534,9 @@ struct DietQuickSetupView: View {
                     }
                     HapticManager.shared.impact(.light)
                 } else {
-                    createPlan()
+                    Task {
+                        await createPlan()
+                    }
                 }
             } label: {
                 HStack {
@@ -557,7 +564,14 @@ struct DietQuickSetupView: View {
     
     // MARK: - Actions
     
-    private func createPlan() {
+    private func createPlan() async {
+        // Check premium subscription before saving
+        guard isSubscribed else {
+            showingPaywall = true
+            HapticManager.shared.notification(.warning)
+            return
+        }
+        
         do {
             let plan = DietPlan(
                 name: planName,
@@ -569,10 +583,18 @@ struct DietQuickSetupView: View {
             
             try dietPlanRepository.saveDietPlan(plan)
             
-            Task {
-                let reminderService = MealReminderService.shared(context: modelContext)
-                try? await reminderService.requestAuthorization()
-                try? await reminderService.scheduleAllReminders()
+            // Schedule reminders before dismissing
+            let reminderService = MealReminderService.shared(context: modelContext)
+            do {
+                try await reminderService.requestAuthorization()
+                try await reminderService.scheduleAllReminders()
+                
+                // Count scheduled reminders for feedback
+                let totalReminders = meals.count
+                print("✅ Successfully scheduled \(totalReminders) meal reminders")
+            } catch {
+                print("⚠️ Failed to schedule reminders: \(error)")
+                // Continue anyway - diet plan is saved
             }
             
             NotificationCenter.default.post(name: .dietPlanChanged, object: nil)
@@ -581,6 +603,22 @@ struct DietQuickSetupView: View {
         } catch {
             print("Failed to create plan: \(error)")
         }
+    }
+    
+    // MARK: - Paywall View
+    
+    private var paywallView: some View {
+        SDKView(
+            model: sdk,
+            page: .splash,
+            show: paywallBinding(
+                showPaywall: $showingPaywall,
+                sdk: sdk,
+                showDeclineConfirmation: $showDeclineConfirmation
+            ),
+            backgroundColor: .white,
+            ignoreSafeArea: true
+        )
     }
 }
 

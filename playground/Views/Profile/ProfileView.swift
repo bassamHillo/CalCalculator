@@ -57,7 +57,6 @@ struct ProfileView: View {
             }
             .background(Color(UIColor.systemGroupedBackground))
             .navigationTitle(localizationManager.localizedString(for: AppStrings.Profile.title))
-                .id("profile-title-\(localizationManager.currentLanguage)")
             .navigationBarTitleDisplayMode(.large)
             .onChange(of: localizationManager.currentLanguage) { oldValue, newValue in
                 // Force view refresh when language changes
@@ -88,9 +87,10 @@ struct ProfileView: View {
         .sheet(isPresented: $showingDataExport) {
             DataExportView()
         }
-        .sheet(isPresented: $showingReferralCode) {
-            ReferralCodeView()
-        }
+        // Referral code screen commented out - no longer needed
+        // .sheet(isPresented: $showingReferralCode) {
+        //     ReferralCodeView()
+        // }
         .sheet(isPresented: $showingBadges) {
             BadgesView()
         }
@@ -194,15 +194,16 @@ struct ProfileView: View {
                     action: { showingDataExport = true }
                 )
                 
-                SettingsDivider()
-                
-                SettingsRow(
-                    icon: "gift.fill",
-                    iconColor: .pink,
-                    title: localizationManager.localizedString(for: AppStrings.Profile.referralCode),
-                    subtitle: localizationManager.localizedString(for: AppStrings.Profile.shareEarnRewards),
-                    action: { showingReferralCode = true }
-                )
+                // Referral code row commented out - no longer needed
+                // SettingsDivider()
+                // 
+                // SettingsRow(
+                //     icon: "gift.fill",
+                //     iconColor: .pink,
+                //     title: localizationManager.localizedString(for: AppStrings.Profile.referralCode),
+                //     subtitle: localizationManager.localizedString(for: AppStrings.Profile.shareEarnRewards),
+                //     action: { showingReferralCode = true }
+                // )
             }
         }
     }

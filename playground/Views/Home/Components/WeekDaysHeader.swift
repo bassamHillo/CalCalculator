@@ -70,7 +70,7 @@ struct WeekDayItem: View {
             Text(day.dayName)
                 .font(.caption2)
                 .fontWeight(.medium)
-                .foregroundColor(day.isSelected ? .white : (day.isToday ? .primary : .secondary))
+                .foregroundColor(day.isSelected ? Color.green.opacity(0.8) : (day.isToday ? .primary : .secondary))
             
             // Circular date indicator (matching reference design)
             ZStack {

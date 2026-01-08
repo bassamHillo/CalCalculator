@@ -22,12 +22,20 @@ struct LanguageSelectionView: View {
                         language: language,
                         isSelected: viewModel.selectedLanguage == language.name,
                         onSelect: {
-                            // Update language immediately
-                            viewModel.selectedLanguage = language.name
+                            // Update language immediately on main thread
+                            print("🌐 [LanguageSelectionView] User selected language: '\(language.name)'")
+                            print("🌐 [LanguageSelectionView] Current selectedLanguage: '\(viewModel.selectedLanguage)'")
                             
-                            // Don't dismiss - stay in profile view to see the language change
-                            // The sheet will remain open but the language will update
-                            // User can manually close it if needed
+                            // Update language synchronously - this will trigger didSet immediately
+                            viewModel.selectedLanguage = language.name
+                            print("🌐 [LanguageSelectionView] After update, selectedLanguage: '\(viewModel.selectedLanguage)'")
+                            
+                            // Close the sheet after language change with a small delay
+                            // This ensures the language change is processed before dismissing
+                            Task { @MainActor in
+                                try? await Task.sleep(nanoseconds: 200_000_000) // 0.2 seconds
+                                dismiss()
+                            }
                         }
                     )
                 }

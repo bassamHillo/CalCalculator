@@ -56,11 +56,15 @@ final class MealReminderService {
         
         let activePlans = try repository.fetchActiveDietPlans()
         
+        var totalScheduled = 0
         for plan in activePlans {
             for scheduledMeal in plan.scheduledMeals {
                 try await scheduleReminder(for: scheduledMeal)
+                totalScheduled += scheduledMeal.daysOfWeek.count // Count each day as a reminder
             }
         }
+        
+        print("📅 [MealReminderService] Scheduled \(totalScheduled) total reminder occurrences across \(activePlans.count) active plan(s)")
     }
     
     /// Schedule reminder for a specific scheduled meal

@@ -46,6 +46,14 @@ struct playgroundApp: App {
                 try? fileManager.createDirectory(
                     at: appSupportURL, withIntermediateDirectories: true)
             }
+            
+            // Also ensure App Group directory exists for shared data
+            let appGroupIdentifier = "group.CalCalculatorAiPlaygournd.shared"
+            if let appGroupURL = fileManager.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier) {
+                let appGroupSupportURL = appGroupURL.appendingPathComponent("Library/Application Support")
+                try? fileManager.createDirectory(
+                    at: appGroupSupportURL, withIntermediateDirectories: true)
+            }
 
             let modelConfiguration = ModelConfiguration(
                 schema: schema,
@@ -273,6 +281,7 @@ extension Notification.Name {
     static let nutritionGoalsChanged = Notification.Name("nutritionGoalsChanged")
     static let updateLiveActivity = Notification.Name("updateLiveActivity")
     static let exerciseSaved = Notification.Name("exerciseSaved")
+    static let exerciseDeleted = Notification.Name("exerciseDeleted")
     static let exerciseFlowShouldDismiss = Notification.Name("exerciseFlowShouldDismiss")
     static let scrollHomeToTop = Notification.Name("scrollHomeToTop")
     static let addBurnedCaloriesToggled = Notification.Name("addBurnedCaloriesToggled")
@@ -283,4 +292,5 @@ extension Notification.Name {
     static let dietPlanChanged = Notification.Name("dietPlanChanged")
     static let foodLogged = Notification.Name("foodLogged")
     static let subscriptionStatusUpdated = Notification.Name("subscriptionStatusUpdated")
+    static let homeTabTapped = Notification.Name("homeTabTapped")
 }

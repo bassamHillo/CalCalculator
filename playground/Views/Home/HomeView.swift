@@ -36,6 +36,7 @@ struct HomeView: View {
     @State private var showingCreateDiet = false
     @State private var showingPaywall = false
     @State private var showDeclineConfirmation = false
+    @State private var showingDietWelcome = false
     @Environment(\.modelContext) private var modelContext
     @Query(filter: #Predicate<DietPlan> { $0.isActive == true }) private var activeDietPlans: [DietPlan]
 
@@ -137,6 +138,16 @@ struct HomeView: View {
                     viewModel.updateLiveActivityIfNeeded()
                 }
             }
+            .onReceive(NotificationCenter.default.publisher(for: .exerciseDeleted)) { _ in
+                // Refresh burned calories and today's data when an exercise is deleted
+                // This ensures the calorie goal adjustment is recalculated and UI is updated
+                Task {
+                    await viewModel.refreshBurnedCalories()
+                    await viewModel.refreshTodayData()
+                    // Update Live Activity with the updated burned calories value
+                    viewModel.updateLiveActivityIfNeeded()
+                }
+            }
             .onReceive(NotificationCenter.default.publisher(for: .addBurnedCaloriesToggled)) { _ in
                 // Refresh burned calories and update UI when the toggle setting changes
                 // This recalculates the effective calorie goal
@@ -229,12 +240,26 @@ struct HomeView: View {
                     await viewModel.loadData()
                 }
             }
+            .onReceive(NotificationCenter.default.publisher(for: .dietPlanChanged)) { _ in
+                // Show welcome view after diet plan is created (if user hasn't seen it)
+                if !UserSettings.shared.hasSeenDietWelcome && !activeDietPlans.isEmpty {
+                    // Small delay to ensure the sheet is dismissed first
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        showingDietWelcome = true
+                    }
+                }
+            }
             .paywallDismissalOverlay(showPaywall: $showingPaywall, showDeclineConfirmation: $showDeclineConfirmation)
             .overlay {
                 if badgeManager.showBadgeAlert, let badge = badgeManager.newlyEarnedBadge {
                     BadgeAlertView(badge: badge) {
                         badgeManager.dismissBadgeAlert()
                     }
+                }
+            }
+            .overlay {
+                if showingDietWelcome {
+                    DietWelcomeView(isPresented: $showingDietWelcome)
                 }
             }
             .overlay(alignment: Alignment.bottomTrailing) {
@@ -315,26 +340,30 @@ struct HomeView: View {
                 }
                 .listStyle(.plain)
                 .onChange(of: scrollToTopTrigger) { _, _ in
-                    // Two-step behavior for Home tab re-tap:
-                    // 1. If not at top: scroll to top of the list
-                    // 2. If already at top: navigate to today's date view
-                    if isAtTop {
-                        // Already at top - navigate to today's date if not already selected
-                        let today = Date()
-                        if !Calendar.current.isDate(viewModel.selectedDate, inSameDayAs: today) {
+                    // Home tab tap behavior:
+                    // - Always scroll to top
+                    // - Navigate to current day ONLY if:
+                    //   1. Already at top BEFORE this tap (no scroll animation will happen)
+                    //   2. Not already on current day
+                    
+                    // Check scroll position directly from scrollView to get accurate reading
+                    let actualScrollOffset = getCurrentScrollOffset()
+                    let wasAtTopBeforeScroll = actualScrollOffset <= 50
+                    
+                    let currentSelectedDate = viewModel.selectedDate
+                    let today = Date()
+                    let isOnCurrentDay = Calendar.current.isDate(currentSelectedDate, inSameDayAs: today)
+                    
+                    // If we're already at top, navigate to current day immediately (no scroll needed)
+                    if wasAtTopBeforeScroll {
+                        if !isOnCurrentDay {
                             HapticManager.shared.impact(.medium)
                             viewModel.selectDay(today)
                         }
                     } else {
-                        // Not at top - scroll to top with smooth animation
+                        // Not at top - scroll to top only, don't navigate
                         withAnimation(.easeInOut(duration: 0.3)) {
                             proxy.scrollTo("home-top", anchor: .top)
-                        }
-                        // Mark as at top after scroll animation completes
-                        // Wait for animation duration (0.35 seconds) before updating state
-                        Task { @MainActor in
-                            try? await Task.sleep(nanoseconds: 350_000_000) // 0.35 seconds
-                            isAtTop = true
                         }
                     }
                 }
@@ -350,30 +379,66 @@ struct HomeView: View {
                         }
                     }
                 }
-                // Track scroll position using GeometryReader to update isAtTop state
-                // This allows us to detect when the user is at the top of the list
+                // Track scroll position using UIViewRepresentable with UIScrollView delegate
                 .background(
-                    GeometryReader { geometry in
-                        Color.clear
-                            .preference(
-                                key: ScrollOffsetPreferenceKey.self,
-                                value: geometry.frame(in: .named("scroll")).minY
-                            )
-                    }
+                    ListScrollTracker(isAtTop: $isAtTop)
                 )
-                .coordinateSpace(name: "scroll")
-                .onPreferenceChange(ScrollOffsetPreferenceKey.self) { offset in
-                    // Update isAtTop based on scroll position
-                    // Consider at top if offset is close to 0 (within 10 points for List)
-                    // This accounts for List's internal padding and safe area insets
-                    isAtTop = offset <= 10
-                }
             }
         }
     }
 
     @State private var showLogHistorySheet = false
     @State private var isAtTop = true // Tracks if the scroll view is currently at the top position
+    
+    /// Gets the current scroll offset by finding the UIScrollView in the view hierarchy
+    /// Tries to find the List's scrollView specifically
+    private func getCurrentScrollOffset() -> CGFloat {
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let window = windowScene.windows.first(where: { $0.isKeyWindow }) ?? windowScene.windows.first else {
+            return 0
+        }
+        
+        // Find all UIScrollViews and try to find the one that belongs to our List
+        // SwiftUI List uses UICollectionView which contains a UIScrollView
+        // We'll look for the largest scrollView (likely the main List scrollView)
+        var allScrollViews: [UIScrollView] = []
+        findAllScrollViews(in: window.rootViewController?.view, found: &allScrollViews)
+        
+        // Find the scrollView with the largest contentSize (likely the main List)
+        if let mainScrollView = allScrollViews.max(by: { $0.contentSize.height < $1.contentSize.height }) {
+            return mainScrollView.contentOffset.y
+        }
+        
+        return 0
+    }
+    
+    private func findAllScrollViews(in view: UIView?, found: inout [UIScrollView]) {
+        guard let view = view else { return }
+        
+        if let scrollView = view as? UIScrollView {
+            found.append(scrollView)
+        }
+        
+        for subview in view.subviews {
+            findAllScrollViews(in: subview, found: &found)
+        }
+    }
+    
+    private func findScrollViewInHierarchy(startingFrom view: UIView?) -> UIScrollView? {
+        guard let view = view else { return nil }
+        
+        if let scrollView = view as? UIScrollView {
+            return scrollView
+        }
+        
+        for subview in view.subviews {
+            if let scrollView = findScrollViewInHierarchy(startingFrom: subview) {
+                return scrollView
+            }
+        }
+        
+        return nil
+    }
 
     @State private var showDietSummarySheet = false
     @State private var showingEditDietPlan = false
@@ -644,13 +709,113 @@ struct HomeView: View {
 
 // MARK: - Scroll Position Tracking
 
-/// Preference key to track scroll offset for detecting when the user is at the top of the list
-/// Used to implement the two-step Home tab behavior (scroll to top, then select today)
-struct ScrollOffsetPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
+/// UIViewRepresentable to track scroll position in List using UIScrollView delegate
+struct ListScrollTracker: UIViewRepresentable {
+    @Binding var isAtTop: Bool
     
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView()
+        view.backgroundColor = .clear
+        view.isUserInteractionEnabled = false
+        return view
+    }
+    
+    func updateUIView(_ uiView: UIView, context: Context) {
+        // Find the UIScrollView in the window hierarchy (not in uiView which is just an empty view)
+        DispatchQueue.main.async {
+            guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                  let window = windowScene.windows.first(where: { $0.isKeyWindow }) ?? windowScene.windows.first else {
+                // Retry after delay
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    self.updateUIView(uiView, context: context)
+                }
+                return
+            }
+            
+            // Find UIScrollView in the window hierarchy
+            // SwiftUI List uses UICollectionView which contains a UIScrollView
+            if let scrollView = self.findScrollViewInWindow(window) {
+                // Check if we already have an observer for this scrollView
+                if let existingObserver = objc_getAssociatedObject(scrollView, "scrollObserver") as? ScrollObserver {
+                    // Update the binding if observer already exists
+                    return
+                }
+                
+                // Remove any existing observer
+                if let existingObserver = objc_getAssociatedObject(scrollView, "scrollObserver") as? ScrollObserver {
+                    scrollView.removeObserver(existingObserver, forKeyPath: "contentOffset")
+                }
+                
+                // Add observer to track contentOffset
+                let observer = ScrollObserver { [weak scrollView] in
+                    guard let scrollView = scrollView else { return }
+                    let offset = scrollView.contentOffset.y
+                    // Consider at top if offset is within 50 points (accounts for List padding and safe area)
+                    self.isAtTop = offset <= 50
+                }
+                observer.scrollView = scrollView
+                
+                scrollView.addObserver(observer, forKeyPath: "contentOffset", options: [.new], context: nil)
+                objc_setAssociatedObject(scrollView, "scrollObserver", observer, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+                
+                // Set initial value
+                let initialOffset = scrollView.contentOffset.y
+                self.isAtTop = initialOffset <= 50
+            } else {
+                // Retry after delay if scroll view not found
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    self.updateUIView(uiView, context: context)
+                }
+            }
+        }
+    }
+    
+    private func findScrollViewInWindow(_ window: UIWindow) -> UIScrollView? {
+        // Look for UIScrollView in the window hierarchy
+        // SwiftUI List uses UICollectionView which contains a UIScrollView
+        return findScrollView(in: window.rootViewController?.view)
+    }
+    
+    private func findScrollView(in view: UIView?) -> UIScrollView? {
+        guard let view = view else { return nil }
+        
+        if let scrollView = view as? UIScrollView {
+            return scrollView
+        }
+        
+        for subview in view.subviews {
+            if let scrollView = findScrollView(in: subview) {
+                return scrollView
+            }
+        }
+        
+        return nil
+    }
+}
+
+/// Observer class for UIScrollView contentOffset changes
+class ScrollObserver: NSObject {
+    let onChange: () -> Void
+    weak var scrollView: UIScrollView?
+    
+    init(onChange: @escaping () -> Void) {
+        self.onChange = onChange
+        super.init()
+    }
+    
+    nonisolated override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
+        if keyPath == "contentOffset" {
+            Task { @MainActor in
+                self.onChange()
+            }
+        }
+    }
+    
+    deinit {
+        // Remove observer when deallocated
+        if let scrollView = scrollView {
+            scrollView.removeObserver(self, forKeyPath: "contentOffset")
+        }
     }
 }
 
