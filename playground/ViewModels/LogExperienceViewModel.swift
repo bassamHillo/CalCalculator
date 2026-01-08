@@ -150,8 +150,9 @@ final class LogExperienceViewModel {
     var isAnalyzing = false
     var analysisProgress: Double = 0
 
-    // Text logging
+    // Text logging / Search
     var textInput: String = ""
+    var searchQuery: String = "" // Separate search query for filtering
     var analyzedFoods: [FoodLogEntry] = []
 
     // Manual entry
@@ -802,5 +803,144 @@ final class LogExperienceViewModel {
     /// Remove a food from analyzed foods
     func removeAnalyzedFood(_ food: FoodLogEntry) {
         analyzedFoods.removeAll { $0.id == food.id }
+    }
+    
+    // MARK: - Search Filtering
+    
+    /// Check if search is active
+    var isSearchActive: Bool {
+        !textInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+    
+    /// Filtered quick add foods based on search query
+    var filteredQuickAddFoods: [QuickAddFood] {
+        guard isSearchActive else { return allQuickAddFoods }
+        let query = textInput.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        return allQuickAddFoods.filter { $0.name.lowercased().contains(query) }
+    }
+    
+    /// Filtered recent foods based on search query
+    var filteredRecentFoods: [FoodLogEntry] {
+        guard isSearchActive else { return recentFoods }
+        let query = textInput.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        return recentFoods.filter { $0.name.lowercased().contains(query) }
+    }
+    
+    /// Filtered saved foods based on search query
+    var filteredSavedFoods: [FoodLogEntry] {
+        guard isSearchActive else { return savedFoods }
+        let query = textInput.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        return savedFoods.filter { $0.name.lowercased().contains(query) }
+    }
+    
+    /// Check if any filtered results exist
+    var hasFilteredResults: Bool {
+        !filteredQuickAddFoods.isEmpty || !filteredRecentFoods.isEmpty || !filteredSavedFoods.isEmpty
+    }
+    
+    // MARK: - Food Categories for Quick Add
+    
+    enum FoodCategory: String, CaseIterable {
+        case fruits = "Fruits"
+        case proteins = "Proteins"
+        case grains = "Grains & Carbs"
+        case vegetables = "Vegetables"
+        case nuts = "Nuts & Seeds"
+        case dairy = "Dairy"
+        case beverages = "Beverages"
+        case snacks = "Snacks"
+        
+        var icon: String {
+            switch self {
+            case .fruits: return "leaf.fill"
+            case .proteins: return "fork.knife"
+            case .grains: return "takeoutbag.and.cup.and.straw.fill"
+            case .vegetables: return "carrot.fill"
+            case .nuts: return "tree.fill"
+            case .dairy: return "cup.and.saucer.fill"
+            case .beverages: return "mug.fill"
+            case .snacks: return "birthday.cake.fill"
+            }
+        }
+        
+        var color: String {
+            switch self {
+            case .fruits: return "red"
+            case .proteins: return "orange"
+            case .grains: return "brown"
+            case .vegetables: return "green"
+            case .nuts: return "yellow"
+            case .dairy: return "blue"
+            case .beverages: return "cyan"
+            case .snacks: return "purple"
+            }
+        }
+    }
+    
+    /// Get categorized quick add foods
+    var categorizedQuickAddFoods: [FoodCategory: [QuickAddFood]] {
+        var result: [FoodCategory: [QuickAddFood]] = [:]
+        
+        // Initialize empty arrays for all categories
+        for category in FoodCategory.allCases {
+            result[category] = []
+        }
+        
+        // Categorize foods based on their position in the commonFoods array
+        let foods = filteredQuickAddFoods
+        for food in foods {
+            let category = categorize(food: food)
+            result[category, default: []].append(food)
+        }
+        
+        return result
+    }
+    
+    /// Categorize a food item
+    private func categorize(food: QuickAddFood) -> FoodCategory {
+        let name = food.name.lowercased()
+        
+        // Fruits
+        if ["apple", "banana", "orange", "strawberries", "blueberries", "grapes", "watermelon", "avocado"].contains(where: { name.contains($0) }) {
+            return .fruits
+        }
+        
+        // Proteins
+        if ["egg", "chicken", "salmon", "tuna", "turkey", "beef", "yogurt", "cottage", "protein shake", "steak", "fish"].contains(where: { name.contains($0) }) {
+            return .proteins
+        }
+        
+        // Grains
+        if ["rice", "quinoa", "oatmeal", "bread", "pasta", "potato", "sweet potato", "cereal", "toast"].contains(where: { name.contains($0) }) {
+            return .grains
+        }
+        
+        // Vegetables
+        if ["salad", "broccoli", "spinach", "carrots", "tomato", "vegetable"].contains(where: { name.contains($0) }) {
+            return .vegetables
+        }
+        
+        // Nuts
+        if ["almonds", "peanuts", "walnuts", "chia", "peanut butter", "nut"].contains(where: { name.contains($0) }) {
+            return .nuts
+        }
+        
+        // Dairy
+        if ["milk", "cheese", "yogurt"].contains(where: { name.contains($0) }) {
+            return .dairy
+        }
+        
+        // Beverages
+        if ["coffee", "tea", "smoothie", "shake", "juice", "water"].contains(where: { name.contains($0) }) {
+            return .beverages
+        }
+        
+        // Snacks
+        if ["hummus", "chips", "cookie", "candy", "snack"].contains(where: { name.contains($0) }) {
+            return .snacks
+        }
+        
+        // Default to snacks for custom/unknown foods
+        return .snacks
     }
 }

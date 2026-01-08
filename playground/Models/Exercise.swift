@@ -18,10 +18,53 @@ final class Exercise: Identifiable {
     var notes: String?
     var date: Date
     
-    // Weight lifting specific fields
+    // Weight lifting specific fields (legacy - single set)
     var reps: Int? // Number of repetitions per set
     var sets: Int? // Number of sets
     var weight: Double? // Weight in lbs (will be converted based on user settings)
+    
+    // Weight lifting - multiple sets support (stored as JSON)
+    var exerciseSetsData: Data? // JSON encoded [ExerciseSet]
+    
+    // Running specific fields
+    var distance: Double? // Distance in km or miles
+    var distanceUnit: DistanceUnit? // km or miles
+    
+    /// Computed property to get/set exercise sets
+    var exerciseSets: [ExerciseSet] {
+        get {
+            guard let data = exerciseSetsData else { return [] }
+            return (try? JSONDecoder().decode([ExerciseSet].self, from: data)) ?? []
+        }
+        set {
+            exerciseSetsData = try? JSONEncoder().encode(newValue)
+        }
+    }
+    
+    /// Calculate total volume for weight lifting (sets x reps x weight)
+    var totalVolume: Double {
+        if !exerciseSets.isEmpty {
+            return exerciseSets.reduce(0) { $0 + (Double($1.reps) * $1.weight) }
+        } else if let reps = reps, let sets = sets, let weight = weight {
+            return Double(reps * sets) * weight
+        }
+        return 0
+    }
+    
+    /// Calculate pace for running (min/km or min/mile)
+    var pace: Double? {
+        guard let distance = distance, distance > 0, duration > 0 else { return nil }
+        return Double(duration) / distance
+    }
+    
+    /// Formatted pace string
+    var formattedPace: String? {
+        guard let pace = pace, let unit = distanceUnit else { return nil }
+        let minutes = Int(pace)
+        let seconds = Int((pace - Double(minutes)) * 60)
+        let unitStr = unit == .kilometers ? "km" : "miles"
+        return String(format: "%d:%02d /%@", minutes, seconds, unitStr)
+    }
     
     init(
         id: UUID = UUID(),
@@ -33,7 +76,10 @@ final class Exercise: Identifiable {
         date: Date = Date(),
         reps: Int? = nil,
         sets: Int? = nil,
-        weight: Double? = nil
+        weight: Double? = nil,
+        exerciseSets: [ExerciseSet]? = nil,
+        distance: Double? = nil,
+        distanceUnit: DistanceUnit? = nil
     ) {
         self.id = id
         self.type = type
@@ -44,8 +90,15 @@ final class Exercise: Identifiable {
         self.reps = reps
         self.sets = sets
         self.weight = weight
+        self.distance = distance
+        self.distanceUnit = distanceUnit
         // Normalize date to start of day for consistent querying (like WeightEntry)
         self.date = Calendar.current.startOfDay(for: date)
+        
+        // Encode exercise sets if provided
+        if let sets = exerciseSets {
+            self.exerciseSetsData = try? JSONEncoder().encode(sets)
+        }
     }
 }
 
@@ -91,6 +144,42 @@ enum ExerciseIntensity: String, Codable, CaseIterable {
         case .medium: return "Medium"
         case .low: return "Low"
         }
+    }
+}
+
+// MARK: - Distance Unit Enum
+
+enum DistanceUnit: String, Codable, CaseIterable {
+    case kilometers = "km"
+    case miles = "mi"
+    
+    var displayName: String {
+        switch self {
+        case .kilometers: return "km"
+        case .miles: return "miles"
+        }
+    }
+    
+    var longName: String {
+        switch self {
+        case .kilometers: return "Kilometers"
+        case .miles: return "Miles"
+        }
+    }
+}
+
+// MARK: - Exercise Set Model
+
+/// Represents a single set in a weight lifting exercise
+struct ExerciseSet: Codable, Identifiable, Equatable {
+    var id: UUID = UUID()
+    var reps: Int
+    var weight: Double // in kg or lbs based on user preference
+    
+    init(id: UUID = UUID(), reps: Int = 10, weight: Double = 20.0) {
+        self.id = id
+        self.reps = reps
+        self.weight = weight
     }
 }
 

@@ -18,10 +18,12 @@ final class DietPlanRepository {
     
     // MARK: - Diet Plan Operations
     
-    /// Save a diet plan. If a plan already exists, it will be deactivated and replaced.
-    /// Only one active diet plan is allowed at a time.
+    /// Save a diet plan. Respects the plan's isActive flag.
+    /// If the plan is marked as active, all other plans will be deactivated (only one active diet plan allowed at a time).
+    /// - Parameter plan: The diet plan to save
+    /// - Parameter forceActive: If true, the plan will be set to active regardless of its current isActive value. Defaults to false.
     /// - Throws: `DietPlanError.noMeals` if the plan has no scheduled meals
-    func saveDietPlan(_ plan: DietPlan) throws {
+    func saveDietPlan(_ plan: DietPlan, forceActive: Bool = false) throws {
         // Safely access scheduledMeals relationship by creating a local copy first
         // This prevents InvalidFutureBackingData errors
         let scheduledMealsArray = Array(plan.scheduledMeals)
@@ -31,16 +33,20 @@ final class DietPlanRepository {
             throw DietPlanError.noMeals
         }
         
-        // Deactivate all existing plans (only one active diet at a time)
-        let existingPlans = try fetchAllDietPlans()
-        for existingPlan in existingPlans {
-            if existingPlan.id != plan.id {
-                existingPlan.isActive = false
-            }
+        // If forceActive is true, set the plan to active
+        if forceActive {
+            plan.isActive = true
         }
         
-        // Ensure the new plan is active
-        plan.isActive = true
+        // If this plan is being set as active, deactivate all other plans
+        if plan.isActive {
+            let existingPlans = try fetchAllDietPlans()
+            for existingPlan in existingPlans {
+                if existingPlan.id != plan.id {
+                    existingPlan.isActive = false
+                }
+            }
+        }
         
         context.insert(plan)
         try context.save()
