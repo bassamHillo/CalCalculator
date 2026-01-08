@@ -114,17 +114,22 @@ struct LogFoodView: View {
     private var searchInputBar: some View {
         VStack(spacing: 12) {
             // Text input
-            HStack {
+            HStack(spacing: 12) {
                 Image(systemName: "magnifyingglass")
                     .foregroundColor(.secondary)
+                    .font(.system(size: 16, weight: .medium))
 
-                TextField("Describe what you ate...", text: $viewModel.textInput, axis: .vertical)
+                TextField(localizationManager.localizedString(for: AppStrings.Food.searchOrDescribeFood), text: $viewModel.textInput, axis: .vertical)
                     .focused($isSearchFocused)
                     .lineLimit(1...3)
                     .submitLabel(.search)
                     .onSubmit {
-                        Task {
-                            await viewModel.analyzeTextInput()
+                        if viewModel.hasFilteredResults {
+                            // If there are filtered results, don't analyze - just let user browse
+                        } else {
+                            Task {
+                                await viewModel.analyzeTextInput()
+                            }
                         }
                     }
 
@@ -134,15 +139,17 @@ struct LogFoodView: View {
                     } label: {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundColor(.secondary)
+                            .font(.system(size: 18))
                     }
                 }
             }
-            .padding()
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
             .background(Color(.systemGray6))
             .cornerRadius(12)
 
-            // Analyze button (only show when there's text)
-            if !viewModel.textInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            // Show "Analyze with AI" button only when no filtered results and there's text
+            if !viewModel.textInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !viewModel.hasFilteredResults {
                 Button {
                     isSearchFocused = false
                     Task {
@@ -257,7 +264,8 @@ struct LogFoodView: View {
     // MARK: - Quick Add Section
 
     private var quickAddSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 16) {
+            // Section header with manual add button
             HStack {
                 Text(localizationManager.localizedString(for: AppStrings.Food.quickAdd))
                     .id("quick-add-\(localizationManager.currentLanguage)")
@@ -265,37 +273,61 @@ struct LogFoodView: View {
                 
                 Spacer()
                 
-                // Add manual button - small plus button next to title
                 Button {
                     showingManualEntry = true
                 } label: {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 20))
-                        .foregroundColor(.blue)
+                    HStack(spacing: 4) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 12, weight: .bold))
+                        Text(localizationManager.localizedString(for: AppStrings.Food.custom))
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                    }
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Color.blue)
+                    .cornerRadius(16)
                 }
             }
             
-            // Horizontal scrolling list of quick add foods
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
-                    ForEach(viewModel.allQuickAddFoods) { food in
-                        QuickAddFoodButton(food: food) {
-                            Task {
-                                let success = await viewModel.quickAddFood(food)
-                                if success {
-                                    dismiss()
+            // Check if we have filtered results when searching
+            if viewModel.isSearchActive {
+                if viewModel.filteredQuickAddFoods.isEmpty {
+                    // No results found message
+                    Text(localizationManager.localizedString(for: AppStrings.Food.noFoodsFound))
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.vertical, 20)
+                } else {
+                    // Show filtered results in a grid
+                    quickAddGrid(foods: viewModel.filteredQuickAddFoods)
+                }
+            } else {
+                // Show horizontal scroll when not searching
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 12) {
+                        ForEach(viewModel.allQuickAddFoods.prefix(12)) { food in
+                            EnhancedQuickAddFoodButton(food: food) {
+                                Task {
+                                    let success = await viewModel.quickAddFood(food)
+                                    if success {
+                                        dismiss()
+                                    }
                                 }
                             }
                         }
                     }
+                    .padding(.horizontal, 4)
                 }
-                .padding(.horizontal, 4)
             }
         }
     }
 
     private var quickAddGridSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 16) {
+            // Section header
             HStack {
                 Text(localizationManager.localizedString(for: AppStrings.Food.commonFoods))
                     .id("common-foods-\(localizationManager.currentLanguage)")
@@ -303,45 +335,168 @@ struct LogFoodView: View {
                 
                 Spacer()
                 
-                // Add manual button - small plus button next to title
                 Button {
                     showingManualEntry = true
                 } label: {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 20))
-                        .foregroundColor(.blue)
+                    HStack(spacing: 4) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 12, weight: .bold))
+                        Text(localizationManager.localizedString(for: AppStrings.Food.custom))
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                    }
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Color.blue)
+                    .cornerRadius(16)
                 }
             }
             
-            // Horizontal scrolling list of quick add foods
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
-                    ForEach(viewModel.allQuickAddFoods) { food in
-                        QuickAddFoodButton(food: food) {
-                            Task {
-                                let success = await viewModel.quickAddFood(food)
-                                if success {
-                                    dismiss()
+            // Check if we have filtered results when searching
+            if viewModel.isSearchActive {
+                if viewModel.filteredQuickAddFoods.isEmpty {
+                    emptySearchStateView
+                } else {
+                    quickAddGrid(foods: viewModel.filteredQuickAddFoods)
+                }
+            } else {
+                // Show categorized foods when not searching
+                categorizedFoodsView
+            }
+        }
+    }
+    
+    // MARK: - Quick Add Grid
+    
+    private func quickAddGrid(foods: [QuickAddFood]) -> some View {
+        LazyVGrid(columns: [
+            GridItem(.flexible(), spacing: 12),
+            GridItem(.flexible(), spacing: 12),
+            GridItem(.flexible(), spacing: 12)
+        ], spacing: 12) {
+            ForEach(foods) { food in
+                EnhancedQuickAddFoodButton(food: food) {
+                    Task {
+                        let success = await viewModel.quickAddFood(food)
+                        if success {
+                            dismiss()
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // MARK: - Categorized Foods View
+    
+    private var categorizedFoodsView: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            ForEach(LogExperienceViewModel.FoodCategory.allCases, id: \.self) { category in
+                let foods = viewModel.categorizedQuickAddFoods[category] ?? []
+                if !foods.isEmpty {
+                    VStack(alignment: .leading, spacing: 10) {
+                        // Category header
+                        HStack(spacing: 6) {
+                            Image(systemName: category.icon)
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(categoryColor(category))
+                            Text(category.rawValue)
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        // Foods in this category - horizontal scroll
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 10) {
+                                ForEach(foods) { food in
+                                    EnhancedQuickAddFoodButton(food: food) {
+                                        Task {
+                                            let success = await viewModel.quickAddFood(food)
+                                            if success {
+                                                dismiss()
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
                 }
-                .padding(.horizontal, 4)
             }
         }
+    }
+    
+    private func categoryColor(_ category: LogExperienceViewModel.FoodCategory) -> Color {
+        switch category {
+        case .fruits: return .red
+        case .proteins: return .orange
+        case .grains: return .brown
+        case .vegetables: return .green
+        case .nuts: return .yellow
+        case .dairy: return .blue
+        case .beverages: return .cyan
+        case .snacks: return .purple
+        }
+    }
+    
+    // MARK: - Empty Search State
+    
+    private var emptySearchStateView: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 40))
+                .foregroundColor(.secondary)
+            
+            Text(localizationManager.localizedString(for: AppStrings.Food.noFoodsFound))
+                .font(.headline)
+            
+            Text(localizationManager.localizedString(for: AppStrings.Food.tryDifferentSearch))
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+            
+            Button {
+                isSearchFocused = false
+                Task {
+                    await viewModel.analyzeTextInput()
+                }
+            } label: {
+                HStack {
+                    Image(systemName: "sparkles")
+                    Text(localizationManager.localizedString(for: AppStrings.Food.analyzeWithAI))
+                }
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .foregroundColor(.white)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 10)
+                .background(
+                    LinearGradient(
+                        colors: [.blue, .purple],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .cornerRadius(20)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 40)
     }
 
     // MARK: - Recent Foods Section
 
     private var recentFoodsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            if !viewModel.recentFoods.isEmpty {
+            let foods = viewModel.isSearchActive ? viewModel.filteredRecentFoods : Array(viewModel.recentFoods.prefix(5))
+            if !foods.isEmpty {
                 Text(localizationManager.localizedString(for: AppStrings.Food.recentFoods))
                     .id("recent-foods-\(localizationManager.currentLanguage)")
                     .font(.headline)
 
-                ForEach(viewModel.recentFoods.prefix(5)) { food in
+                ForEach(foods) { food in
                     RecentFoodRow(food: food, isSaved: viewModel.isSaved(food)) {
                         Task {
                             let success = await viewModel.saveFoodEntry(food)
@@ -363,18 +518,24 @@ struct LogFoodView: View {
 
     private var recentFoodsFullSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            if viewModel.recentFoods.isEmpty {
-                emptyStateView(
-                    icon: "clock",
-                    title: localizationManager.localizedString(for: AppStrings.Food.noRecentFoods),
-                    message: "Foods you log will appear here for quick access"
-                )
+            let foods = viewModel.isSearchActive ? viewModel.filteredRecentFoods : viewModel.recentFoods
+            if foods.isEmpty {
+                if viewModel.isSearchActive {
+                    // Show search-specific empty state
+                    emptySearchStateView
+                } else {
+                    emptyStateView(
+                        icon: "clock",
+                        title: localizationManager.localizedString(for: AppStrings.Food.noRecentFoods),
+                        message: localizationManager.localizedString(for: AppStrings.Food.recentFoodsWillAppear)
+                    )
+                }
             } else {
                 Text(localizationManager.localizedString(for: AppStrings.Food.recentFoods))
                     .id("recent-foods-\(localizationManager.currentLanguage)")
                     .font(.headline)
 
-                ForEach(viewModel.recentFoods) { food in
+                ForEach(foods) { food in
                     RecentFoodRow(food: food, isSaved: viewModel.isSaved(food)) {
                         Task {
                             let success = await viewModel.saveFoodEntry(food)
@@ -398,18 +559,23 @@ struct LogFoodView: View {
 
     private var savedFoodsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            if viewModel.savedFoods.isEmpty {
-                emptyStateView(
-                    icon: "bookmark",
-                    title: localizationManager.localizedString(for: AppStrings.Food.noSavedFoods),
-                    message: "Tap the bookmark icon on any food to save it here"
-                )
+            let foods = viewModel.isSearchActive ? viewModel.filteredSavedFoods : viewModel.savedFoods
+            if foods.isEmpty {
+                if viewModel.isSearchActive {
+                    emptySearchStateView
+                } else {
+                    emptyStateView(
+                        icon: "bookmark",
+                        title: localizationManager.localizedString(for: AppStrings.Food.noSavedFoods),
+                        message: localizationManager.localizedString(for: AppStrings.Food.tapBookmarkToSave)
+                    )
+                }
             } else {
                 Text(localizationManager.localizedString(for: AppStrings.Food.savedFoods))
                     .id("saved-foods-\(localizationManager.currentLanguage)")
                     .font(.headline)
 
-                ForEach(viewModel.savedFoods) { food in
+                ForEach(foods) { food in
                     RecentFoodRow(food: food, isSaved: true) {
                         Task {
                             let success = await viewModel.saveFoodEntry(food)
@@ -520,7 +686,7 @@ struct FoodTabButton: View {
     }
 }
 
-// MARK: - Quick Add Food Button
+// MARK: - Quick Add Food Button (Legacy)
 
 struct QuickAddFoodButton: View {
     let food: QuickAddFood
@@ -547,6 +713,92 @@ struct QuickAddFoodButton: View {
             .cornerRadius(12)
         }
         .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Enhanced Quick Add Food Button
+
+struct EnhancedQuickAddFoodButton: View {
+    let food: QuickAddFood
+    let action: () -> Void
+    @State private var isPressed = false
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 6) {
+                // Emoji with background circle
+                ZStack {
+                    Circle()
+                        .fill(Color(.systemGray5))
+                        .frame(width: 50, height: 50)
+                    
+                    Text(food.emoji)
+                        .font(.system(size: 26))
+                }
+                
+                // Food name
+                Text(food.name)
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .lineLimit(2, reservesSpace: true)
+                    .multilineTextAlignment(.center)
+                    .foregroundColor(.primary)
+                
+                // Calories with icon
+                HStack(spacing: 2) {
+                    Image(systemName: "flame.fill")
+                        .font(.system(size: 8))
+                        .foregroundColor(.orange)
+                    Text("\(food.calories)")
+                        .font(.caption2)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .frame(width: 90, height: 110)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color(.systemBackground))
+                    .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 2)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(Color(.systemGray5), lineWidth: 1)
+            )
+            .scaleEffect(isPressed ? 0.95 : 1.0)
+        }
+        .buttonStyle(.plain)
+        .pressEvents {
+            withAnimation(.easeInOut(duration: 0.1)) {
+                isPressed = true
+            }
+        } onRelease: {
+            withAnimation(.easeInOut(duration: 0.1)) {
+                isPressed = false
+            }
+        }
+    }
+}
+
+// MARK: - Press Events Modifier
+
+struct PressEventsModifier: ViewModifier {
+    var onPress: () -> Void
+    var onRelease: () -> Void
+    
+    func body(content: Content) -> some View {
+        content
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { _ in onPress() }
+                    .onEnded { _ in onRelease() }
+            )
+    }
+}
+
+extension View {
+    func pressEvents(onPress: @escaping () -> Void, onRelease: @escaping () -> Void) -> some View {
+        modifier(PressEventsModifier(onPress: onPress, onRelease: onRelease))
     }
 }
 

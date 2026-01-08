@@ -280,6 +280,12 @@ struct AppStrings {
         static let manualEntry = "Manual Entry"
         static let confirmFoods = "Confirm Foods"
         static let identifiedFoods = "Identified Foods"
+        static let searchOrDescribeFood = "Search or describe what you ate..."
+        static let noFoodsFound = "No Foods Found"
+        static let tryDifferentSearch = "Try a different search term or use AI to analyze your food"
+        static let custom = "Custom"
+        static let recentFoodsWillAppear = "Foods you log will appear here for quick access"
+        static let tapBookmarkToSave = "Tap the bookmark icon on any food to save it here"
     }
     
     // MARK: - Exercise
@@ -317,6 +323,15 @@ struct AppStrings {
         static let sets = "Sets"
         static let weight = "Weight"
         static let chillWalk = "Chill Walk"
+        static let addSet = "Add Set"
+        static let totalVolume = "Total Volume"
+        static let pace = "Pace"
+        static let distance = "Distance"
+        static let totalReps = "Total Reps"
+        static let setsXReps = "Sets x Reps"
+        static let volume = "Volume"
+        static let setNumber = "Set %d"
+        static let weightWithUnit = "Weight (%@)"
     }
     
     // MARK: - Diet Plans
