@@ -504,6 +504,19 @@ struct AppStrings {
         static let noMealsToday = "No meals scheduled for today"
         static let replaceWithTemplate = "Replace with Template"
         static let deleteConfirmation = "This will delete your diet plan and all scheduled meals. This action cannot be undone."
+        static let activePlan = "Active Plan"
+        static let savedPlans = "Saved Plans"
+        static let createNewPlan = "Create New Plan"
+        static let activate = "Activate"
+        static let fromScratch = "Scratch"
+        static let week = "week"
+        static let switchPlan = "Switch Plan"
+        static let currentPlan = "Current Plan"
+        static let noPlanActive = "No Plan Active"
+        static let tapToSelectPlan = "Tap to select a diet plan"
+        static let managePlans = "Manage Plans"
+        static let mealsPerDay = "meals/day"
+        static let allPlans = "All Plans"
     }
     
     // MARK: - Profile

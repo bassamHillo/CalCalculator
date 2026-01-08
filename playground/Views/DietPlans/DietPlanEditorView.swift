@@ -18,6 +18,7 @@ struct DietPlanEditorView: View {
     
     let plan: DietPlan?
     let repository: DietPlanRepository
+    let isEmbedded: Bool // True when pushed in NavigationStack, false when presented as sheet
     
     @State private var name: String
     @State private var planDescription: String
@@ -31,6 +32,7 @@ struct DietPlanEditorView: View {
     @State private var mealToDelete: ScheduledMeal?
     @State private var showingPaywall = false
     @State private var showDeclineConfirmation = false
+    @State private var isSaving = false
     @FocusState private var isNameFocused: Bool
     @FocusState private var isCalorieGoalFocused: Bool
     
@@ -39,7 +41,7 @@ struct DietPlanEditorView: View {
     }
     
     private var willReplaceExisting: Bool {
-        isCreatingNewPlan && !existingActivePlans.isEmpty && existingActivePlans.first?.id != plan?.id
+        isCreatingNewPlan && isActive && !existingActivePlans.isEmpty && existingActivePlans.first?.id != plan?.id
     }
     
     // Computed properties for summary
@@ -51,9 +53,10 @@ struct DietPlanEditorView: View {
         Set(scheduledMeals.flatMap { $0.daysOfWeek })
     }
     
-    init(plan: DietPlan?, repository: DietPlanRepository) {
+    init(plan: DietPlan?, repository: DietPlanRepository, isEmbedded: Bool = false) {
         self.plan = plan
         self.repository = repository
+        self.isEmbedded = isEmbedded
         _name = State(initialValue: plan?.name ?? "")
         _planDescription = State(initialValue: plan?.planDescription ?? "")
         _isActive = State(initialValue: plan?.isActive ?? true)
@@ -62,87 +65,101 @@ struct DietPlanEditorView: View {
     }
     
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 24) {
-                    // Warning banner for replacement
-                    if willReplaceExisting {
-                        replacementWarningBanner
-                    }
-                    
-                    // Plan details section
-                    planDetailsSection
-                    
-                    // Quick summary card
-                    if !scheduledMeals.isEmpty {
-                        planSummaryCard
-                    }
-                    
-                    // Scheduled meals section
-                    scheduledMealsSection
+        let content = ScrollView {
+            VStack(spacing: 24) {
+                // Warning banner for replacement
+                if willReplaceExisting {
+                    replacementWarningBanner
                 }
-                .padding()
+                
+                // Plan details section
+                planDetailsSection
+                
+                // Quick summary card
+                if !scheduledMeals.isEmpty {
+                    planSummaryCard
+                }
+                
+                // Scheduled meals section
+                scheduledMealsSection
             }
-            .background(Color(.systemGroupedBackground))
-            .navigationTitle(isCreatingNewPlan ? localizationManager.localizedString(for: AppStrings.DietPlan.createDietPlan) : localizationManager.localizedString(for: AppStrings.DietPlan.editDietPlan))
-            .id("nav-title-\(localizationManager.currentLanguage)")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
+            .padding()
+        }
+        .background(Color(.systemGroupedBackground))
+        .navigationTitle(isCreatingNewPlan ? localizationManager.localizedString(for: AppStrings.DietPlan.createDietPlan) : localizationManager.localizedString(for: AppStrings.DietPlan.editDietPlan))
+        .id("nav-title-\(localizationManager.currentLanguage)")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if !isEmbedded {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(localizationManager.localizedString(for: AppStrings.Common.cancel)) {
                         dismiss()
                     }
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button {
-                        Task {
-                            await savePlan()
-                        }
-                    } label: {
+            }
+            ToolbarItem(placement: .confirmationAction) {
+                Button {
+                    Task {
+                        await savePlan()
+                    }
+                } label: {
+                    if isSaving {
+                        ProgressView()
+                    } else {
                         Text(localizationManager.localizedString(for: AppStrings.Common.save))
                             .fontWeight(.semibold)
                     }
-                    .disabled(name.isEmpty || scheduledMeals.isEmpty)
                 }
+                .disabled(name.isEmpty || scheduledMeals.isEmpty || isSaving)
             }
-            .sheet(isPresented: $showingAddMeal) {
-                ScheduledMealEditorView(
-                    meal: nil,
-                    onSave: { meal in
-                        scheduledMeals.append(meal)
-                        Task {
-                            let reminderService = MealReminderService.shared(context: modelContext)
-                            do {
-                                try await reminderService.requestAuthorization()
-                                try await reminderService.scheduleReminder(for: meal)
-                            } catch {
-                                print("Failed to schedule reminder for new meal: \(error)")
-                            }
+        }
+        .sheet(isPresented: $showingAddMeal) {
+            ScheduledMealEditorView(
+                meal: nil,
+                onSave: { meal in
+                    scheduledMeals.append(meal)
+                    // Schedule reminder immediately for new meal
+                    Task {
+                        let reminderService = MealReminderService.shared(context: modelContext)
+                        do {
+                            try await reminderService.requestAuthorization()
+                            try await reminderService.scheduleReminder(for: meal)
+                        } catch {
+                            print("Failed to schedule reminder for new meal: \(error)")
                         }
                     }
-                )
-            }
-            .sheet(item: $editingMeal) { meal in
-                ScheduledMealEditorView(
-                    meal: meal,
-                    onSave: { updatedMeal in
-                        if let index = scheduledMeals.firstIndex(where: { $0.id == meal.id }) {
-                            scheduledMeals[index] = updatedMeal
-                        }
-                    }
-                )
-            }
-            .fullScreenCover(isPresented: $showingPaywall) {
-                paywallView
-            }
-            .paywallDismissalOverlay(
-                showPaywall: $showingPaywall,
-                showDeclineConfirmation: $showDeclineConfirmation
+                }
             )
-            .alert(localizationManager.localizedString(for: AppStrings.DietPlan.mealsRequired), isPresented: $showNoMealsAlert) {
-                Button(localizationManager.localizedString(for: AppStrings.Common.ok), role: .cancel) {}
-            } message: {
-                Text(localizationManager.localizedString(for: AppStrings.DietPlan.addAtLeastOneMeal))
+        }
+        .sheet(item: $editingMeal) { meal in
+            ScheduledMealEditorView(
+                meal: meal,
+                onSave: { updatedMeal in
+                    if let index = scheduledMeals.firstIndex(where: { $0.id == meal.id }) {
+                        scheduledMeals[index] = updatedMeal
+                    }
+                }
+            )
+        }
+        .fullScreenCover(isPresented: $showingPaywall) {
+            paywallView
+        }
+        .paywallDismissalOverlay(
+            showPaywall: $showingPaywall,
+            showDeclineConfirmation: $showDeclineConfirmation
+        )
+        .alert(localizationManager.localizedString(for: AppStrings.DietPlan.mealsRequired), isPresented: $showNoMealsAlert) {
+            Button(localizationManager.localizedString(for: AppStrings.Common.ok), role: .cancel) {}
+        } message: {
+            Text(localizationManager.localizedString(for: AppStrings.DietPlan.addAtLeastOneMeal))
+        }
+        
+        // Wrap in NavigationStack only if presented as sheet
+        if isEmbedded {
+            content
+        } else {
+            NavigationStack {
+                content
             }
         }
     }
@@ -438,16 +455,30 @@ struct DietPlanEditorView: View {
             return
         }
         
+        isSaving = true
+        defer { isSaving = false }
+        
         do {
             let calorieGoal = dailyCalorieGoal.isEmpty ? nil : Int(dailyCalorieGoal)
             
             if let existingPlan = plan {
+                // Update existing plan
                 existingPlan.name = name
                 existingPlan.planDescription = planDescription.isEmpty ? nil : planDescription
                 existingPlan.isActive = isActive
                 existingPlan.dailyCalorieGoal = calorieGoal
                 existingPlan.scheduledMeals = scheduledMeals
+                
+                // If activating this plan, deactivate others
+                if isActive {
+                    for otherPlan in existingActivePlans where otherPlan.id != existingPlan.id {
+                        otherPlan.isActive = false
+                    }
+                }
+                
+                try modelContext.save()
             } else {
+                // Create new plan
                 let newPlan = DietPlan(
                     name: name,
                     planDescription: planDescription.isEmpty ? nil : planDescription,
@@ -455,22 +486,26 @@ struct DietPlanEditorView: View {
                     dailyCalorieGoal: calorieGoal,
                     scheduledMeals: scheduledMeals
                 )
-                try repository.saveDietPlan(newPlan)
+                
+                // If activating this plan, deactivate others
+                if isActive {
+                    for otherPlan in existingActivePlans {
+                        otherPlan.isActive = false
+                    }
+                }
+                
+                modelContext.insert(newPlan)
+                try modelContext.save()
             }
             
-            // Schedule reminders before dismissing
+            // Schedule reminders
             let reminderService = MealReminderService.shared(context: modelContext)
             do {
                 try await reminderService.requestAuthorization()
                 try await reminderService.scheduleAllReminders()
-                
-                // Count scheduled reminders for feedback
-                let activePlans = try repository.fetchActiveDietPlans()
-                let totalReminders = activePlans.reduce(0) { $0 + $1.scheduledMeals.count }
-                print("✅ Successfully scheduled \(totalReminders) meal reminders")
+                print("Successfully scheduled meal reminders")
             } catch {
-                print("⚠️ Failed to schedule reminders: \(error)")
-                // Continue anyway - diet plan is saved
+                print("Failed to schedule reminders: \(error)")
             }
             
             NotificationCenter.default.post(name: .dietPlanChanged, object: nil)
@@ -485,6 +520,7 @@ struct DietPlanEditorView: View {
             }
         } catch {
             print("Failed to save diet plan: \(error)")
+            HapticManager.shared.notification(.error)
         }
     }
     

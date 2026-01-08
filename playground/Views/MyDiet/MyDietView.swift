@@ -4,11 +4,13 @@
 //
 //  Standalone My Diet tab view - NO search bar
 //  Shows diet adherence, scheduled meals, and insights
+//  Enhanced with diet plan switcher and Apple-style UI/UX
 //
 
 import Charts
 import SwiftUI
 import SwiftData
+import SDK
 
 // MARK: - MyDietView
 
@@ -21,19 +23,36 @@ struct MyDietView: View {
     // MARK: - Environment
     
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.isSubscribed) private var isSubscribed
+    @Environment(TheSDK.self) private var sdk
     
     // MARK: - State
     
     @Query(filter: #Predicate<DietPlan> { $0.isActive == true })
     private var activeDietPlans: [DietPlan]
     
+    @Query(sort: \DietPlan.createdAt, order: .reverse)
+    private var allDietPlans: [DietPlan]
+    
     @State private var showingEditPlan = false
     @State private var showingInsights = false
+    @State private var showingPlansList = false
+    @State private var showingPlanSwitcher = false
+    @State private var showingPaywall = false
+    @State private var showDeclineConfirmation = false
     
     @ObservedObject private var localizationManager = LocalizationManager.shared
     
     private var dietPlanRepository: DietPlanRepository {
         DietPlanRepository(context: modelContext)
+    }
+    
+    private var activePlan: DietPlan? {
+        activeDietPlans.first
+    }
+    
+    private var inactivePlans: [DietPlan] {
+        allDietPlans.filter { !$0.isActive }
     }
     
     // MARK: - Body
@@ -43,26 +62,42 @@ struct MyDietView: View {
         
         NavigationStack {
             ScrollView {
-                VStack(spacing: 24) {
-                    timeRangeSelector
+                VStack(spacing: 20) {
+                    // Plan Switcher Card
+                    planSwitcherCard
                     
-                    if let data = viewModel.adherenceData {
-                        adherenceOverviewCard(data: data)
-                    }
-                    
-                    if !viewModel.weeklyAdherence.isEmpty {
-                        adherenceTrendChart
-                    }
-                    
-                    if let data = viewModel.adherenceData {
-                        todaysScheduleSection(data: data)
-                    }
-                    
-                    insightsSection
-                    weeklyStatsSection
-                    
-                    if let data = viewModel.adherenceData, data.offDietCalories > 0 {
-                        offDietAnalysisSection(data: data)
+                    if activePlan != nil {
+                        // Time Range Selector
+                        timeRangeSelector
+                        
+                        // Adherence Overview
+                        if let data = viewModel.adherenceData {
+                            adherenceOverviewCard(data: data)
+                        }
+                        
+                        // Trend Chart
+                        if !viewModel.weeklyAdherence.isEmpty {
+                            adherenceTrendChart
+                        }
+                        
+                        // Today's Schedule
+                        if let data = viewModel.adherenceData {
+                            todaysScheduleSection(data: data)
+                        }
+                        
+                        // Insights
+                        insightsSection
+                        
+                        // Weekly Stats
+                        weeklyStatsSection
+                        
+                        // Off-Diet Analysis
+                        if let data = viewModel.adherenceData, data.offDietCalories > 0 {
+                            offDietAnalysisSection(data: data)
+                        }
+                    } else {
+                        // Empty State
+                        emptyStateView
                     }
                 }
                 .padding()
@@ -76,10 +111,27 @@ struct MyDietView: View {
             DietInsightsView(activePlans: activeDietPlans, repository: dietPlanRepository)
         }
         .sheet(isPresented: $showingEditPlan) {
-            if let plan = activeDietPlans.first {
+            if let plan = activePlan {
                 DietPlanEditorView(plan: plan, repository: dietPlanRepository)
             }
         }
+        .sheet(isPresented: $showingPlansList) {
+            DietPlansListView()
+        }
+        .confirmationDialog(
+            localizationManager.localizedString(for: AppStrings.DietPlan.switchPlan),
+            isPresented: $showingPlanSwitcher,
+            titleVisibility: .visible
+        ) {
+            planSwitcherOptions
+        }
+        .fullScreenCover(isPresented: $showingPaywall) {
+            paywallView
+        }
+        .paywallDismissalOverlay(
+            showPaywall: $showingPaywall,
+            showDeclineConfirmation: $showDeclineConfirmation
+        )
         .onChange(of: viewModel.selectedDate) { _, _ in
             Task {
                 await viewModel.loadAdherenceData()
@@ -102,22 +154,233 @@ struct MyDietView: View {
         }
     }
     
+    // MARK: - Plan Switcher Card
+    
+    private var planSwitcherCard: some View {
+        Button {
+            HapticManager.shared.impact(.light)
+            if allDietPlans.count > 1 {
+                showingPlanSwitcher = true
+            } else if allDietPlans.isEmpty {
+                showingPlansList = true
+            } else {
+                showingEditPlan = true
+            }
+        } label: {
+            HStack(spacing: 12) {
+                // Plan Icon
+                ZStack {
+                    Circle()
+                        .fill(activePlan != nil ? Color.green.opacity(0.15) : Color.gray.opacity(0.15))
+                        .frame(width: 48, height: 48)
+                    
+                    Image(systemName: activePlan != nil ? "fork.knife.circle.fill" : "plus.circle.fill")
+                        .font(.system(size: 24))
+                        .foregroundColor(activePlan != nil ? .green : .gray)
+                }
+                
+                // Plan Info
+                VStack(alignment: .leading, spacing: 4) {
+                    if let plan = activePlan {
+                        HStack(spacing: 6) {
+                            Text(localizationManager.localizedString(for: AppStrings.DietPlan.currentPlan))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            
+                            if allDietPlans.count > 1 {
+                                Image(systemName: "chevron.up.chevron.down")
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        
+                        Text(plan.name)
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                            .lineLimit(1)
+                        
+                        HStack(spacing: 8) {
+                            Label("\(plan.scheduledMeals.count) \(localizationManager.localizedString(for: AppStrings.DietPlan.mealsPerDay))", systemImage: "fork.knife")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            
+                            if let calories = plan.dailyCalorieGoal {
+                                Label("\(calories) kcal", systemImage: "flame.fill")
+                                    .font(.caption)
+                                    .foregroundColor(.orange)
+                            }
+                        }
+                    } else {
+                        Text(localizationManager.localizedString(for: AppStrings.DietPlan.noPlanActive))
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                        
+                        Text(localizationManager.localizedString(for: AppStrings.DietPlan.tapToSelectPlan))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
+                Spacer()
+                
+                // Status Indicator
+                if activePlan != nil {
+                    VStack(spacing: 4) {
+                        Circle()
+                            .fill(Color.green)
+                            .frame(width: 8, height: 8)
+                        
+                        Text(localizationManager.localizedString(for: AppStrings.DietPlan.active).uppercased())
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundColor(.green)
+                    }
+                } else {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.secondary)
+                }
+            }
+            .padding()
+            .background(Color(.secondarySystemGroupedBackground))
+            .cornerRadius(16)
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(activePlan != nil ? Color.green.opacity(0.3) : Color.clear, lineWidth: 2)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+    
+    // MARK: - Plan Switcher Options
+    
+    @ViewBuilder
+    private var planSwitcherOptions: some View {
+        // Show all plans except the active one
+        ForEach(inactivePlans) { plan in
+            Button {
+                activatePlan(plan)
+            } label: {
+                Label(plan.name, systemImage: "fork.knife")
+            }
+        }
+        
+        Button {
+            showingPlansList = true
+        } label: {
+            Label(localizationManager.localizedString(for: AppStrings.DietPlan.managePlans), systemImage: "list.bullet")
+        }
+        
+        Button(localizationManager.localizedString(for: AppStrings.Common.cancel), role: .cancel) {}
+    }
+    
+    // MARK: - Activate Plan
+    
+    private func activatePlan(_ plan: DietPlan) {
+        guard isSubscribed else {
+            showingPaywall = true
+            HapticManager.shared.notification(.warning)
+            return
+        }
+        
+        do {
+            // Deactivate all other plans
+            for existingPlan in allDietPlans where existingPlan.id != plan.id {
+                existingPlan.isActive = false
+            }
+            
+            // Activate the selected plan
+            plan.isActive = true
+            try modelContext.save()
+            
+            // Reschedule reminders
+            Task {
+                let reminderService = MealReminderService.shared(context: modelContext)
+                try? await reminderService.scheduleAllReminders()
+            }
+            
+            NotificationCenter.default.post(name: .dietPlanChanged, object: nil)
+            HapticManager.shared.notification(.success)
+        } catch {
+            print("Failed to activate plan: \(error)")
+            HapticManager.shared.notification(.error)
+        }
+    }
+    
+    // MARK: - Empty State View
+    
+    private var emptyStateView: some View {
+        VStack(spacing: 24) {
+            // Illustration
+            ZStack {
+                Circle()
+                    .fill(Color.blue.opacity(0.1))
+                    .frame(width: 120, height: 120)
+                
+                Image(systemName: "fork.knife.circle")
+                    .font(.system(size: 48))
+                    .foregroundColor(.blue)
+            }
+            .padding(.top, 40)
+            
+            VStack(spacing: 8) {
+                Text(localizationManager.localizedString(for: AppStrings.DietPlan.noDietPlan))
+                    .font(.title3)
+                    .fontWeight(.bold)
+                
+                Text(localizationManager.localizedString(for: AppStrings.DietPlan.createDietDescription))
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            
+            Button {
+                showingPlansList = true
+            } label: {
+                HStack {
+                    Image(systemName: "plus.circle.fill")
+                    Text(localizationManager.localizedString(for: AppStrings.DietPlan.createNewPlan))
+                }
+                .font(.headline)
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(Color.blue)
+                .cornerRadius(12)
+            }
+            .padding(.horizontal, 32)
+        }
+        .frame(maxHeight: .infinity)
+        .padding()
+    }
+    
     // MARK: - Toolbar Content
     
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .topBarTrailing) {
             HStack(spacing: 16) {
-                Button {
-                    showingEditPlan = true
-                } label: {
-                    Image(systemName: "pencil")
+                if activePlan != nil {
+                    Button {
+                        showingEditPlan = true
+                    } label: {
+                        Image(systemName: "pencil")
+                    }
+                    
+                    Button {
+                        showingInsights = true
+                    } label: {
+                        Image(systemName: "chart.bar.fill")
+                    }
                 }
                 
-                Button {
-                    showingInsights = true
+                Menu {
+                    Button {
+                        showingPlansList = true
+                    } label: {
+                        Label(localizationManager.localizedString(for: AppStrings.DietPlan.allPlans), systemImage: "list.bullet")
+                    }
                 } label: {
-                    Image(systemName: "chart.bar.fill")
+                    Image(systemName: "ellipsis.circle")
                 }
             }
         }
@@ -365,6 +628,22 @@ struct MyDietView: View {
             .background(Color(.secondarySystemGroupedBackground))
             .cornerRadius(12)
         }
+    }
+    
+    // MARK: - Paywall View
+    
+    private var paywallView: some View {
+        SDKView(
+            model: sdk,
+            page: .splash,
+            show: paywallBinding(
+                showPaywall: $showingPaywall,
+                sdk: sdk,
+                showDeclineConfirmation: $showDeclineConfirmation
+            ),
+            backgroundColor: .white,
+            ignoreSafeArea: true
+        )
     }
 }
 

@@ -99,6 +99,13 @@ struct DietQuickSetupView: View {
                     }
                 )
             }
+            .fullScreenCover(isPresented: $showingPaywall) {
+                paywallView
+            }
+            .paywallDismissalOverlay(
+                showPaywall: $showingPaywall,
+                showDeclineConfirmation: $showDeclineConfirmation
+            )
         }
     }
     
