@@ -108,6 +108,11 @@ final class UserSettings {
         )
     }
     
+    /// Returns the preferred distance unit based on metric/imperial setting
+    var preferredDistanceUnit: DistanceUnit {
+        return useMetricUnits ? .kilometers : .miles
+    }
+    
     var remainingCalories: Int {
         calorieGoal
     }
