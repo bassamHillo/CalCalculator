@@ -311,8 +311,8 @@ struct HomeView: View {
         VStack(spacing: 0) {
             // Week days header - sticky at top
             weekDaysSection
-                .background(Color(.systemGroupedBackground))
-
+//                .background(Color(.systemGroupedBackground))
+            Divider()
             // Rest of the content
             ScrollViewReader { proxy in
                 List {
@@ -463,16 +463,10 @@ struct HomeView: View {
     private var weekDaysSection: some View {
         // Explicitly reference currentLanguage to ensure SwiftUI tracks the dependency
         let _ = localizationManager.currentLanguage
-        return VStack(spacing: 0) {
-            WeekDaysHeader(weekDays: viewModel.weekDays) { selectedDate in
-                HapticManager.shared.impact(.medium)
-                viewModel.selectDay(selectedDate)
-            }
+        return WeekDaysHeader(weekDays: viewModel.weekDays) { selectedDate in
+            HapticManager.shared.impact(.medium)
+            viewModel.selectDay(selectedDate)
         }
-        .background(Color(.secondarySystemGroupedBackground))
-        .cornerRadius(16)
-        .shadow(color: Color.black.opacity(0.06), radius: 6, x: 0, y: 2)
-        .padding(.horizontal, 16)
         .padding(.vertical, 8)
         .transition(.opacity.combined(with: .scale(scale: 0.95)))
         .animation(
@@ -548,7 +542,7 @@ struct HomeView: View {
     }
 
     private var healthKitSection: some View {
-        HealthKitCard()
+        HealthKitCard(selectedDate: viewModel.selectedDate)
             .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
             .listRowSeparator(.hidden)
             .listRowBackground(Color.clear)
