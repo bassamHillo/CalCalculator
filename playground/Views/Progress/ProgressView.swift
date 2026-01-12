@@ -10,6 +10,8 @@ import Charts
 import SDK
 
 struct ProgressDashboardView: View {
+    // CRITICAL: We need @Bindable for bindings ($viewModel.showWeightProgressSheet, etc.)
+    // But we'll prevent unnecessary updates by using stable IDs and not observing UserSettings directly
     @Bindable var viewModel: ProgressViewModel
     
     @Environment(\.isSubscribed) private var isSubscribed
@@ -17,8 +19,10 @@ struct ProgressDashboardView: View {
     @Environment(TheSDK.self) private var sdk
     @ObservedObject private var localizationManager = LocalizationManager.shared
     
-    // Observe UserSettings directly for weight updates
-    @Bindable private var settings = UserSettings.shared
+    // CRITICAL: Don't observe UserSettings directly - access it directly instead
+    // This prevents ProgressView from updating when UserSettings changes,
+    // which would cause MainTabView to update and reset the tab selection
+    // Access UserSettings.shared directly in the view body instead
     
     @State private var showWeightInput = false
     @State private var showPaywall = false
@@ -38,12 +42,12 @@ struct ProgressDashboardView: View {
                             VStack(spacing: 16) {
                                 // Current Weight Card
                                 CurrentWeightCard(
-                                    weight: settings.displayWeight,
+                                    weight: UserSettings.shared.displayWeight,
                                     unit: viewModel.weightUnit,
                                     // Use first weight entry if available, otherwise use current weight as start weight
                                     // This ensures we always have a valid start weight for progress calculation
                                     // Note: currentWeight is already in kg, so we convert to display units if needed
-                                    startWeight: viewModel.weightHistory.first?.weight ?? (viewModel.useMetricUnits ? settings.currentWeight : settings.currentWeight * 2.20462),
+                                    startWeight: viewModel.weightHistory.first?.weight ?? (viewModel.useMetricUnits ? UserSettings.shared.currentWeight : UserSettings.shared.currentWeight * 2.20462),
                                     goalWeight: viewModel.displayTargetWeight,
                                     daysUntilCheck: viewModel.daysUntilNextWeightCheck,
                                     isSubscribed: isSubscribed,
@@ -63,7 +67,7 @@ struct ProgressDashboardView: View {
                                         }
                                     }
                                 )
-                                .id("current-weight-\(settings.displayWeight)-\(viewModel.weightHistory.count)")
+                                .id("current-weight-\(UserSettings.shared.displayWeight)-\(viewModel.weightHistory.count)")
                                 
                                 // Weight Chart Card
                                 WeightChartCard(
@@ -205,12 +209,12 @@ struct ProgressDashboardView: View {
             }
             .sheet(isPresented: $showWeightInput) {
                 WeightInputSheet(
-                    currentWeight: settings.displayWeight,
+                    currentWeight: UserSettings.shared.displayWeight,
                     unit: viewModel.weightUnit,
                     onSave: { weight in
-                        Task {
-                            await viewModel.updateWeight(weight)
-                        }
+                        // Save weight - MainTabView uses @AppStorage for selectedTabRaw
+                        // so it won't reset even if MainTabView updates
+                        await viewModel.updateWeight(weight)
                     }
                 )
                 .presentationDetents([.medium])
@@ -227,15 +231,10 @@ struct ProgressDashboardView: View {
                 // Handle weight update from widget (notification from app become active)
                 checkWidgetUpdates()
             }
-            .onChange(of: settings.currentWeight) { oldValue, newValue in
-                // Reload weight history when weight changes (e.g., from Profile/PersonalDetailsView)
-                // This ensures all weight-related views update when weight is changed elsewhere
-                // Only reload if value actually changed to prevent unnecessary work
-                guard abs(oldValue - newValue) > 0.01 else { return }
-                Task {
-                    await viewModel.loadWeightHistory()
-                }
-            }
+            // CRITICAL: Removed onChange(of: UserSettings.shared.currentWeight) to prevent view updates
+            // when weight changes. ProgressViewModel.updateWeight() already calls loadWeightHistory(),
+            // so this onChange was causing unnecessary view updates that triggered MainTabView to reset.
+            // If weight is changed from Profile/PersonalDetailsView, that view should handle the update.
             .sheet(isPresented: $viewModel.showWeightProgressSheet) {
                 WeightProgressSheet(
                     weightHistory: viewModel.weightHistory,
@@ -1000,7 +999,7 @@ struct HealthKitSettingsPromptCard: View {
         // Direct approach: Open Settings app to the app's settings page
         // User can then navigate to: Privacy & Security > Health > CalCalculator
         guard let settingsURL = URL(string: UIApplication.openSettingsURLString) else {
-            print("Failed to create settings URL")
+            AppLogger.forClass("ProgressView").error("Failed to create settings URL")
             return
         }
         
@@ -1008,7 +1007,7 @@ struct HealthKitSettingsPromptCard: View {
         if UIApplication.shared.canOpenURL(settingsURL) {
             UIApplication.shared.open(settingsURL) { success in
                 if !success {
-                    print("Failed to open settings")
+                    AppLogger.forClass("ProgressView").error("Failed to open settings")
                 }
             }
         }

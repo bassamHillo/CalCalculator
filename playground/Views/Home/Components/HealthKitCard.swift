@@ -401,23 +401,23 @@ struct HealthKitCard: View {
         // Direct approach: Open Settings app to the app's settings page
         // User can then navigate to: Privacy & Security > Health > CalorieVisionAI
         guard let settingsURL = URL(string: UIApplication.openSettingsURLString) else {
-            print("❌ [HealthKitCard] Failed to create settings URL")
+            AppLogger.forClass("HealthKitCard").error("Failed to create settings URL")
             return
         }
         
-        print("🔵 [HealthKitCard] Opening settings: \(settingsURL.absoluteString)")
+        AppLogger.forClass("HealthKitCard").info("Opening settings: \(settingsURL.absoluteString)")
         
         // Use the synchronous open method with completion handler for better reliability
         if UIApplication.shared.canOpenURL(settingsURL) {
             UIApplication.shared.open(settingsURL) { success in
                 if success {
-                    print("✅ [HealthKitCard] Successfully opened settings")
+                    AppLogger.forClass("HealthKitCard").success("Successfully opened settings")
                 } else {
-                    print("❌ [HealthKitCard] Failed to open settings")
+                    AppLogger.forClass("HealthKitCard").error("Failed to open settings")
                 }
             }
         } else {
-            print("❌ [HealthKitCard] Cannot open settings URL")
+            AppLogger.forClass("HealthKitCard").error("Cannot open settings URL")
         }
     }
     

@@ -613,14 +613,16 @@ struct DietQuickSetupView: View {
                 try await reminderService.requestAuthorization()
                 try await reminderService.scheduleAllReminders()
             } catch {
-                print("⚠️ Failed to schedule reminders: \(error)")
+                print("⚠️ [DietQuickSetupView] Failed to schedule reminders: \(error)")
+                // Continue - reminders are not critical for plan creation
             }
             
             NotificationCenter.default.post(name: .dietPlanChanged, object: nil)
             HapticManager.shared.notification(.success)
             dismiss()
         } catch {
-            print("Failed to create plan: \(error)")
+            print("❌ [DietQuickSetupView] Failed to create plan: \(error)")
+            // Show error to user if needed
             HapticManager.shared.notification(.error)
         }
     }

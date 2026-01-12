@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import SDK
 
 enum QuickLogType: String, CaseIterable {
     case food = "food"
@@ -37,11 +38,15 @@ enum QuickLogType: String, CaseIterable {
 struct QuickLogView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.isSubscribed) private var isSubscribed
+    @Environment(TheSDK.self) private var sdk
     @ObservedObject private var localizationManager = LocalizationManager.shared
 
     @State private var selectedType: QuickLogType = .food
     @State private var viewModel: LogExperienceViewModel
     @State private var repository: MealRepository
+    @State private var showPaywall = false
+    @State private var showDeclineConfirmation = false
 
     // Food quick log state
     @State private var foodDescription: String = ""
@@ -131,6 +136,16 @@ struct QuickLogView: View {
             } message: {
                 Text(errorMessage)
             }
+            .fullScreenCover(isPresented: $showPaywall) {
+                SDKView(
+                    model: sdk,
+                    page: .splash,
+                    show: paywallBinding(showPaywall: $showPaywall, sdk: sdk, showDeclineConfirmation: $showDeclineConfirmation),
+                    backgroundColor: .white,
+                    ignoreSafeArea: true
+                )
+            }
+            .paywallDismissalOverlay(showPaywall: $showPaywall, showDeclineConfirmation: $showDeclineConfirmation)
         }
     }
 
@@ -442,11 +457,47 @@ struct QuickLogView: View {
                 showSuccess = true
             }
         } else {
+            // Check free exercise save limit for non-subscribed users
+            let limitManager = ExerciseSaveLimitManager.shared
+            
+            if !isSubscribed {
+                // Check if user can save an exercise
+                guard limitManager.canSaveExercise(isSubscribed: false) else {
+                    // No free exercise saves left - show paywall
+                    showPaywall = true
+                    return
+                }
+            }
+            
             // Save exercise using repository pattern with proper error handling
             do {
+                // If calories is 0, try to calculate from API
+                let caloriesValue = Int(exerciseCalories) ?? 0
+                var finalCalories = caloriesValue
+                
+                if finalCalories == 0 {
+                    // Try to calculate from API
+                    let durationValue = Int(exerciseDuration) ?? 30
+                    do {
+                        if let calculatedCalories = try await WorkoutCaloriesAPIService.shared.calculateCalories(
+                            workoutType: "general", // Generic type for manual exercises
+                            durationMinutes: durationValue,
+                            intensity: "moderate"
+                        ) {
+                            finalCalories = calculatedCalories
+                        } else {
+                            // Fallback calculation
+                            finalCalories = max(1, min(Int(10.0 * Double(durationValue)), 1000))
+                        }
+                    } catch {
+                        // Fallback calculation
+                        finalCalories = max(1, min(Int(10.0 * Double(durationValue)), 1000))
+                    }
+                }
+                
                 let exercise = Exercise(
                     type: .manual,
-                    calories: Int(exerciseCalories) ?? 0,
+                    calories: finalCalories,
                     duration: Int(exerciseDuration) ?? 30,
                     intensity: .medium,
                     notes: exerciseDescription.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -455,20 +506,25 @@ struct QuickLogView: View {
                 // Use repository for consistent saving
                 try repository.saveExercise(exercise)
                 
+                // Record exercise save for non-subscribed users
+                if !isSubscribed {
+                    limitManager.recordExerciseSave()
+                }
+                
                 // Also save to HealthKit if available and authorized
                 // This ensures our exercise data overwrites HealthKit data (our data is the source of truth)
                 let healthKitManager = HealthKitManager.shared
                 if healthKitManager.isHealthDataAvailable && healthKitManager.isAuthorized {
                     do {
                         try await healthKitManager.saveExercise(
-                            calories: Int(exerciseCalories) ?? 0,
+                            calories: finalCalories,
                             durationMinutes: Int(exerciseDuration) ?? 30,
                             startDate: exercise.date
                         )
-                        print("✅ [QuickLogView] Exercise saved to HealthKit: \(Int(exerciseCalories) ?? 0) cal, \(Int(exerciseDuration) ?? 30) min")
+                        AppLogger.forClass("QuickLogView").success("Exercise saved to HealthKit: \(finalCalories) cal, \(Int(exerciseDuration) ?? 30) min")
                     } catch {
                         // Continue even if HealthKit save fails - SwiftData is primary source
-                        print("⚠️ [QuickLogView] Failed to save exercise to HealthKit: \(error.localizedDescription)")
+                        AppLogger.forClass("QuickLogView").warning("Failed to save exercise to HealthKit", error: error)
                     }
                 }
                 
@@ -481,7 +537,7 @@ struct QuickLogView: View {
                 errorMessage = "Failed to save exercise: \(error.localizedDescription)"
                 showError = true
                 HapticManager.shared.notification(.error)
-                print("❌ Error saving exercise: \(error)")
+                AppLogger.forClass("QuickLogView").error("Error saving exercise", error: error)
             }
         }
     }

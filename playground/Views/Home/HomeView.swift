@@ -14,16 +14,17 @@ struct HomeView: View {
     @Bindable var viewModel: HomeViewModel
     let repository: MealRepository
     @Bindable var scanViewModel: ScanViewModel
+    let scrollToTopTrigger: UUID
     var onMealSaved: () -> Void
 
     @Environment(\.isSubscribed) private var isSubscribed
     @Environment(TheSDK.self) private var sdk
     @Environment(\.locale) private var locale
     @ObservedObject private var localizationManager = LocalizationManager.shared
-
+    
     private var settings = UserSettings.shared
     @State private var badgeManager = BadgeManager.shared
-
+    
     @State private var showScanSheet = false
     @State private var showLogFoodSheet = false
     @State private var showLogExerciseSheet = false
@@ -38,20 +39,29 @@ struct HomeView: View {
     @State private var showingDietWelcome = false
     @Environment(\.modelContext) private var modelContext
     @Query(filter: #Predicate<DietPlan> { $0.isActive == true }) private var activeDietPlans: [DietPlan]
-
+    
     init(
         viewModel: HomeViewModel,
         repository: MealRepository,
         scanViewModel: ScanViewModel,
+        scrollToTopTrigger: UUID = UUID(),
         onMealSaved: @escaping () -> Void
     ) {
+        let timestamp = Date()
+        AppLogger.forClass("HomeView").info("🔍 [init] HomeView initialized at \(timestamp)")
+        AppLogger.forClass("HomeView").info("🔍 [init] Stack trace: \(Thread.callStackSymbols.prefix(5).joined(separator: "\n"))")
         self.viewModel = viewModel
         self.repository = repository
         self.scanViewModel = scanViewModel
+        self.scrollToTopTrigger = scrollToTopTrigger
         self.onMealSaved = onMealSaved
     }
-
+    
     var body: some View {
+        // CRITICAL: Log when HomeView body is computed to understand what triggers recomputation
+        let timestamp = Date()
+        AppLogger.forClass("HomeView").info("🔍 [body] HomeView body computed at \(timestamp)")
+        
         // Explicitly reference currentLanguage to ensure SwiftUI tracks the dependency
         // This forces the view to update when the language changes
         let _ = localizationManager.currentLanguage
@@ -68,6 +78,7 @@ struct HomeView: View {
             }
             .task {
                 // Load data asynchronously without blocking the UI
+                AppLogger.forClass("HomeView").info(".task called - this should only happen once when view appears")
                 let startTime = Date()
                 print("🟢 [HomeView] .task started - loading data")
                 await viewModel.loadData()
@@ -97,6 +108,9 @@ struct HomeView: View {
                     }
                 }
                 #endif
+            }
+            .onDisappear {
+                AppLogger.forClass("HomeView").warning("HomeView disappeared!")
             }
             .task(id: viewModel.weekDays.count) {
                 // Re-check badges when week days data is loaded
@@ -254,13 +268,14 @@ struct HomeView: View {
                     }
                 }
             }
+            .overlay(alignment: Alignment.bottomTrailing) {
+                floatingMenuOverlay
+            }
             .overlay {
                 if showingDietWelcome {
                     DietWelcomeView(isPresented: $showingDietWelcome)
+                        .zIndex(1000) // Ensure welcome popup appears above floating button
                 }
-            }
-            .overlay(alignment: Alignment.bottomTrailing) {
-                floatingMenuOverlay
             }
         
         return withOverlays
@@ -293,7 +308,7 @@ struct HomeView: View {
             proteinGoal: settings.proteinGoal
         )
     }
-
+    
     // MARK: - Private Views
 
     private var mainContent: some View {
@@ -306,12 +321,14 @@ struct HomeView: View {
             }
         }
     }
-
+    
     private var contentView: some View {
         VStack(spacing: 0) {
-            // Week days header - sticky at top
+            // Week days header at the very top
             weekDaysSection
-//                .background(Color(.systemGroupedBackground))
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+                .padding(.bottom, 12)
             Divider()
             // Rest of the content
             ScrollViewReader { proxy in
@@ -319,10 +336,10 @@ struct HomeView: View {
                     progressSection
                         .id("home-top") // Anchor point for scrolling to top
                     logExperienceSection
-                    dietPlanSection
                     macroSection
                     badgesSection
                     healthKitSection
+                    dietPlanSection
                     
                     // Recently uploaded section - show meals or empty state
                     if !viewModel.recentMeals.isEmpty {
@@ -333,6 +350,46 @@ struct HomeView: View {
                     }
                 }
                 .listStyle(.plain)
+                .onChange(of: scrollToTopTrigger) { _, _ in
+                    // Home tab tap behavior:
+                    // - Always scroll to top
+                    // - Navigate to current day ONLY if:
+                    //   1. Already at top BEFORE this tap (no scroll animation will happen)
+                    //   2. Not already on current day
+                    
+                    // Check scroll position directly from scrollView to get accurate reading
+                    let actualScrollOffset = getCurrentScrollOffset()
+                    let wasAtTopBeforeScroll = actualScrollOffset <= 50
+                    
+                    let currentSelectedDate = viewModel.selectedDate
+                    let today = Date()
+                    let isOnCurrentDay = Calendar.current.isDate(currentSelectedDate, inSameDayAs: today)
+                    
+                    // If we're already at top, navigate to current day immediately (no scroll needed)
+                    if wasAtTopBeforeScroll {
+                        if !isOnCurrentDay {
+                            HapticManager.shared.impact(.medium)
+                            viewModel.selectDay(today)
+                        }
+                    } else {
+                        // Not at top - scroll to top only, don't navigate
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            proxy.scrollTo("home-top", anchor: .top)
+                        }
+                    }
+                }
+                .onReceive(NotificationCenter.default.publisher(for: .scrollHomeToTop)) { _ in
+                    // Also support notification-based scrolling (for programmatic triggers)
+                    if !isAtTop {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            proxy.scrollTo("home-top", anchor: .top)
+                        }
+                        Task { @MainActor in
+                            try? await Task.sleep(nanoseconds: 350_000_000) // Wait for animation
+                            isAtTop = true
+                        }
+                    }
+                }
                 // Track scroll position using UIViewRepresentable with UIScrollView delegate
                 .background(
                     ListScrollTracker(isAtTop: $isAtTop)
@@ -343,6 +400,56 @@ struct HomeView: View {
 
     @State private var showLogHistorySheet = false
     @State private var isAtTop = true // Tracks if the scroll view is currently at the top position
+    
+    /// Gets the current scroll offset by finding the UIScrollView in the view hierarchy
+    /// Tries to find the List's scrollView specifically
+    private func getCurrentScrollOffset() -> CGFloat {
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let window = windowScene.windows.first(where: { $0.isKeyWindow }) ?? windowScene.windows.first else {
+            return 0
+        }
+        
+        // Find all UIScrollViews and try to find the one that belongs to our List
+        // SwiftUI List uses UICollectionView which contains a UIScrollView
+        // We'll look for the largest scrollView (likely the main List scrollView)
+        var allScrollViews: [UIScrollView] = []
+        findAllScrollViews(in: window.rootViewController?.view, found: &allScrollViews)
+        
+        // Find the scrollView with the largest contentSize (likely the main List)
+        if let mainScrollView = allScrollViews.max(by: { $0.contentSize.height < $1.contentSize.height }) {
+            return mainScrollView.contentOffset.y
+        }
+        
+        return 0
+    }
+    
+    private func findAllScrollViews(in view: UIView?, found: inout [UIScrollView]) {
+        guard let view = view else { return }
+        
+        if let scrollView = view as? UIScrollView {
+            found.append(scrollView)
+        }
+        
+        for subview in view.subviews {
+            findAllScrollViews(in: subview, found: &found)
+        }
+    }
+    
+    private func findScrollViewInHierarchy(startingFrom view: UIView?) -> UIScrollView? {
+        guard let view = view else { return nil }
+        
+        if let scrollView = view as? UIScrollView {
+            return scrollView
+        }
+        
+        for subview in view.subviews {
+            if let scrollView = findScrollViewInHierarchy(startingFrom: subview) {
+                return scrollView
+            }
+        }
+        
+        return nil
+    }
 
     @State private var showDietSummarySheet = false
     @State private var showingEditDietPlan = false
@@ -421,31 +528,31 @@ struct HomeView: View {
         // Only show the floating action button if the selected date is today
         // Users can only log new meals/exercises for the current day
         if Calendar.current.isDateInToday(viewModel.selectedDate) {
-            VStack {
-                Spacer()
+        VStack {
+            Spacer()
 
-                HStack {
-                    Spacer()
+            HStack {
+                Spacer()
 
                     // FAB button - opens camera directly to scan food
                     // This is the primary action for logging meals
-                    Button {
+                Button {
                         HapticManager.shared.impact(.light)
-                        showScanSheet = true
-                    } label: {
-                        Image(systemName: "plus")
-                            .font(.title2)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(.white)
+                    showScanSheet = true
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.white)
                             .frame(width: FABConstants.fabSize, height: FABConstants.fabSize)
-                            .background(
-                                LinearGradient(
+                        .background(
+                            LinearGradient(
                                     colors: [.blue, .blue.opacity(0.8)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
                             )
-                            .clipShape(Circle())
+                        )
+                        .clipShape(Circle())
                             .shadow(
                                 color: Color.blue.opacity(0.4),
                                 radius: 8,
@@ -459,7 +566,7 @@ struct HomeView: View {
             }
         }
     }
-
+    
     private var weekDaysSection: some View {
         // Explicitly reference currentLanguage to ensure SwiftUI tracks the dependency
         let _ = localizationManager.currentLanguage
@@ -477,7 +584,8 @@ struct HomeView: View {
     private var progressSection: some View {
         // Use selected date's burned calories, or today's if viewing today
         // This ensures the progress card shows correct data when viewing historical dates
-        let burnedCalories = Calendar.current.isDateInToday(viewModel.selectedDate) 
+        let isToday = Calendar.current.isDateInToday(viewModel.selectedDate)
+        let burnedCalories = isToday 
             ? viewModel.todaysBurnedCalories 
             : viewModel.selectedDateBurnedCalories
         
@@ -497,18 +605,24 @@ struct HomeView: View {
     
     @ViewBuilder
     private var dietPlanSection: some View {
-        if isSubscribed {
-            DietPlanCard()
-                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-                .listRowSeparator(.hidden)
-                .listRowBackground(Color.clear)
-                .onReceive(NotificationCenter.default.publisher(for: Notification.Name("editDietPlan"))) { notification in
-                    if let plan = notification.object as? DietPlan {
-                        selectedDietPlan = plan
-                        showingEditDietPlan = true
-                    }
+        DietPlanCard(selectedDate: viewModel.selectedDate)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                HapticManager.shared.impact(.light)
+                showDietSummarySheet = true
+            }
+            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
+            .onReceive(NotificationCenter.default.publisher(for: Notification.Name("editDietPlan"))) { notification in
+                if let plan = notification.object as? DietPlan {
+                    selectedDietPlan = plan
+                    showingEditDietPlan = true
                 }
-        }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .showPaywall)) { _ in
+                showingPaywall = true
+            }
     }
 
     private var badgesSection: some View {
@@ -521,7 +635,7 @@ struct HomeView: View {
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
     }
-
+    
     private var macroSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(localizationManager.localizedString(for: AppStrings.Home.macronutrients))
@@ -530,17 +644,17 @@ struct HomeView: View {
                 .padding(.horizontal, 4)
             
             PremiumLockedContent {
-                MacroCardsSection(
-                    summary: viewModel.todaysSummary,
-                    goals: settings.macroGoals
-                )
+        MacroCardsSection(
+            summary: viewModel.todaysSummary,
+            goals: settings.macroGoals
+        )
             }
         }
         .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
     }
-
+    
     private var healthKitSection: some View {
         HealthKitCard(selectedDate: viewModel.selectedDate)
             .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
@@ -570,15 +684,15 @@ struct HomeView: View {
     // Displays recent meals in a scrollable grid format
     @ViewBuilder
     private var mealsSection: some View {
-        RecentMealsSection(
-            meals: viewModel.recentMeals,
-            repository: repository,
-            onDelete: { meal in
-                Task {
-                    await viewModel.deleteMeal(meal)
-                }
-            }
-        )
+                RecentMealsSection(
+                    meals: viewModel.recentMeals,
+                    repository: repository,
+                    onDelete: { meal in
+                        Task {
+                            await viewModel.deleteMeal(meal)
+                        }
+                    }
+                )
         .transition(.opacity.combined(with: .move(edge: .bottom)))
     }
     
@@ -652,8 +766,8 @@ struct ListScrollTracker: UIViewRepresentable {
                 }
                 
                 // Add observer to track contentOffset
-                let observer = ScrollObserver { [weak scrollView] in
-                    guard let scrollView = scrollView else { return }
+                let observer = ScrollObserver { [weak self, weak scrollView] in
+                    guard let self = self, let scrollView = scrollView else { return }
                     let offset = scrollView.contentOffset.y
                     // Consider at top if offset is within 50 points (accounts for List padding and safe area)
                     self.isAtTop = offset <= 50
@@ -734,7 +848,7 @@ class ScrollObserver: NSObject {
         analysisService: CaloriesAPIService(),
         imageStorage: .shared
     )
-
+    
     HomeView(
         viewModel: viewModel,
         repository: repository,

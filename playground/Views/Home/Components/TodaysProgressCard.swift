@@ -55,7 +55,7 @@ struct TodaysProgressCard: View {
                             
                             .foregroundColor(.secondary)
                     }
-                    Text("\(consumed)")
+                    Text(consumed.formattedCalories)
                         .font(.system(size: isSmallScreen ? 20 : 28, weight: .bold, design: .rounded))
                         .foregroundStyle(.primary) // White in dark mode, black in light mode
                         .contentTransition(.numericText())
@@ -71,7 +71,7 @@ struct TodaysProgressCard: View {
                         .font(isSmallScreen ? .caption2 : .caption)
                         .foregroundColor(.secondary)
                         
-                    Text("\(netCalories)")
+                    Text(netCalories.formattedCalories)
                         .font(.system(size: isSmallScreen ? 18 : 36, weight: .bold, design: .rounded))
                         .foregroundStyle(netCalories >= 0 ? .orange : .green)
                         .contentTransition(.numericText())
@@ -92,7 +92,7 @@ struct TodaysProgressCard: View {
                             .font(.caption)
                             .foregroundColor(.blue)
                     }
-                    Text("\(burnedCalories)")
+                    Text(burnedCalories.formattedCalories)
                         .font(.system(size: isSmallScreen ? 20 : 28, weight: .bold, design: .rounded))
                         .foregroundStyle(.primary) // White in dark mode, black in light mode
                         .contentTransition(.numericText())
@@ -107,7 +107,7 @@ struct TodaysProgressCard: View {
             HStack(spacing: isSmallScreen ? 12 : 20) {
                 // Left side - Remaining calories
                 VStack(alignment: .leading, spacing: isSmallScreen ? 4 : 6) {
-                    Text("\(remainingCalories)")
+                    Text(remainingCalories.formattedCalories)
                         .font(.system(size: isSmallScreen ? 28 : 36, weight: .bold, design: .rounded))
                         .foregroundStyle(.primary) // White in dark mode, black in light mode
                         .contentTransition(.numericText())

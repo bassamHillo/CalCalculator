@@ -80,18 +80,21 @@ struct DietPlansListView: View {
                     ToolbarItem(placement: .primaryAction) {
                         Menu {
                             Button {
+                                AppLogger.forClass("DietPlansListView").info("Quick Setup menu item tapped")
                                 showingQuickSetup = true
                             } label: {
                                 Label(localizationManager.localizedString(for: AppStrings.DietPlan.quickSetup), systemImage: "bolt.fill")
                             }
                             
                             Button {
+                                AppLogger.forClass("DietPlansListView").info("Templates menu item tapped")
                                 showingTemplates = true
                             } label: {
                                 Label(localizationManager.localizedString(for: AppStrings.DietPlan.useTemplate), systemImage: "doc.on.doc.fill")
                             }
                             
                             Button {
+                                AppLogger.forClass("DietPlansListView").info("Create from Scratch menu item tapped")
                                 showingCreateFromScratch = true
                             } label: {
                                 Label(localizationManager.localizedString(for: AppStrings.DietPlan.createFromScratch), systemImage: "pencil.and.list.clipboard")
@@ -108,6 +111,9 @@ struct DietPlansListView: View {
             }
             .sheet(isPresented: $showingQuickSetup) {
                 DietQuickSetupView()
+                    .onAppear {
+                        AppLogger.forClass("DietPlansListView").info("Quick Setup sheet appeared")
+                    }
             }
             .sheet(isPresented: $showingTemplates) {
                 // Note: DietPlanTemplatesView already creates the plan in TemplatePreviewView.useTemplate()
@@ -118,9 +124,24 @@ struct DietPlansListView: View {
                     NotificationCenter.default.post(name: .dietPlanChanged, object: nil)
                     HapticManager.shared.notification(.success)
                 }
+                .onAppear {
+                    AppLogger.forClass("DietPlansListView").info("Templates sheet appeared")
+                }
             }
             .sheet(isPresented: $showingCreateFromScratch) {
                 DietPlanEditorView(plan: nil, repository: dietPlanRepository, isEmbedded: false)
+                    .onAppear {
+                        AppLogger.forClass("DietPlansListView").info("Create from Scratch sheet appeared")
+                    }
+            }
+            .onChange(of: showingQuickSetup) { oldValue, newValue in
+                AppLogger.forClass("DietPlansListView").data("showingQuickSetup changed: \(oldValue) -> \(newValue)")
+            }
+            .onChange(of: showingTemplates) { oldValue, newValue in
+                AppLogger.forClass("DietPlansListView").data("showingTemplates changed: \(oldValue) -> \(newValue)")
+            }
+            .onChange(of: showingCreateFromScratch) { oldValue, newValue in
+                AppLogger.forClass("DietPlansListView").data("showingCreateFromScratch changed: \(oldValue) -> \(newValue)")
             }
             .sheet(item: $selectedPlanForEdit) { plan in
                 DietPlanEditorView(plan: plan, repository: dietPlanRepository, isEmbedded: false)
@@ -216,6 +237,7 @@ struct DietPlansListView: View {
         VStack(spacing: 12) {
             // Quick Setup - Primary action
             Button {
+                AppLogger.forClass("DietPlansListView").info("Quick Setup button tapped (empty state)")
                 HapticManager.shared.impact(.light)
                 showingQuickSetup = true
             } label: {
@@ -256,6 +278,7 @@ struct DietPlansListView: View {
                     title: localizationManager.localizedString(for: AppStrings.DietPlan.useTemplate),
                     color: .purple
                 ) {
+                    AppLogger.forClass("DietPlansListView").info("Templates button tapped (empty state)")
                     HapticManager.shared.impact(.light)
                     showingTemplates = true
                 }
@@ -266,6 +289,7 @@ struct DietPlansListView: View {
                     title: localizationManager.localizedString(for: AppStrings.DietPlan.createFromScratch),
                     color: .green
                 ) {
+                    AppLogger.forClass("DietPlansListView").info("Create from Scratch button tapped (empty state)")
                     HapticManager.shared.impact(.light)
                     showingCreateFromScratch = true
                 }
@@ -291,6 +315,9 @@ struct DietPlansListView: View {
                     navigationPath.append(plan)
                 },
                 onActivate: nil,
+                onDeactivate: {
+                    deactivatePlan(plan)
+                },
                 onEdit: {
                     selectedPlanForEdit = plan
                 },
@@ -322,6 +349,7 @@ struct DietPlansListView: View {
                     onActivate: {
                         activatePlan(plan)
                     },
+                    onDeactivate: nil,
                     onEdit: {
                         selectedPlanForEdit = plan
                     },
@@ -350,6 +378,7 @@ struct DietPlansListView: View {
                     title: localizationManager.localizedString(for: AppStrings.DietPlan.quickSetup),
                     color: .blue
                 ) {
+                    AppLogger.forClass("DietPlansListView").info("Quick Setup button tapped")
                     showingQuickSetup = true
                 }
                 
@@ -358,6 +387,7 @@ struct DietPlansListView: View {
                     title: localizationManager.localizedString(for: AppStrings.DietPlan.useTemplate),
                     color: .purple
                 ) {
+                    AppLogger.forClass("DietPlansListView").info("Templates button tapped")
                     showingTemplates = true
                 }
                 
@@ -366,6 +396,7 @@ struct DietPlansListView: View {
                     title: localizationManager.localizedString(for: AppStrings.DietPlan.fromScratch),
                     color: .green
                 ) {
+                    AppLogger.forClass("DietPlansListView").info("Create from Scratch button tapped")
                     showingCreateFromScratch = true
                 }
             }
@@ -409,7 +440,27 @@ struct DietPlansListView: View {
             NotificationCenter.default.post(name: .dietPlanChanged, object: nil)
             HapticManager.shared.notification(.success)
         } catch {
-            print("Failed to activate plan: \(error)")
+            print("❌ [DietPlansListView] Failed to activate plan: \(error)")
+            HapticManager.shared.notification(.error)
+            HapticManager.shared.notification(.error)
+        }
+    }
+    
+    private func deactivatePlan(_ plan: DietPlan) {
+        do {
+            // Use repository to deactivate plan
+            try dietPlanRepository.deactivatePlan(plan)
+            
+            // Cancel reminders since there's no active plan
+            Task {
+                let reminderService = MealReminderService.shared(context: modelContext)
+                try? await reminderService.scheduleAllReminders()
+            }
+            
+            NotificationCenter.default.post(name: .dietPlanChanged, object: nil)
+            HapticManager.shared.notification(.success)
+        } catch {
+            print("Failed to deactivate plan: \(error)")
             HapticManager.shared.notification(.error)
         }
     }
@@ -426,7 +477,8 @@ struct DietPlansListView: View {
             NotificationCenter.default.post(name: .dietPlanChanged, object: nil)
             HapticManager.shared.notification(.success)
         } catch {
-            print("Failed to delete diet plan: \(error)")
+            print("❌ [DietPlansListView] Failed to delete diet plan: \(error)")
+            HapticManager.shared.notification(.error)
         }
     }
     
@@ -454,6 +506,7 @@ struct DietPlanListCard: View {
     let isActive: Bool
     let onTap: () -> Void
     let onActivate: (() -> Void)?
+    let onDeactivate: (() -> Void)?
     let onEdit: () -> Void
     let onDelete: () -> Void
     
@@ -548,6 +601,18 @@ struct DietPlanListCard: View {
                         .frame(height: 24)
                 }
                 
+                if isActive, let onDeactivate = onDeactivate {
+                    actionButton(
+                        icon: "pause.circle",
+                        title: localizationManager.localizedString(for: AppStrings.DietPlan.deactivate),
+                        color: .orange,
+                        action: onDeactivate
+                    )
+                    
+                    Divider()
+                        .frame(height: 24)
+                }
+                
                 actionButton(
                     icon: "pencil",
                     title: localizationManager.localizedString(for: AppStrings.Common.edit),
@@ -600,7 +665,10 @@ struct DietPlanQuickActionButton: View {
     let action: () -> Void
     
     var body: some View {
-        Button(action: action) {
+        Button(action: {
+            AppLogger.forClass("DietPlanQuickActionButton").info("Button tapped: \(title)")
+            action()
+        }) {
             VStack(spacing: 8) {
                 ZStack {
                     Circle()

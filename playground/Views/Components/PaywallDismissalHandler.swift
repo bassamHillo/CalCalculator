@@ -38,10 +38,6 @@ private final class SafeBindingWrapper {
     nonisolated(unsafe) private let sdk: TheSDK
     private let showDeclineConfirmation: Binding<Bool>
     
-    // Strong reference to prevent deallocation - this keeps the wrapper alive
-    // even if the SDK sets its reference to nil
-    private var strongSelf: SafeBindingWrapper?
-    
     // The actual binding we return to SDK - this is stored to keep it alive
     private var cachedBinding: Binding<Bool>?
     
@@ -54,10 +50,8 @@ private final class SafeBindingWrapper {
         self.showDeclineConfirmation = showDeclineConfirmation
         self.wrapperId = UUID()
         
-        // Keep strong reference to self to prevent deallocation
-        self.strongSelf = self
-        
         // Create and cache the binding to keep it alive
+        // Note: Storage in BindingWrapperStorage maintains strong reference, no need for strongSelf
         self.cachedBinding = self.createBinding()
     }
     
@@ -139,15 +133,17 @@ private final class SafeBindingWrapper {
             if !sdk.isSubscribed && !showDeclineConfirmation.wrappedValue {
                 showDeclineConfirmation.wrappedValue = true
             } else if sdk.isSubscribed {
-                // User subscribed - reset analysis count
+                // User subscribed - reset analysis, meal save, and exercise save counts
                 AnalysisLimitManager.shared.resetAnalysisCount()
+                MealSaveLimitManager.shared.resetMealSaveCount()
+                ExerciseSaveLimitManager.shared.resetExerciseSaveCount()
             }
         }
     }
     
     deinit {
-        // Release strong reference when deallocated
-        strongSelf = nil
+        // Remove from storage when deallocated to prevent memory leaks
+        BindingWrapperStorage.shared.remove(id: wrapperId)
     }
 }
 

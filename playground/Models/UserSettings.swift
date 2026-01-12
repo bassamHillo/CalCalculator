@@ -27,6 +27,9 @@ final class UserSettings {
         static let currentWeight = "currentWeight"
         static let targetWeight = "targetWeight"
         static let height = "height"
+        static let gender = "gender"
+        static let age = "age"
+        static let birthdate = "birthdate"
         static let lastWeightDate = "lastWeightDate"
         static let lastWeightPromptDate = "lastWeightPromptDate"
         static let debugOverrideSubscription = "debugOverrideSubscription"
@@ -77,6 +80,57 @@ final class UserSettings {
         didSet { defaults.set(height, forKey: Keys.height) }
     }
     
+    var gender: String? { // "male" or "female"
+        didSet {
+            if let gender = gender {
+                defaults.set(gender, forKey: Keys.gender)
+                defaults.synchronize() // Ensure it's saved immediately
+                print("✅ [UserSettings] Saved gender: \(gender)")
+                
+                // Verify it was actually saved
+                let verifyGender = defaults.string(forKey: Keys.gender)
+                if verifyGender == gender {
+                    print("✅ [UserSettings] Verified gender in UserDefaults: '\(verifyGender ?? "nil")'")
+                } else {
+                    print("❌ [UserSettings] ERROR: Gender not found in UserDefaults after save! Expected: '\(gender)', Got: '\(verifyGender ?? "nil")'")
+                }
+            } else {
+                defaults.removeObject(forKey: Keys.gender)
+                defaults.synchronize()
+                print("⚠️ [UserSettings] Removed gender")
+            }
+        }
+    }
+    
+    var age: Int? { // in years
+        didSet { defaults.set(age, forKey: Keys.age) }
+    }
+    
+    var birthdate: Date? {
+        didSet {
+            defaults.set(birthdate, forKey: Keys.birthdate)
+            defaults.synchronize() // Ensure it's saved immediately
+            // Calculate age from birthdate
+            if let birthdate = birthdate {
+                let calendar = Calendar.current
+                let ageComponents = calendar.dateComponents([.year], from: birthdate, to: Date())
+                let calculatedAge = ageComponents.year
+                self.age = calculatedAge
+                print("✅ [UserSettings] Saved birthdate: \(birthdate), calculated age: \(calculatedAge ?? -1)")
+                
+                // Verify it was saved
+                let verifyBirthdate = defaults.object(forKey: Keys.birthdate) as? Date
+                if verifyBirthdate == birthdate {
+                    print("✅ [UserSettings] Verified birthdate in UserDefaults")
+                } else {
+                    print("❌ [UserSettings] ERROR: Birthdate not found in UserDefaults after save!")
+                }
+            } else {
+                print("⚠️ [UserSettings] Birthdate set to nil")
+            }
+        }
+    }
+    
     var lastWeightDate: Date? {
         didSet { defaults.set(lastWeightDate, forKey: Keys.lastWeightDate) }
     }
@@ -106,6 +160,11 @@ final class UserSettings {
             carbsG: carbsGoal,
             fatG: fatGoal
         )
+    }
+    
+    /// Returns the preferred distance unit based on metric/imperial setting
+    var preferredDistanceUnit: DistanceUnit {
+        return useMetricUnits ? .kilometers : .miles
     }
     
     var remainingCalories: Int {
@@ -184,16 +243,6 @@ final class UserSettings {
         useMetricUnits ? "cm" : "in"
     }
     
-    /// Distance unit string (km or mi)
-    var distanceUnit: String {
-        useMetricUnits ? "km" : "mi"
-    }
-    
-    /// Preferred DistanceUnit based on metric setting
-    var preferredDistanceUnit: DistanceUnit {
-        useMetricUnits ? .kilometers : .miles
-    }
-    
     // MARK: - Initialization
     private init() {
         self.hasCompletedOnboarding = defaults.bool(forKey: Keys.hasCompletedOnboarding)
@@ -206,6 +255,47 @@ final class UserSettings {
         self.currentWeight = defaults.object(forKey: Keys.currentWeight) as? Double ?? 70
         self.targetWeight = defaults.object(forKey: Keys.targetWeight) as? Double ?? 70
         self.height = defaults.object(forKey: Keys.height) as? Double ?? 170
+        let loadedGender = defaults.string(forKey: Keys.gender)
+        self.gender = loadedGender
+        if let gender = loadedGender {
+            print("✅ [UserSettings] Loaded gender from UserDefaults: \(gender)")
+        } else {
+            print("⚠️ [UserSettings] No gender found in UserDefaults")
+        }
+        let storedBirthdate = defaults.object(forKey: Keys.birthdate) as? Date
+        self.birthdate = storedBirthdate
+        // Initialize age: Always recalculate from birthdate if available, otherwise use stored age
+        // This ensures age is always in sync with birthdate
+        // Must do this after birthdate is initialized
+        if let birthdate = storedBirthdate {
+            // CRITICAL: Always recalculate age from birthdate to ensure it's current
+            // The stored age may be outdated (e.g., if user's birthday passed since last save)
+            let calendar = Calendar.current
+            let ageComponents = calendar.dateComponents([.year], from: birthdate, to: Date())
+            let calculatedAge = ageComponents.year
+            self.age = calculatedAge
+            if let age = calculatedAge {
+                // Save the recalculated age to UserDefaults
+                defaults.set(age, forKey: Keys.age)
+                print("✅ [UserSettings] Calculated age from birthdate: \(age) years (recalculated on init)")
+            } else {
+                print("⚠️ [UserSettings] Could not calculate age from birthdate: \(birthdate)")
+                // Fallback to stored age if calculation fails
+                if let storedAge = defaults.object(forKey: Keys.age) as? Int {
+                    self.age = storedAge
+                    print("⚠️ [UserSettings] Using stored age as fallback: \(storedAge)")
+                } else {
+                    self.age = nil
+                }
+            }
+        } else if let storedAge = defaults.object(forKey: Keys.age) as? Int {
+            // No birthdate available, use stored age
+            self.age = storedAge
+            print("✅ [UserSettings] Loaded age from UserDefaults: \(storedAge) (no birthdate available)")
+        } else {
+            self.age = nil
+            print("⚠️ [UserSettings] No birthdate or stored age found in UserDefaults, age is nil")
+        }
         self.lastWeightDate = defaults.object(forKey: Keys.lastWeightDate) as? Date
         self.lastWeightPromptDate = defaults.object(forKey: Keys.lastWeightPromptDate) as? Date
         self.debugOverrideSubscription = defaults.bool(forKey: Keys.debugOverrideSubscription)
@@ -242,8 +332,12 @@ final class UserSettings {
     }
 
     func updateWeight(_ weight: Double) {
+        let timestamp = Date()
+        AppLogger.forClass("UserSettings").info("🔍 [updateWeight] Called at \(timestamp): \(weight) kg (currentWeight was: \(currentWeight))")
+        AppLogger.forClass("UserSettings").info("🔍 [updateWeight] Stack trace: \(Thread.callStackSymbols.prefix(5).joined(separator: "\n"))")
         currentWeight = weight
         lastWeightDate = Date()
+        AppLogger.forClass("UserSettings").info("🔍 [updateWeight] Completed - currentWeight is now: \(currentWeight)")
     }
     
     func markWeightPromptShown() {

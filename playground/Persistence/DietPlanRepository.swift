@@ -40,6 +40,8 @@ final class DietPlanRepository {
             throw DietPlanError.noMeals
         }
         
+        print("🍽️ [DietPlanRepository] Creating diet plan: '\(name)' with \(mealData.count) meals, isActive: \(isActive)")
+        
         // If this plan will be active, deactivate all existing active plans first
         if isActive {
             try deactivateAllPlans()
@@ -66,6 +68,15 @@ final class DietPlanRepository {
         
         context.insert(plan)
         try context.save()
+        
+        print("✅ [DietPlanRepository] Successfully saved diet plan with ID: \(plan.id)")
+        
+        // Verify the plan was saved by fetching it back
+        if let savedPlan = try? fetchDietPlan(by: plan.id) {
+            print("✅ [DietPlanRepository] Verified: Plan '\(savedPlan.name)' exists in database with \(savedPlan.scheduledMeals.count) meals")
+        } else {
+            print("⚠️ [DietPlanRepository] Warning: Could not verify plan was saved!")
+        }
         
         return plan
     }
@@ -127,6 +138,13 @@ final class DietPlanRepository {
     func activatePlan(_ plan: DietPlan) throws {
         try deactivateAllPlans(except: plan.id)
         plan.isActive = true
+        try context.save()
+    }
+    
+    /// Deactivates a specific plan.
+    /// - Parameter plan: The plan to deactivate
+    func deactivatePlan(_ plan: DietPlan) throws {
+        plan.isActive = false
         try context.save()
     }
     
@@ -306,15 +324,30 @@ final class DietPlanRepository {
     // MARK: - Diet Adherence Tracking
     
     /// Get diet adherence data for a specific date
+    /// CRITICAL: Must be called on the main actor to ensure SwiftData models are valid
+    @MainActor
     func getDietAdherence(for date: Date, activePlans: [DietPlan]) throws -> DietAdherenceData {
         let calendar = Calendar.current
         let dayOfWeek = calendar.component(.weekday, from: date)
         
+        print("🔍 [DietPlanRepository] getDietAdherence for date: \(date), dayOfWeek: \(dayOfWeek)")
+        print("🔍 [DietPlanRepository] Active plans count: \(activePlans.count)")
+        
         // Get all scheduled meals for this day
         var scheduledMeals: [ScheduledMeal] = []
         for plan in activePlans {
-            scheduledMeals.append(contentsOf: plan.scheduledMeals(for: dayOfWeek))
+            // CRITICAL: Extract plan name immediately to avoid SwiftData access issues
+            let planName = plan.name
+            print("🔍 [DietPlanRepository] Checking plan '\(planName)' - total scheduledMeals: \(plan.scheduledMeals.count)")
+            
+            // CRITICAL: Use the safe method that extracts properties immediately
+            // This prevents accessing SwiftData properties on potentially invalidated models
+            let mealsForDay = plan.scheduledMeals(for: dayOfWeek)
+            print("🔍 [DietPlanRepository] Plan '\(planName)' has \(mealsForDay.count) meals for dayOfWeek \(dayOfWeek)")
+            scheduledMeals.append(contentsOf: mealsForDay)
         }
+        
+        print("🔍 [DietPlanRepository] Total scheduled meals for date: \(scheduledMeals.count)")
         
         // Get reminders for this date
         let reminders = try fetchMealReminders(for: date)
@@ -323,18 +356,27 @@ final class DietPlanRepository {
         let mealRepository = MealRepository(context: context)
         let actualMeals = try mealRepository.fetchMeals(for: date)
         
+        // Create a lookup dictionary for meals by ID
+        let mealsById = Dictionary(uniqueKeysWithValues: actualMeals.map { ($0.id, $0) })
+        
         // Calculate which scheduled meals were completed and goal achievement
         var completedMeals: [UUID] = []
         var missedMeals: [ScheduledMeal] = []
         var goalAchievedMeals: [UUID] = []
         var goalMissedMeals: [UUID] = []
+        var completedMealDetails: [UUID: CompletedMealInfo] = [:]
         
         for scheduledMeal in scheduledMeals {
             // Check if there's a reminder that marks this as completed
             let reminder = reminders.first { $0.scheduledMealId == scheduledMeal.id && $0.wasCompleted }
             
-            if let reminder = reminder, reminder.completedMealId != nil {
+            if let reminder = reminder, let completedMealId = reminder.completedMealId {
                 completedMeals.append(scheduledMeal.id)
+                
+                // Look up the actual meal to get details
+                if let actualMeal = mealsById[completedMealId] {
+                    completedMealDetails[scheduledMeal.id] = CompletedMealInfo(from: actualMeal)
+                }
                 
                 // Check goal achievement from reminder
                 if let goalAchieved = reminder.goalAchieved {
@@ -360,6 +402,9 @@ final class DietPlanRepository {
                 
                 if let meal = matchingMeal {
                     completedMeals.append(scheduledMeal.id)
+                    
+                    // Store the meal details for display
+                    completedMealDetails[scheduledMeal.id] = CompletedMealInfo(from: meal)
                     
                     // Evaluate goal achievement for this meal
                     let (achieved, _) = evaluateMealGoalAchievement(
@@ -399,7 +444,8 @@ final class DietPlanRepository {
             offDietMeals: offDietMeals,
             offDietCalories: offDietCalories,
             goalAchievedMeals: goalAchievedMeals,
-            goalMissedMeals: goalMissedMeals
+            goalMissedMeals: goalMissedMeals,
+            completedMealDetails: completedMealDetails
         )
     }
 }
@@ -417,6 +463,38 @@ enum DietPlanError: LocalizedError {
     }
 }
 
+/// Information about a completed meal for display purposes
+struct CompletedMealInfo {
+    let mealId: UUID
+    let mealName: String
+    let calories: Int
+    let foodItemsSummary: String // e.g., "Eggs, Toast, Coffee"
+    
+    /// Create a formatted display string (e.g., "Eggs, Toast • 450 cal")
+    var displayString: String {
+        if foodItemsSummary.isEmpty {
+            return "\(calories) cal"
+        }
+        return "\(foodItemsSummary) • \(calories) cal"
+    }
+    
+    /// Create from a Meal object
+    init(from meal: Meal) {
+        self.mealId = meal.id
+        self.mealName = meal.name
+        self.calories = meal.totalCalories
+        
+        // Get first 3 food items for summary
+        let itemsArray = Array(meal.items)
+        let itemNames = itemsArray.prefix(3).map { $0.name }
+        if itemsArray.count > 3 {
+            self.foodItemsSummary = itemNames.joined(separator: ", ") + "..."
+        } else {
+            self.foodItemsSummary = itemNames.joined(separator: ", ")
+        }
+    }
+}
+
 /// Data structure for diet adherence tracking
 struct DietAdherenceData {
     let date: Date
@@ -427,6 +505,7 @@ struct DietAdherenceData {
     let offDietCalories: Int
     let goalAchievedMeals: [UUID] // IDs of meals where goal was achieved
     let goalMissedMeals: [UUID] // IDs of meals where goal was not achieved
+    let completedMealDetails: [UUID: CompletedMealInfo] // Maps scheduledMealId to meal details
     
     var completionRate: Double {
         guard !scheduledMeals.isEmpty else { return 1.0 }

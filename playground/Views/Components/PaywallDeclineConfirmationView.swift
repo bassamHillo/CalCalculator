@@ -17,7 +17,6 @@ struct PaywallDeclineConfirmationView: View {
     @State private var paywallTask: Task<Void, Never>?
     @State private var animationTask: Task<Void, Never>?
     @State private var isAnimated: Bool = false
-    @State private var topSafeArea: CGFloat = 44 // Default, updated in onAppear
     
     private var isSmallScreen: Bool {
         UIScreen.main.bounds.width < 375 // iPhone SE and similar small devices
@@ -28,12 +27,12 @@ struct PaywallDeclineConfirmationView: View {
         let _ = localizationManager.currentLanguage
         
         return ZStack {
-            // Full screen semi-transparent overlay - clearer, less blur
-            Color.black.opacity(0.15)
+            // Full screen semi-transparent overlay - brighter for better visibility
+            Color.black.opacity(0.4)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .ignoresSafeArea(.all)
             
-            // Modal card - centered horizontally, positioned near top
+            // Modal card - centered both horizontally and vertically
             VStack(spacing: isSmallScreen ? 16 : 20) {
                 // Title - exact text from image
                 Text(localizationManager.localizedString(for: AppStrings.Premium.areYouSure))
@@ -105,19 +104,12 @@ struct PaywallDeclineConfirmationView: View {
                     .fill(Color(.systemBackground))
             )
             .shadow(color: Color.black.opacity(0.2), radius: 20, x: 0, y: 10)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top) // Center horizontally, align to top
-            .padding(.top, max(topSafeArea + 16, 60)) // Dynamic top padding based on safe area
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center) // Center both horizontally and vertically
             .scaleEffect(isAnimated ? 1.0 : 0.95) // Scale animation
             .opacity(isAnimated ? 1.0 : 0.0) // Fade animation
         }
         .ignoresSafeArea(.all)
         .onAppear {
-            // Update safe area on main thread
-            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-               let window = windowScene.windows.first {
-                topSafeArea = window.safeAreaInsets.top
-            }
-            
             // Cancel any existing animation task
             animationTask?.cancel()
             

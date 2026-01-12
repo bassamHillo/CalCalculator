@@ -258,12 +258,14 @@ struct TemplatePreviewView: View {
                 try await reminderService.requestAuthorization()
                 try await reminderService.scheduleAllReminders()
             } catch {
-                print("⚠️ Failed to schedule reminders: \(error)")
+                AppLogger.forClass("DietPlanTemplatesView").warning("Failed to schedule reminders", error: error)
+                // Continue - reminders are not critical for plan creation
             }
             
             onUse(plan)
         } catch {
-            print("Failed to create plan from template: \(error)")
+            AppLogger.forClass("DietPlanTemplatesView").error("Failed to create plan from template", error: error)
+            HapticManager.shared.notification(.error)
         }
     }
 }

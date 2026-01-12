@@ -385,13 +385,36 @@ extension MealRepository {
             let summary = try fetchTodaySummary()
             let settings = UserSettings.shared
             
+            // Calculate today's burned calories for widget
+            let exercises = try fetchTodaysExercises()
+            let burnedCalories = exercises.reduce(0) { $0 + $1.calories }
+            
+            // Calculate rollover calories (unused calories from yesterday)
+            // Always load rollover if it exists (consistent with remainingCalories and effectiveCalorieGoal)
+            let defaults = UserDefaults.standard
+            let calendar = Calendar.current
+            let today = calendar.startOfDay(for: Date())
+            var rolloverCalories = 0
+            
+            // Load rollover if it exists (always, regardless of settings - consistent with remainingCalories)
+            if let lastStoredDate = defaults.object(forKey: "rolloverCalories_lastDate") as? Date {
+                let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
+                if calendar.isDate(lastStoredDate, inSameDayAs: yesterday) {
+                    rolloverCalories = defaults.integer(forKey: "rolloverCalories_amount")
+                }
+            }
+            
+            // Widget should show base goal + burned calories + rollover (consistent with "Calories Left" calculation)
+            // This ensures users see the correct available calories in the widget
+            let effectiveCalorieGoal = settings.calorieGoal + burnedCalories + rolloverCalories
+            
             // Create widget-compatible macro data
             let widgetData = WidgetMacroData(
                 calories: summary.totalCalories,
                 protein: Int(summary.totalProteinG),
                 carbs: Int(summary.totalCarbsG),
                 fats: Int(summary.totalFatG),
-                calorieGoal: settings.calorieGoal,
+                calorieGoal: effectiveCalorieGoal, // Use base + burned for consistency
                 proteinGoal: Int(settings.proteinGoal),
                 carbsGoal: Int(settings.carbsGoal),
                 fatsGoal: Int(settings.fatGoal)
