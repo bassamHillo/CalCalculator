@@ -10,7 +10,19 @@ import Foundation
 final class NotificationService {
     static let shared = NotificationService()
     
-    private init() {}
+    private let session: URLSession
+    
+    private init() {
+        // Create a custom URLSession with proper connectivity handling
+        // This prevents "nw_connection_copy_connected_local_endpoint" warnings
+        let configuration = URLSessionConfiguration.default
+        configuration.timeoutIntervalForRequest = 10
+        configuration.timeoutIntervalForResource = 20
+        configuration.waitsForConnectivity = true // Wait for network to be available
+        configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
+        
+        self.session = URLSession(configuration: configuration)
+    }
     
     /// Send device token to server
     /// - Parameters:
@@ -49,7 +61,8 @@ final class NotificationService {
         }
         
         do {
-            let (data, response) = try await URLSession.shared.data(for: request)
+            // Use custom session with waitsForConnectivity to prevent network warnings
+            let (data, response) = try await session.data(for: request)
             
             guard let httpResponse = response as? HTTPURLResponse else {
                 throw NotificationError.invalidResponse

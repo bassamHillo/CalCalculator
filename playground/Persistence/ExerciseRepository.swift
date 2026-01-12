@@ -30,9 +30,28 @@ final class ExerciseRepository {
         exercise.date = calendar.startOfDay(for: exercise.date)
         
         context.insert(exercise)
-        try context.save()
         
-        print("  [ExerciseRepository] Saved exercise: \(exercise.type.displayName), \(exercise.calories) cal")
+        // Try to save with retry logic for database errors
+        do {
+            try context.save()
+            AppLogger.forClass("ExerciseRepository").success("Saved exercise: \(exercise.type.displayName), \(exercise.calories) cal")
+            print("  [ExerciseRepository] Saved exercise: \(exercise.type.displayName), \(exercise.calories) cal")
+        } catch {
+            AppLogger.forClass("ExerciseRepository").error("Failed to save exercise", error: error)
+            
+            // If save fails due to database issues, try to process pending changes and retry
+            context.processPendingChanges()
+            
+            do {
+                try context.save()
+                AppLogger.forClass("ExerciseRepository").success("Saved exercise on retry: \(exercise.type.displayName), \(exercise.calories) cal")
+                print("  [ExerciseRepository] Saved exercise on retry: \(exercise.type.displayName), \(exercise.calories) cal")
+            } catch {
+                // If retry also fails, throw the original error
+                AppLogger.forClass("ExerciseRepository").error("Failed to save exercise even on retry", error: error)
+                throw error
+            }
+        }
     }
     
     /// Fetch all exercises for a specific date

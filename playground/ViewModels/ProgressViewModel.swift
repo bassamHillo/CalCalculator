@@ -214,20 +214,21 @@ final class ProgressViewModel {
     var sleepHours: Double = 0
     var healthKitAuthorizationDenied: Bool = false
     
-    // Settings Reference - observe changes to user settings
-    // Using computed property ensures we always get the latest shared instance
-    @MainActor private var settings: UserSettings { UserSettings.shared }
+    // CRITICAL: Don't store UserSettings reference or use computed properties that depend on it
+    // This prevents ProgressViewModel from updating when UserSettings changes (like after saving weight)
+    // Views should access UserSettings.shared directly instead
     
     // MARK: - Computed Properties
     
     /// Current weight in kilograms (internal storage unit)
+    /// CRITICAL: Access UserSettings.shared directly to avoid triggering view updates
     var currentWeight: Double {
-        settings.currentWeight
+        UserSettings.shared.currentWeight
     }
     
     /// Target weight in kilograms (internal storage unit)
     var targetWeight: Double {
-        settings.targetWeight
+        UserSettings.shared.targetWeight
     }
     
     /// Difference between current and target weight (positive = above target, negative = below target)
@@ -247,23 +248,23 @@ final class ProgressViewModel {
     }
     
     var daysUntilNextWeightCheck: Int {
-        settings.daysUntilNextWeightCheck
+        UserSettings.shared.daysUntilNextWeightCheck
     }
     
     var bmi: Double? {
-        settings.bmi
+        UserSettings.shared.bmi
     }
     
     var bmiCategory: BMICategory? {
-        settings.bmiCategory
+        UserSettings.shared.bmiCategory
     }
     
     var useMetricUnits: Bool {
-        settings.useMetricUnits
+        UserSettings.shared.useMetricUnits
     }
     
     var displayWeight: Double {
-        settings.displayWeight
+        UserSettings.shared.displayWeight
     }
     
     /// Most recent weight from history, or display weight if no history exists
@@ -277,11 +278,11 @@ final class ProgressViewModel {
     }
     
     var weightUnit: String {
-        settings.weightUnit
+        UserSettings.shared.weightUnit
     }
     
     var shouldPromptForWeight: Bool {
-        settings.shouldPromptForWeight
+        UserSettings.shared.shouldPromptForWeight
     }
     
     // MARK: - Initialization
@@ -361,7 +362,7 @@ final class ProgressViewModel {
                 // Force SwiftUI update by creating a completely new array reference
                 // This ensures views detect the change even if only values inside changed
                 weightHistory = Array(sortedHistory)
-                print("✅ [ProgressViewModel] Loaded weight history: \(sortedHistory.count) entries, most recent: \(sortedHistory.last?.weight ?? 0)")
+                AppLogger.forClass("ProgressViewModel").success("Loaded weight history: \(sortedHistory.count) entries, most recent: \(sortedHistory.last?.weight ?? 0)")
                 
                 // Calculate statistics after updating weightHistory
                 calculateWeightStats()
@@ -372,7 +373,10 @@ final class ProgressViewModel {
                     return
                 }
             } catch {
-                print("⚠️ [ProgressViewModel] Failed to fetch weight entries from SwiftData: \(error)")
+                AppLogger.forClass("ProgressViewModel").warning("Failed to fetch weight entries from SwiftData", error: error)
+                // If the error is due to missing tables, the ModelContainer initialization
+                // should have already fixed it. Just continue with empty data.
+                weightHistory = []
             }
         }
         
@@ -462,9 +466,10 @@ final class ProgressViewModel {
                         }
                     }
                     try context.save()
-                    print("✅ [ProgressViewModel] Copied HealthKit weight data to SwiftData")
+                    AppLogger.forClass("ProgressViewModel").success("Copied HealthKit weight data to SwiftData")
                 } catch {
-                    print("⚠️ [ProgressViewModel] Failed to copy HealthKit data to SwiftData: \(error)")
+                    AppLogger.forClass("ProgressViewModel").warning("Failed to copy HealthKit data to SwiftData", error: error)
+                    // Continue - HealthKit data copy is not critical, SwiftData is primary source
                 }
             }
         }
@@ -472,7 +477,7 @@ final class ProgressViewModel {
         // If no HealthKit data either, use settings as last resort
         // This ensures the view always has at least one data point to display
         if weightHistory.isEmpty {
-            if let lastDate = settings.lastWeightDate {
+            if let lastDate = UserSettings.shared.lastWeightDate {
                 weightHistory = [WeightDataPoint(date: lastDate, weight: displayWeight)]
             }
         }
@@ -573,7 +578,7 @@ final class ProgressViewModel {
                 let hour = calendar.component(.hour, from: meal.timestamp)
                 // Ensure hour is valid (0-23) - defensive programming
                 guard hour >= 0, hour < 24 else {
-                    print("⚠️ [ProgressViewModel] Invalid hour \(hour) for meal at \(meal.timestamp)")
+                    AppLogger.forClass("ProgressViewModel").warning("Invalid hour \(hour) for meal at \(meal.timestamp)")
                     continue
                 }
                 
@@ -639,13 +644,17 @@ final class ProgressViewModel {
     /// - Parameter weight: Weight in display units (kg or lbs based on user preference)
     /// This method handles the complete weight update flow including data persistence
     func updateWeight(_ weight: Double) async {
+        AppLogger.forClass("ProgressViewModel").info("updateWeight called: \(weight)")
+        
         // Convert to kg if needed (weight parameter is in display units)
         // Internal storage always uses kilograms for consistency
-        let weightInKg = settings.useMetricUnits ? weight : weight / 2.20462
+        let weightInKg = UserSettings.shared.useMetricUnits ? weight : weight / 2.20462
         
         // Update UserSettings (this also updates lastWeightDate)
         // Since UserSettings is @Observable, this will automatically trigger view updates
-        settings.updateWeight(weightInKg)
+        AppLogger.forClass("ProgressViewModel").info("About to update UserSettings.weight to: \(weightInKg) kg")
+        UserSettings.shared.updateWeight(weightInKg)
+        AppLogger.forClass("ProgressViewModel").info("UserSettings.weight updated")
         
         // Save to SwiftData - always create a new entry to preserve weight history
         // Each weight change is tracked as a separate entry for comprehensive progress tracking
@@ -663,7 +672,20 @@ final class ProgressViewModel {
                 // This ensures the new entry is available when we reload
                 context.processPendingChanges()
             } catch {
-                print("⚠️ [ProgressViewModel] Failed to save weight entry to SwiftData: \(error)")
+                AppLogger.forClass("ProgressViewModel").warning("Failed to save weight entry to SwiftData", error: error)
+                // If save fails, try to reload the context and retry once
+                // This handles cases where the store was just recreated
+                if let context = modelContext {
+                    context.processPendingChanges()
+                    do {
+                        let entry = WeightEntry(weight: weightInKg, date: Date())
+                        context.insert(entry)
+                        try context.save()
+                        AppLogger.forClass("ProgressViewModel").success("Successfully saved weight entry on retry")
+                        } catch {
+                        AppLogger.forClass("ProgressViewModel").error("Failed to save weight entry even on retry", error: error)
+                    }
+                }
             }
         }
         
@@ -678,14 +700,14 @@ final class ProgressViewModel {
             if healthKitManager.isAuthorized {
                 do {
                     try await healthKitManager.saveWeight(weightInKg)
-                    print("✅ [ProgressViewModel] Weight saved to HealthKit (overwriting HealthKit data): \(weightInKg) kg")
+                    AppLogger.forClass("ProgressViewModel").success("Weight saved to HealthKit (overwriting HealthKit data): \(weightInKg) kg")
                 } catch {
                     // Continue even if HealthKit save fails - SwiftData is primary source
-                    print("⚠️ [ProgressViewModel] Failed to save weight to HealthKit: \(error.localizedDescription)")
+                    AppLogger.forClass("ProgressViewModel").warning("Failed to save weight to HealthKit", error: error)
                 }
             } else {
                 // Authorization not determined or denied - silently skip (user hasn't granted permission yet)
-                print("ℹ️ [ProgressViewModel] Skipping HealthKit save - authorization not granted")
+                AppLogger.forClass("ProgressViewModel").info("Skipping HealthKit save - authorization not granted")
             }
         }
         
@@ -695,7 +717,7 @@ final class ProgressViewModel {
         try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
         await loadWeightHistory()
         
-        print("✅ [ProgressViewModel] Weight updated: \(weight) (\(weightInKg) kg), history count: \(weightHistory.count), most recent: \(weightHistory.last?.weight ?? 0)")
+        AppLogger.forClass("ProgressViewModel").success("Weight updated: \(weight) (\(weightInKg) kg), history count: \(weightHistory.count), most recent: \(weightHistory.last?.weight ?? 0)")
     }
     
     /// Syncs weight data to widget via shared UserDefaults
@@ -706,17 +728,17 @@ final class ProgressViewModel {
     private func syncWeightDataToWidget(weight: Double, weightInKg: Double) {
         let appGroupIdentifier = "group.CalCalculatorAiPlaygournd.shared"
         guard let sharedDefaults = UserDefaults(suiteName: appGroupIdentifier) else {
-            print("⚠️ [ProgressViewModel] Failed to access shared UserDefaults for widget weight sync")
+            AppLogger.forClass("ProgressViewModel").warning("Failed to access shared UserDefaults for widget weight sync")
             return
         }
         
         // Store weight in display units (what user sees in the app)
         // Widget will use this value directly for display
         sharedDefaults.set(weight, forKey: "widget.currentWeight")
-        sharedDefaults.set(settings.useMetricUnits, forKey: "widget.useMetricUnits")
+        sharedDefaults.set(UserSettings.shared.useMetricUnits, forKey: "widget.useMetricUnits")
         sharedDefaults.set(Date(), forKey: "widget.lastWeightDate")
         
-        print("📱 [ProgressViewModel] Widget weight data synced: \(weight) \(settings.useMetricUnits ? "kg" : "lbs")")
+        AppLogger.forClass("ProgressViewModel").data("Widget weight data synced: \(weight) \(UserSettings.shared.useMetricUnits ? "kg" : "lbs")")
         
         // Reload widget timelines to update widget display immediately
         WidgetCenter.shared.reloadAllTimelines()
@@ -736,12 +758,16 @@ final class ProgressViewModel {
                 await loadWeightHistory()
             }
         } catch {
-            print("Failed to delete weight entry: \(error)")
+            AppLogger.forClass("ProgressViewModel").warning("Failed to delete weight entry", error: error)
+            // Reload weight history even if delete failed to ensure UI is up to date
+            Task {
+                await loadWeightHistory()
+            }
         }
     }
     
     func markWeightPromptShown() {
-        settings.markWeightPromptShown()
+        UserSettings.shared.markWeightPromptShown()
     }
     
     // MARK: - Filter Changes

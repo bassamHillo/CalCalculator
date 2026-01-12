@@ -139,8 +139,10 @@ private final class SafeBindingWrapper {
             if !sdk.isSubscribed && !showDeclineConfirmation.wrappedValue {
                 showDeclineConfirmation.wrappedValue = true
             } else if sdk.isSubscribed {
-                // User subscribed - reset analysis count
+                // User subscribed - reset analysis, meal save, and exercise save counts
                 AnalysisLimitManager.shared.resetAnalysisCount()
+                MealSaveLimitManager.shared.resetMealSaveCount()
+                ExerciseSaveLimitManager.shared.resetExerciseSaveCount()
             }
         }
     }

@@ -557,7 +557,7 @@ struct DietView: View {
     }
 
     private func loadAdherenceData() {
-        Task {
+        Task { @MainActor in
             isLoadingDiet = true
             defer { isLoadingDiet = false }
 

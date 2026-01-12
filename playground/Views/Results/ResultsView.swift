@@ -257,9 +257,16 @@ struct ResultsView: View {
     // MARK: - Private Functions
 
     private func saveMeal() {
-        guard isSubscribed else {
-            showPaywall = true
-            return
+        // Check free meal save limit for non-subscribed users
+        let limitManager = MealSaveLimitManager.shared
+        
+        if !isSubscribed {
+            // Check if user can save a meal
+            guard limitManager.canSaveMeal(isSubscribed: false) else {
+                // No free meal saves left - show paywall
+                showPaywall = true
+                return
+            }
         }
         
         resultsVM.updateMealName(mealNameText)
@@ -268,6 +275,10 @@ struct ResultsView: View {
         Task {
             let success = await viewModel.savePendingMeal()
             if success {
+                // Record meal save for non-subscribed users
+                if !isSubscribed {
+                    limitManager.recordMealSave()
+                }
                 onMealSaved?()
                 dismiss()
             }

@@ -49,7 +49,21 @@ struct ExerciseDetailView: View {
                     runExerciseView
                 }
             }
-            .padding(.bottom, 100) // Extra padding for continue button
+            .padding(.bottom, exerciseType == .weightLifting ? 0 : 100) // Only add padding for non-weight-lifting (they have fixed button)
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            // Fixed Continue button at bottom for weight lifting
+            if exerciseType == .weightLifting {
+                if !exerciseSets.isEmpty && exerciseSets.allSatisfy({ $0.reps > 0 && $0.weight > 0 }) {
+                    continueButton {
+                        calculateWeightLiftingCalories()
+                        showingBurnedCalories = true
+                    }
+                    .padding(.horizontal)
+                    .padding(.bottom, 40)
+                    .background(Color(.systemBackground))
+                }
+            }
         }
         .navigationTitle(exerciseType.displayName)
         .navigationBarTitleDisplayMode(.inline)
@@ -412,18 +426,9 @@ struct ExerciseDetailView: View {
                 .background(Color.blue.opacity(0.1))
                 .cornerRadius(12)
             }
-            
-            Spacer(minLength: 20)
-            
-            // Continue Button
-            if !exerciseSets.isEmpty && exerciseSets.allSatisfy({ $0.reps > 0 && $0.weight > 0 }) {
-                continueButton {
-                    calculateWeightLiftingCalories()
-                    showingBurnedCalories = true
-                }
-            }
         }
         .padding(.horizontal)
+        .padding(.bottom, 20) // Add some bottom padding for spacing
     }
     
     private var totalVolume: Double {
@@ -565,16 +570,40 @@ struct ExerciseDetailView: View {
                 .background(Color.black)
                 .cornerRadius(12)
         }
-        .padding(.bottom, 40)
     }
     
     private func calculateCaloriesForDescribe() {
         guard selectedDuration > 0 else {
-            calculatedCalories = Int.random(in: 100...500)
+            calculatedCalories = 0
             return
         }
-        let calculated = Int(10.0 * Double(selectedDuration))
-        calculatedCalories = max(1, calculated)
+        
+        // Try to calculate from API
+        Task {
+            do {
+                if let calculated = try await WorkoutCaloriesAPIService.shared.calculateCalories(
+                    workoutType: "general",
+                    durationMinutes: selectedDuration,
+                    intensity: "moderate"
+                ) {
+                    await MainActor.run {
+                        calculatedCalories = calculated
+                    }
+                } else {
+                    // Fallback calculation
+                    await MainActor.run {
+                        let calculated = Int(10.0 * Double(selectedDuration))
+                        calculatedCalories = max(1, calculated)
+                    }
+                }
+            } catch {
+                // Fallback calculation
+                await MainActor.run {
+                    let calculated = Int(10.0 * Double(selectedDuration))
+                    calculatedCalories = max(1, calculated)
+                }
+            }
+        }
     }
 }
 

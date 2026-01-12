@@ -31,7 +31,8 @@ struct NutritionActivityAttributes: ActivityAttributes {
         
         var calorieProgress: Double {
             guard calorieGoal > 0 else { return 0 }
-            return min(1.0, Double(caloriesConsumed) / Double(calorieGoal))
+            // Allow progress to exceed 1.0 to show over-goal status (consistent with main app)
+            return Double(caloriesConsumed) / Double(calorieGoal)
         }
     }
     

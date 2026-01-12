@@ -295,10 +295,13 @@ struct DietInsightsView: View {
         var currentDate = startDate
         while currentDate <= endDate {
             do {
-                let data = try repository.getDietAdherence(
-                    for: currentDate,
-                    activePlans: activePlans
-                )
+                // CRITICAL: Call getDietAdherence on main actor to ensure SwiftData models are valid
+                let data = try await MainActor.run {
+                    try repository.getDietAdherence(
+                        for: currentDate,
+                        activePlans: activePlans
+                    )
+                }
                 
                 // Safely access scheduledMeals relationship by creating a local copy first
                 let scheduledMealsArray = Array(data.scheduledMeals)

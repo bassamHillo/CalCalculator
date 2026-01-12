@@ -169,6 +169,9 @@
         box-shadow: var(--shadow);
         padding: 18px;
         overflow: hidden;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
       }
       .card::before {
         content: "";
@@ -180,7 +183,12 @@
           radial-gradient(260px 180px at 90% 20%, rgba(39,211,167,.12), transparent 55%);
         opacity: .9;
       }
-      .cardInner { position: relative; }
+      .cardInner { 
+        position: relative; 
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+      }
 
       h1 { margin: 2px 0 6px; font-size: 24px; line-height: 1.2; letter-spacing: -0.2px; }
       p.desc { margin: 0 0 14px; color: var(--muted); font-size: 14px; line-height: 1.45; }
@@ -391,12 +399,28 @@
         flex-direction:column;
         align-items:center;
         justify-content:center;
+        flex: 1;
         min-height: 320px;
         text-align:center;
         gap: 24px;
+        width: 100%;
       }
 
-      .loadingCircles { position:relative; width:140px; height:140px; }
+      #goalsLoading {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        text-align: center;
+      }
+
+      .loadingCircles { 
+        position:relative; 
+        width:140px; 
+        height:140px; 
+        margin: 0 auto;
+      }
       .loadingCircles .ring { position:absolute; inset:0; border-radius:50%; border: 3px solid transparent; }
       .loadingCircles .ring1 { border-top-color: var(--accent); border-right-color: var(--accent); animation: spin 1.2s linear infinite; }
       .loadingCircles .ring2 { inset: 12px; border-bottom-color: var(--accent2); border-left-color: var(--accent2); animation: spin 1.6s linear infinite reverse; }

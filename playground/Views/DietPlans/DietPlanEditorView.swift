@@ -527,7 +527,8 @@ struct DietPlanEditorView: View {
                 try await reminderService.requestAuthorization()
                 try await reminderService.scheduleAllReminders()
             } catch {
-                print("Failed to schedule reminders: \(error)")
+                AppLogger.forClass("DietPlanEditorView").warning("Failed to schedule reminders", error: error)
+                // Continue - reminders are not critical for plan saving
             }
             
             NotificationCenter.default.post(name: .dietPlanChanged, object: nil)
@@ -538,11 +539,11 @@ struct DietPlanEditorView: View {
                 showNoMealsAlert = true
                 HapticManager.shared.notification(.error)
             } else {
-                print("Failed to save diet plan: \(error)")
+                AppLogger.forClass("DietPlanEditorView").error("Failed to save diet plan", error: error)
                 HapticManager.shared.notification(.error)
             }
         } catch {
-            print("Failed to save diet plan: \(error)")
+            AppLogger.forClass("DietPlanEditorView").error("Failed to save diet plan", error: error)
             HapticManager.shared.notification(.error)
         }
     }

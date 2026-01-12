@@ -66,6 +66,8 @@ final class HomeViewModel {
     private let imageStorage: ImageStorage
     
     // MARK: - State
+    /// Summary for the currently selected date (updated when selectedDate changes)
+    /// Note: Despite the name "todaysSummary", this contains data for selectedDate, not always today
     var todaysSummary: DaySummary?
     var recentMeals: [Meal] = []
     var weekDays: [WeekDay] = []
@@ -277,6 +279,12 @@ final class HomeViewModel {
             selectedDateBurnedCalories = burned
             selectedDateExercisesCount = exercises.count
             
+            // If viewing today, also update todaysBurnedCalories to ensure consistency
+            if isToday {
+                todaysBurnedCalories = burned
+                cacheBurnedCalories(burned)
+            }
+            
             // Update UI with animation to provide smooth transition
             withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
                 hasDataLoaded = true
@@ -373,23 +381,44 @@ final class HomeViewModel {
             guard let self = self else { return }
             
             do {
-                // Fetch week summaries and exercises in parallel (both on main thread but truly parallel)
+                // Fetch week summaries, today's exercises, and yesterday's exercises in parallel
                 // Fetch 3 weeks of data for scrollable week days header
+                let calendar = Calendar.current
+                let today = calendar.startOfDay(for: Date())
+                let yesterday = calendar.date(byAdding: .day, value: -1, to: today)
+                
                 async let weekSummariesTask = try repository.fetchWeekSummaries()
                 async let exercisesTask = try repository.fetchTodaysExercises()
+                // Fetch yesterday's exercises in parallel for rollover calculation optimization
+                let yesterdayExercisesTask: Task<[Exercise], Error> = Task {
+                    guard let yesterday = yesterday else { return [] }
+                    do {
+                        return try repository.fetchExercises(for: yesterday)
+                    } catch {
+                        AppLogger.forClass("HomeViewModel").warning("Failed to fetch yesterday's exercises in parallel: \(error.localizedDescription)")
+                        return []
+                    }
+                }
                 
-                // Wait for both parallel tasks to complete
+                // Wait for all parallel tasks to complete
                 let weekSummaries = try await weekSummariesTask
                 let exercises = try await exercisesTask
+                let yesterdayExercises = try await yesterdayExercisesTask.value
                 let burned = exercises.reduce(0) { $0 + $1.calories }
+                let yesterdayBurned = yesterdayExercises.reduce(0) { $0 + $1.calories }
                 
                 // Update burned calories and cache it for persistence
                 self.todaysBurnedCalories = burned
+                // Also update selectedDateBurnedCalories if viewing today
+                if calendar.isDateInToday(self.selectedDate) {
+                    self.selectedDateBurnedCalories = burned
+                }
                 self.cacheBurnedCalories(burned)
                 
-                // Build week days and calculate rollover (fast operations, no database access)
+                // Build week days and calculate rollover
+                // Optimization: Pass pre-fetched yesterday's burned calories to avoid duplicate database query
                 let newWeekDays = self.buildWeekDays(from: weekSummaries, selectedDate: self.selectedDate)
-                self.calculateAndStoreRollover(weekSummaries: weekSummaries)
+                self.calculateAndStoreRollover(weekSummaries: weekSummaries, yesterdayBurnedCalories: yesterdayBurned)
                 
                 // Update UI with animation to provide smooth transition
                 withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
@@ -439,8 +468,20 @@ final class HomeViewModel {
             print("  ✅ Rollover loaded: \(Date().timeIntervalSince(rolloverStart))s")
             
             // Calculate and store rollover for tomorrow (based on yesterday's data)
+            // Fetch yesterday's exercises for rollover calculation
             let rolloverCalcStart = Date()
-            calculateAndStoreRollover(weekSummaries: weekSummaries)
+            let calendar = Calendar.current
+            let today = calendar.startOfDay(for: Date())
+            var yesterdayBurned: Int? = nil
+            if let yesterday = calendar.date(byAdding: .day, value: -1, to: today) {
+                do {
+                    let yesterdayExercises = try repository.fetchExercises(for: yesterday)
+                    yesterdayBurned = yesterdayExercises.reduce(0) { $0 + $1.calories }
+                } catch {
+                    AppLogger.forClass("HomeViewModel").warning("Failed to fetch yesterday's exercises in fetchData: \(error.localizedDescription)")
+                }
+            }
+            calculateAndStoreRollover(weekSummaries: weekSummaries, yesterdayBurnedCalories: yesterdayBurned)
             print("  ✅ Rollover calculated: \(Date().timeIntervalSince(rolloverCalcStart))s")
             
             let totalTime = Date().timeIntervalSince(startTime)
@@ -532,8 +573,13 @@ final class HomeViewModel {
     
     /// Calculates and stores rollover calories based on yesterday's unused calories
     /// Rollover is capped at 200 calories maximum to prevent excessive calorie accumulation
-    /// - Parameter weekSummaries: Dictionary of day summaries used to find yesterday's data
-    private func calculateAndStoreRollover(weekSummaries: [Date: DaySummary]) {
+    /// CRITICAL BUG FIX: Uses effective goal (base + burned) for yesterday, not just base goal
+    /// This ensures users get credit for exercise when calculating unused calories
+    /// - Parameters:
+    ///   - weekSummaries: Dictionary of day summaries used to find yesterday's data
+    ///   - yesterdayBurnedCalories: Optional pre-fetched burned calories for yesterday (for performance optimization)
+    ///                             If nil, will fetch from database
+    private func calculateAndStoreRollover(weekSummaries: [Date: DaySummary], yesterdayBurnedCalories: Int? = nil) {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
         
@@ -544,9 +590,34 @@ final class HomeViewModel {
             return
         }
         
-        let calorieGoal = UserSettings.shared.calorieGoal
+        // BUG FIX: Calculate effective goal for yesterday (base + burned calories)
+        // This ensures rollover accounts for exercise, consistent with remainingCalories calculation
+        let baseGoal = UserSettings.shared.calorieGoal
         let yesterdayConsumed = yesterdaySummary.totalCalories
-        let unused = calorieGoal - yesterdayConsumed
+        
+        // Fetch yesterday's burned calories to calculate effective goal
+        // This is critical: if user burned 300 cal yesterday, those should be included in available calories
+        // Optimization: Use pre-fetched value if available, otherwise fetch from database
+        var yesterdayBurned: Int
+        if let preFetched = yesterdayBurnedCalories {
+            yesterdayBurned = preFetched
+        } else {
+            // Fallback: fetch from database if not provided (for backward compatibility)
+            yesterdayBurned = 0
+            do {
+                let yesterdayExercises = try repository.fetchExercises(for: yesterday)
+                yesterdayBurned = yesterdayExercises.reduce(0) { $0 + $1.calories }
+            } catch {
+                // If we can't fetch exercises, use 0 (conservative approach)
+                // This won't break the calculation, just won't include burned calories
+                AppLogger.forClass("HomeViewModel").warning("Failed to fetch yesterday's exercises for rollover calculation: \(error.localizedDescription)")
+            }
+        }
+        
+        // Calculate unused calories based on effective goal (base + burned)
+        // This matches how remainingCalories is calculated for today
+        let effectiveGoal = baseGoal + yesterdayBurned
+        let unused = effectiveGoal - yesterdayConsumed
         
         // Cap rollover at 200 calories max to prevent excessive calorie accumulation
         // Only positive unused calories roll over (if over goal, no rollover)
@@ -577,7 +648,9 @@ final class HomeViewModel {
         let calendar = Calendar.current
         let today = Date()
         let todayStart = calendar.startOfDay(for: today)
-        let calorieGoalValue = effectiveCalorieGoal
+        // Use BASE goal for progress calculation (consistent with circular progress indicator)
+        // This ensures the week days chart shows progress against the base goal, not the effective goal
+        let calorieGoalValue = baseCalorieGoal
         let calorieGoalDouble = Double(calorieGoalValue)
         
         let dayFormatter = DateFormatter()
@@ -618,6 +691,8 @@ final class HomeViewModel {
         
         // Build days from the first day of installation until today + 1 week forward
         // This includes all days, even if there's no data for them
+        // Note: Progress is calculated against base goal only (consistent with main progress circle)
+        // This shows how much of the base goal was consumed, regardless of exercise
         var currentDate = firstDayStart
         while currentDate <= endDate {
             let dayStart = calendar.startOfDay(for: currentDate)
@@ -743,7 +818,11 @@ final class HomeViewModel {
         // Get current nutrition data from today's summary
         let summary = todaysSummary
         let caloriesConsumed = summary?.totalCalories ?? 0
-        let calorieGoal = effectiveCalorieGoal // Includes burned calories and rollover if enabled
+        // For Live Activity, use base goal + burned calories + rollover (always add burned and rollover, regardless of settings)
+        // This ensures consistency with the "Calories Left" calculation
+        var calorieGoal = baseCalorieGoal + todaysBurnedCalories
+        // Always add rollover calories if viewing today (consistent with remainingCalories and effectiveCalorieGoal)
+        calorieGoal += rolloverCaloriesFromYesterday
         let proteinG = summary?.totalProteinG ?? 0
         let carbsG = summary?.totalCarbsG ?? 0
         let fatG = summary?.totalFatG ?? 0
@@ -777,39 +856,61 @@ final class HomeViewModel {
     /// Effective calorie goal accounting for burned and rollover calories
     /// This is the actual goal displayed to the user (base + adjustments)
     /// Uses selected date's burned calories when viewing different dates
+    /// CRITICAL: Always adds burned calories (consistent with remainingCalories calculation)
+    /// This ensures the displayed goal matches the available calories calculation
     var effectiveCalorieGoal: Int {
         var goal = baseCalorieGoal
         let calendar = Calendar.current
         let isToday = calendar.isDateInToday(selectedDate)
         
-        // Add burned calories if setting is enabled
+        // Always add burned calories (consistent with remainingCalories)
         // Use selected date's burned calories when viewing different dates
         // This ensures historical dates show correct adjusted goals
-        if UserProfileRepository.shared.getAddBurnedCalories() {
-            let burned = isToday ? todaysBurnedCalories : selectedDateBurnedCalories
-            goal += burned
-        }
+        let burned = isToday ? todaysBurnedCalories : selectedDateBurnedCalories
+        goal += burned
         
-        // Add rollover calories if setting is enabled (only applies to today)
-        // Rollover is yesterday's unused calories, so it doesn't apply to historical dates
-        if UserProfileRepository.shared.getRolloverCalories() && isToday {
+        // Add rollover calories if viewing today (rollover is yesterday's unused calories)
+        // Rollover doesn't apply to historical dates
+        if isToday {
             goal += rolloverCaloriesFromYesterday
         }
         
         return goal
     }
     
-    /// Calories remaining for the day (using effective goal)
+    /// Calories remaining for the day
+    /// Calculates: (Base Goal + Burned Calories + Rollover) - Consumed
+    /// This ensures burned calories and rollover always add to available calories, regardless of settings
+    /// Uses the selected date's summary and burned calories (not always today's)
     /// Returns 0 if over goal (doesn't show negative remaining)
     var remainingCalories: Int {
+        let calendar = Calendar.current
+        let isToday = calendar.isDateInToday(selectedDate)
+        
+        // Use the correct summary based on selected date
+        // todaysSummary is updated when selectedDate changes via loadDataForSelectedDate()
         let consumed = todaysSummary?.totalCalories ?? 0
-        return max(0, effectiveCalorieGoal - consumed)
+        let burned = isToday ? todaysBurnedCalories : selectedDateBurnedCalories
+        let baseGoal = baseCalorieGoal
+        
+        // Always add burned calories to available calories (gives users credit for exercise)
+        var availableCalories = baseGoal + burned
+        
+        // Add rollover calories if viewing today (rollover is yesterday's unused calories)
+        if isToday {
+            availableCalories += rolloverCaloriesFromYesterday
+        }
+        
+        return max(0, availableCalories - consumed)
     }
     
     /// Calorie progress ratio (0.0 to 1.0+, can exceed 1.0 if over goal)
-    /// Uses effective goal which includes burned calories and rollover adjustments
+    /// Uses BASE goal (not effective goal) to show progress against the original target
+    /// This ensures the progress circle shows how much of the base goal has been consumed
+    /// Uses the selected date's summary (not always today's)
     var calorieProgress: Double {
-        let goal = Double(effectiveCalorieGoal)
+        let goal = Double(baseCalorieGoal)
+        // todaysSummary is updated when selectedDate changes via loadDataForSelectedDate()
         let consumed = Double(todaysSummary?.totalCalories ?? 0)
         guard goal > 0 else { return 0 }
         return consumed / goal

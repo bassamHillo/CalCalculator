@@ -316,7 +316,8 @@ struct MyDietView: View {
             NotificationCenter.default.post(name: .dietPlanChanged, object: nil)
             HapticManager.shared.notification(.success)
         } catch {
-            print("Failed to activate plan: \(error)")
+            print("❌ [MyDietView] Failed to activate plan: \(error)")
+            HapticManager.shared.notification(.error)
             HapticManager.shared.notification(.error)
         }
     }
@@ -717,12 +718,27 @@ struct MyDietView: View {
                 .padding(.horizontal)
             
             if data.scheduledMeals.isEmpty {
-                ContentUnavailableView(
-                    localizationManager.localizedString(for: AppStrings.DietPlan.noMealsAlert),
-                    systemImage: "calendar.badge.exclamationmark",
-                    description: Text(localizationManager.localizedString(for: AppStrings.DietPlan.addMealsToDietPlan))
-                )
-                .frame(height: 150)
+                // Check if plan has meals but none scheduled for today
+                let totalMealsInPlan = activePlan?.scheduledMeals.count ?? 0
+                if totalMealsInPlan > 0 {
+                    // Plan has meals, but none scheduled for today
+                    VStack(spacing: 12) {
+                        ContentUnavailableView(
+                            localizationManager.localizedString(for: AppStrings.DietPlan.noMealsAlert),
+                            systemImage: "calendar.badge.exclamationmark",
+                            description: Text("You have \(totalMealsInPlan) meal\(totalMealsInPlan == 1 ? "" : "s") in your plan, but none are scheduled for today. Edit your plan to add meals for today.")
+                        )
+                        .frame(height: 150)
+                    }
+                } else {
+                    // No meals in plan at all
+                    ContentUnavailableView(
+                        localizationManager.localizedString(for: AppStrings.DietPlan.noMealsAlert),
+                        systemImage: "calendar.badge.exclamationmark",
+                        description: Text(localizationManager.localizedString(for: AppStrings.DietPlan.addMealsToDietPlan))
+                    )
+                    .frame(height: 150)
+                }
             } else {
                 mealCardsView(data: data)
             }

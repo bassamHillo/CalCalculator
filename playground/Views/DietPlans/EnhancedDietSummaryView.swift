@@ -509,10 +509,13 @@ struct EnhancedDietSummaryContent: View {
         var currentDate = startDate
         while currentDate <= endDate {
             do {
-                let data = try dietPlanRepository.getDietAdherence(
-                    for: currentDate,
-                    activePlans: activePlans
-                )
+                // CRITICAL: Call getDietAdherence on main actor to ensure SwiftData models are valid
+                let data = try await MainActor.run {
+                    try dietPlanRepository.getDietAdherence(
+                        for: currentDate,
+                        activePlans: activePlans
+                    )
+                }
                 
                 adherence.append(DailyAdherence(
                     date: currentDate,

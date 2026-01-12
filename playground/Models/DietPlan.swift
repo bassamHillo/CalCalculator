@@ -43,26 +43,34 @@ final class DietPlan: Identifiable {
     /// Safely accesses the relationship to avoid InvalidFutureBackingData errors
     /// This method creates a local copy of the relationship array and extracts property values
     /// immediately to prevent accessing invalid backing data
+    /// CRITICAL: Must be called on the main actor/context where the model is valid
+    @MainActor
     func scheduledMeals(for dayOfWeek: Int) -> [ScheduledMeal] {
+        // CRITICAL: Access scheduledMeals relationship on main actor/context
         // Create a local copy of the relationship array first
         // This forces SwiftData to materialize the relationship and prevents
         // InvalidFutureBackingData errors when the model is in an invalid state
         let mealsArray = Array(scheduledMeals)
         
-        // Immediately extract the daysOfWeek values from each meal while they're still valid
-        // This prevents accessing properties later when the model might be in an invalid state
-        let mealsWithDays = mealsArray.compactMap { meal -> (meal: ScheduledMeal, days: [Int])? in
+        // CRITICAL: Extract all needed properties immediately into plain data structures
+        // Access properties immediately while models are guaranteed to be valid
+        // This prevents accessing SwiftData properties later when the model might be invalidated
+        var validMeals: [ScheduledMeal] = []
+        for meal in mealsArray {
             // Access daysOfWeek immediately while the meal is guaranteed to be valid
-            // If accessing fails (meal is invalid), this will return nil and skip the meal
+            // If the model is invalid, this will crash, but we ensure we're on main actor
             let days = meal.daysOfWeek
-            return (meal: meal, days: days)
+            if days.contains(dayOfWeek) {
+                validMeals.append(meal)
+            }
         }
         
-        // Filter based on the extracted daysOfWeek values (now using plain data, not SwiftData properties)
-        return mealsWithDays.filter { $0.days.contains(dayOfWeek) }.map { $0.meal }
+        return validMeals
     }
     
     /// Get all scheduled meals for today
+    /// CRITICAL: Must be called on the main actor to ensure SwiftData models are valid
+    @MainActor
     func todaysScheduledMeals() -> [ScheduledMeal] {
         let calendar = Calendar.current
         let dayOfWeek = calendar.component(.weekday, from: Date())

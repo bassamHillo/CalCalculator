@@ -478,7 +478,7 @@ struct DietPlanCard: View {
     // MARK: - Helper Methods
     
     private func loadMealsForSelectedDate() {
-        Task {
+        Task { @MainActor in
             let calendar = Calendar.current
             let dayOfWeek = calendar.component(.weekday, from: selectedDate)
             
@@ -492,10 +492,8 @@ struct DietPlanCard: View {
                     for: selectedDate,
                     activePlans: activePlans
                 )
-                await MainActor.run {
-                    todaysMeals = meals
-                    completedMeals = Set(adherence.completedMeals)
-                }
+                todaysMeals = meals
+                completedMeals = Set(adherence.completedMeals)
             } catch {
                 await MainActor.run {
                     todaysMeals = meals

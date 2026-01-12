@@ -145,7 +145,7 @@ struct LogExperienceCard: View {
     }
     
     private func loadTodaysDietInfo() {
-        Task {
+        Task { @MainActor in
             let calendar = Calendar.current
             let today = Date()
             let dayOfWeek = calendar.component(.weekday, from: today)
@@ -169,10 +169,8 @@ struct LogExperienceCard: View {
                 }
             }
             
-            await MainActor.run {
-                todaysMealsCount = meals.count
-                completedMealsCount = completedCount
-            }
+            todaysMealsCount = meals.count
+            completedMealsCount = completedCount
         }
     }
 }

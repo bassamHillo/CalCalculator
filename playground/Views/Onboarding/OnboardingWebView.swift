@@ -33,8 +33,16 @@ struct OnboardingResult {
 }
 
 /// UIViewRepresentable wrapper for WKWebView
-struct OnboardingWebViewRepresentable: UIViewRepresentable {
+struct OnboardingWebViewRepresentable: UIViewRepresentable, Equatable {
     let onComplete: (OnboardingResult) -> Void
+
+    // Conform to Equatable to prevent unnecessary updateUIView calls
+    // This prevents "Update NavigationRequestObserver tried to update multiple times per frame" warning
+    static func == (lhs: OnboardingWebViewRepresentable, rhs: OnboardingWebViewRepresentable) -> Bool {
+        // Always return true since onComplete closure can't be compared
+        // This tells SwiftUI that the view hasn't changed and updateUIView shouldn't be called
+        return true
+    }
 
     func makeCoordinator() -> Coordinator {
         Coordinator(onComplete: onComplete)
@@ -55,6 +63,9 @@ struct OnboardingWebViewRepresentable: UIViewRepresentable {
         webView.scrollView.backgroundColor = .clear
         webView.scrollView.bounces = false
         webView.scrollView.contentInsetAdjustmentBehavior = .never
+        
+        // Set navigation delegate to coordinator to avoid multiple updates per frame
+        webView.navigationDelegate = context.coordinator
 
         // Allow inspection in Safari for debugging (iOS 16.4+)
         if #available(iOS 16.4, *) {
@@ -70,7 +81,19 @@ struct OnboardingWebViewRepresentable: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: WKWebView, context: Context) {
-        // No updates needed
+        // CRITICAL: WKWebView doesn't need updates on every SwiftUI render cycle
+        // SwiftUI calls this method whenever the parent view's body recomputes
+        // Since we conform to Equatable and always return true, SwiftUI should skip this
+        // But if it's still called, we do nothing to prevent NavigationRequestObserver warnings
+        // The webView is configured once in makeUIView and doesn't need reconfiguration
+    }
+    
+    static func dismantleUIView(_ uiView: WKWebView, coordinator: Coordinator) {
+        // Clean up when view is removed from hierarchy
+        // This prevents warnings from stale WKWebView instances
+        uiView.navigationDelegate = nil
+        uiView.configuration.userContentController.removeScriptMessageHandler(forName: "onboarding")
+        uiView.stopLoading()
     }
 
     /// Loads the onboarding HTML template and injects the JS content
@@ -101,13 +124,33 @@ struct OnboardingWebViewRepresentable: UIViewRepresentable {
         webView.loadHTMLString(htmlContent, baseURL: baseURL)
     }
 
-    /// Coordinator to handle JS message callbacks
-    class Coordinator: NSObject, WKScriptMessageHandler {
+    /// Coordinator to handle JS message callbacks and navigation
+    class Coordinator: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
         weak var webView: WKWebView?
         let onComplete: (OnboardingResult) -> Void
 
         init(onComplete: @escaping (OnboardingResult) -> Void) {
             self.onComplete = onComplete
+        }
+        
+        deinit {
+            // Clean up message handler to prevent memory leaks and warnings
+            webView?.configuration.userContentController.removeScriptMessageHandler(forName: "onboarding")
+            webView?.navigationDelegate = nil
+        }
+        
+        // MARK: - WKNavigationDelegate
+        
+        func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+            // CRITICAL: decisionHandler MUST be called synchronously, not asynchronously
+            // Calling it asynchronously causes navigation failures and the "Update NavigationRequestObserver" warning
+            // Allow all navigation within the onboarding flow
+            decisionHandler(.allow)
+        }
+        
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            // Navigation finished - no action needed
+            // This delegate method is called but doesn't need to do anything
         }
 
         func userContentController(
@@ -242,6 +285,21 @@ struct OnboardingWebViewRepresentable: UIViewRepresentable {
 
             // Extract answers
             let answers = payload["answers"] as? [String: Any] ?? [:]
+            
+            // CRITICAL: Log the answers structure to debug gender extraction
+            print("📱 [OnboardingWebView] ===== ONBOARDING ANSWERS =====")
+            print("📱 [OnboardingWebView] Answer keys: \(answers.keys)")
+            if let genderData = answers["gender"] {
+                print("📱 [OnboardingWebView] Gender data type: \(type(of: genderData))")
+                print("📱 [OnboardingWebView] Gender data value: \(genderData)")
+                if let genderDict = genderData as? [String: Any] {
+                    print("📱 [OnboardingWebView] Gender dict keys: \(genderDict.keys)")
+                    print("📱 [OnboardingWebView] Gender dict: \(genderDict)")
+                }
+            } else {
+                print("⚠️ [OnboardingWebView] No 'gender' key found in answers")
+            }
+            print("📱 [OnboardingWebView] Full answers JSON: \(answers)")
 
             // Extract generated goals
             let goalsData = payload["goals"] as? [String: Any] ?? [:]

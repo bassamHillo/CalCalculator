@@ -11,6 +11,7 @@ import SwiftData
 import SwiftUI
 import UIKit
 import WidgetKit
+import OSLog
 
 @main
 struct playgroundApp: App {
@@ -19,7 +20,9 @@ struct playgroundApp: App {
     let modelContainer: ModelContainer
     @State private var appearanceMode: AppearanceMode
     @State var sdk: TheSDK
-    @State private var subscriptionStatus: Bool = false
+    // CRITICAL: Initialize subscriptionStatus from UserDefaults to prevent false->true change
+    // This ensures isSubscribed is correct from the start, preventing unnecessary body recomputations
+    @State private var subscriptionStatus: Bool = UserDefaults.standard.bool(forKey: "subscriptionStatus")
     @State private var previousSubscriptionStatus: Bool = false
     @State private var currentLocale: Locale = LocalizationManager.shared.currentLocale
     @State private var currentLayoutDirection: LayoutDirection = LocalizationManager.shared.layoutDirection
@@ -49,20 +52,101 @@ struct playgroundApp: App {
             
             // Also ensure App Group directory exists for shared data
             let appGroupIdentifier = "group.CalCalculatorAiPlaygournd.shared"
+            let storeURL: URL?
+            
             if let appGroupURL = fileManager.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier) {
                 let appGroupSupportURL = appGroupURL.appendingPathComponent("Library/Application Support")
                 try? fileManager.createDirectory(
                     at: appGroupSupportURL, withIntermediateDirectories: true)
+                storeURL = appGroupSupportURL.appendingPathComponent("default.store")
+            } else {
+                storeURL = nil
             }
-
-            let modelConfiguration = ModelConfiguration(
-                schema: schema,
-                isStoredInMemoryOnly: false
-            )
-            modelContainer = try ModelContainer(
-                for: schema,
-                configurations: [modelConfiguration]
-            )
+            
+            let modelConfiguration: ModelConfiguration
+            if !appGroupIdentifier.isEmpty {
+                modelConfiguration = ModelConfiguration(
+                    schema: schema,
+                    isStoredInMemoryOnly: false,
+                    groupContainer: .identifier(appGroupIdentifier)
+                )
+            } else {
+                modelConfiguration = ModelConfiguration(
+                    schema: schema,
+                    isStoredInMemoryOnly: false
+                )
+            }
+            
+            // Check if store exists and might be corrupted (missing tables)
+            // If store exists but is missing required tables, delete it and recreate
+            if let storeURL = storeURL, fileManager.fileExists(atPath: storeURL.path) {
+                // Store exists - check if it's valid by trying to open it
+                // If it fails or is missing tables, we'll delete it
+                do {
+                    let testContainer = try ModelContainer(
+                        for: schema,
+                        configurations: [modelConfiguration]
+                    )
+                    let testContext = ModelContext(testContainer)
+                    // Try to fetch from all required tables to verify they exist
+                    let weightDescriptor = FetchDescriptor<WeightEntry>()
+                    let dietDescriptor = FetchDescriptor<DietPlan>()
+                    let exerciseDescriptor = FetchDescriptor<Exercise>()
+                    _ = try testContext.fetch(weightDescriptor)
+                    _ = try testContext.fetch(dietDescriptor)
+                    _ = try testContext.fetch(exerciseDescriptor)
+                    // If we get here, the store is valid
+                    modelContainer = testContainer
+                } catch {
+                    // Store exists but is corrupted or missing tables - delete it
+                    AppLogger.forClass("playgroundApp").warning("Existing store is corrupted or missing tables", error: error)
+                    AppLogger.forClass("playgroundApp").info("Deleting corrupted store and recreating...")
+                    
+                    // Delete all store files
+                    try? fileManager.removeItem(at: storeURL)
+                    try? fileManager.removeItem(at: storeURL.appendingPathExtension("wal"))
+                    try? fileManager.removeItem(at: storeURL.appendingPathExtension("shm"))
+                    try? fileManager.removeItem(at: storeURL.appendingPathExtension("journal"))
+                    AppLogger.forClass("playgroundApp").success("Deleted corrupted store files")
+                    
+                    // Create fresh store
+                    modelContainer = try ModelContainer(
+                        for: schema,
+                        configurations: [modelConfiguration]
+                    )
+                    AppLogger.forClass("playgroundApp").success("Successfully created new store")
+                }
+            } else {
+                // Store doesn't exist - create it normally
+                do {
+                    modelContainer = try ModelContainer(
+                        for: schema,
+                        configurations: [modelConfiguration]
+                    )
+                } catch {
+                    // If initialization fails, try to delete any partial files and recreate
+                    AppLogger.forClass("playgroundApp").warning("Initialization failed", error: error)
+                    AppLogger.forClass("playgroundApp").info("Attempting to fix by recreating store...")
+                    
+                    // Delete old store files if URL is available
+                    if let storeURL = storeURL {
+                        let fileManager = FileManager.default
+                        // Delete old store files (including all possible SQLite files)
+                        try? fileManager.removeItem(at: storeURL)
+                        try? fileManager.removeItem(at: storeURL.appendingPathExtension("wal"))
+                        try? fileManager.removeItem(at: storeURL.appendingPathExtension("shm"))
+                        try? fileManager.removeItem(at: storeURL.appendingPathExtension("journal"))
+                        AppLogger.forClass("playgroundApp").success("Deleted old store files at: \(storeURL.path)")
+                    }
+                    
+                    // Try again with fresh store
+                    modelContainer = try ModelContainer(
+                        for: schema,
+                        configurations: [modelConfiguration]
+                    )
+                    AppLogger.forClass("playgroundApp").success("Successfully created new store")
+                }
+            }
         } catch {
             fatalError("Could not initialize ModelContainer: \(error)")
         }
@@ -102,6 +186,21 @@ struct playgroundApp: App {
                         break
                     }
                 }))
+        
+        // Suppress known system-level warnings that are harmless but noisy
+        // These warnings come from iOS frameworks (WKWebView, Network) and third-party SDKs
+        suppressSystemWarnings()
+    }
+    
+    /// Suppress known system-level warnings that are harmless
+    /// These warnings come from iOS frameworks (WKWebView, Network) and third-party SDKs
+    private func suppressSystemWarnings() {
+        // Note: System-level warnings from WKWebView and Network frameworks
+        // cannot be directly suppressed in Swift. These warnings are:
+        // 1. "Update NavigationRequestObserver tried to update multiple times per frame" - from SDK's WKWebView (paywall)
+        // 2. "nw_connection_copy_connected_local_endpoint_block_invoke" - informational network messages
+        // Both are harmless and don't affect functionality.
+        // They appear in debug logs but don't impact app performance or user experience.
     }
 
     var body: some Scene {
@@ -187,10 +286,12 @@ struct playgroundApp: App {
                     let wasSubscribed = previousSubscriptionStatus
                     previousSubscriptionStatus = subscriptionStatus
                     
-                    // If user just subscribed, reset analysis count
+                    // If user just subscribed, reset analysis, meal save, and exercise save counts
                     if !wasSubscribed && subscriptionStatus {
                         AnalysisLimitManager.shared.resetAnalysisCount()
-                        print("📱 Analysis count reset due to subscription")
+                        MealSaveLimitManager.shared.resetMealSaveCount()
+                        ExerciseSaveLimitManager.shared.resetExerciseSaveCount()
+                        print("📱 Analysis, meal save, and exercise save counts reset due to subscription")
                     }
                     
                     print("📱 Subscription status updated from paywall: \(subscriptionStatus)")

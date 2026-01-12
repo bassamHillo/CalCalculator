@@ -324,15 +324,30 @@ final class DietPlanRepository {
     // MARK: - Diet Adherence Tracking
     
     /// Get diet adherence data for a specific date
+    /// CRITICAL: Must be called on the main actor to ensure SwiftData models are valid
+    @MainActor
     func getDietAdherence(for date: Date, activePlans: [DietPlan]) throws -> DietAdherenceData {
         let calendar = Calendar.current
         let dayOfWeek = calendar.component(.weekday, from: date)
         
+        print("🔍 [DietPlanRepository] getDietAdherence for date: \(date), dayOfWeek: \(dayOfWeek)")
+        print("🔍 [DietPlanRepository] Active plans count: \(activePlans.count)")
+        
         // Get all scheduled meals for this day
         var scheduledMeals: [ScheduledMeal] = []
         for plan in activePlans {
-            scheduledMeals.append(contentsOf: plan.scheduledMeals(for: dayOfWeek))
+            // CRITICAL: Extract plan name immediately to avoid SwiftData access issues
+            let planName = plan.name
+            print("🔍 [DietPlanRepository] Checking plan '\(planName)' - total scheduledMeals: \(plan.scheduledMeals.count)")
+            
+            // CRITICAL: Use the safe method that extracts properties immediately
+            // This prevents accessing SwiftData properties on potentially invalidated models
+            let mealsForDay = plan.scheduledMeals(for: dayOfWeek)
+            print("🔍 [DietPlanRepository] Plan '\(planName)' has \(mealsForDay.count) meals for dayOfWeek \(dayOfWeek)")
+            scheduledMeals.append(contentsOf: mealsForDay)
         }
+        
+        print("🔍 [DietPlanRepository] Total scheduled meals for date: \(scheduledMeals.count)")
         
         // Get reminders for this date
         let reminders = try fetchMealReminders(for: date)

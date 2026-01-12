@@ -47,6 +47,9 @@ struct HomeView: View {
         scrollToTopTrigger: UUID = UUID(),
         onMealSaved: @escaping () -> Void
     ) {
+        let timestamp = Date()
+        AppLogger.forClass("HomeView").info("🔍 [init] HomeView initialized at \(timestamp)")
+        AppLogger.forClass("HomeView").info("🔍 [init] Stack trace: \(Thread.callStackSymbols.prefix(5).joined(separator: "\n"))")
         self.viewModel = viewModel
         self.repository = repository
         self.scanViewModel = scanViewModel
@@ -55,6 +58,10 @@ struct HomeView: View {
     }
     
     var body: some View {
+        // CRITICAL: Log when HomeView body is computed to understand what triggers recomputation
+        let timestamp = Date()
+        AppLogger.forClass("HomeView").info("🔍 [body] HomeView body computed at \(timestamp)")
+        
         // Explicitly reference currentLanguage to ensure SwiftUI tracks the dependency
         // This forces the view to update when the language changes
         let _ = localizationManager.currentLanguage
@@ -71,6 +78,7 @@ struct HomeView: View {
             }
             .task {
                 // Load data asynchronously without blocking the UI
+                AppLogger.forClass("HomeView").info(".task called - this should only happen once when view appears")
                 let startTime = Date()
                 print("🟢 [HomeView] .task started - loading data")
                 await viewModel.loadData()
@@ -100,6 +108,9 @@ struct HomeView: View {
                     }
                 }
                 #endif
+            }
+            .onDisappear {
+                AppLogger.forClass("HomeView").warning("HomeView disappeared!")
             }
             .task(id: viewModel.weekDays.count) {
                 // Re-check badges when week days data is loaded
@@ -257,13 +268,14 @@ struct HomeView: View {
                     }
                 }
             }
+            .overlay(alignment: Alignment.bottomTrailing) {
+                floatingMenuOverlay
+            }
             .overlay {
                 if showingDietWelcome {
                     DietWelcomeView(isPresented: $showingDietWelcome)
+                        .zIndex(1000) // Ensure welcome popup appears above floating button
                 }
-            }
-            .overlay(alignment: Alignment.bottomTrailing) {
-                floatingMenuOverlay
             }
         
         return withOverlays
@@ -572,7 +584,8 @@ struct HomeView: View {
     private var progressSection: some View {
         // Use selected date's burned calories, or today's if viewing today
         // This ensures the progress card shows correct data when viewing historical dates
-        let burnedCalories = Calendar.current.isDateInToday(viewModel.selectedDate) 
+        let isToday = Calendar.current.isDateInToday(viewModel.selectedDate)
+        let burnedCalories = isToday 
             ? viewModel.todaysBurnedCalories 
             : viewModel.selectedDateBurnedCalories
         

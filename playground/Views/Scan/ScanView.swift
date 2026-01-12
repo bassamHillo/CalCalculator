@@ -42,20 +42,6 @@ struct ScanView: View {
                 .navigationTitle(localizationManager.localizedString(for: AppStrings.Scanning.scanMeal))
                     .id("scan-meal-title-\(localizationManager.currentLanguage)")
                 .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .navigationBarLeading) {
-                        if onDismiss != nil {
-                            Button {
-                                onDismiss?()
-                            } label: {
-                                Image(systemName: "xmark")
-                                    .font(.body)
-                                    .fontWeight(.medium)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                    }
-                }
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
                     // When app returns from settings, viewModel state is automatically maintained
                     // The view will automatically show the correct screen based on viewModel state
