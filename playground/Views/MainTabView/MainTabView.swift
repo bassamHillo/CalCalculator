@@ -131,10 +131,10 @@ struct MainTabView: View {
     }
     
     var body: some View {
-        // CRITICAL: Log when MainTabView body is computed to understand what triggers recomputation
-        let timestamp = Date()
-        AppLogger.forClass("MainTabView").info("🔍 [body] MainTabView body computed at \(timestamp)")
-        AppLogger.forClass("MainTabView").info("🔍 [body] Stack trace: \(Thread.callStackSymbols.prefix(5).joined(separator: "\n"))")
+        #if DEBUG
+        // Debug logging only in development builds
+        let _ = AppLogger.forClass("MainTabView").debug("body computed")
+        #endif
         
         // Explicitly reference currentLanguage to ensure SwiftUI tracks the dependency
         let _ = localizationManager.currentLanguage
@@ -372,7 +372,8 @@ struct MainTabView: View {
             
             // CRITICAL: Update delegate's hasActiveDiet when it changes
             // This ensures tab index mapping is correct
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                guard let self = self else { return }
                 if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
                    let window = windowScene.windows.first(where: { $0.isKeyWindow }) ?? windowScene.windows.first,
                    let tabBarController = self.findTabBarController(in: window.rootViewController),
@@ -425,7 +426,8 @@ struct MainTabView: View {
     // MARK: - Tab Bar Tap Detection
     private func setupTabBarTapDetection() {
         // Find the tab bar controller and set up delegate
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+            guard let self = self else { return }
             self.findAndSetupTabBarController()
         }
     }
@@ -434,7 +436,8 @@ struct MainTabView: View {
         guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
               let window = windowScene.windows.first(where: { $0.isKeyWindow }) ?? windowScene.windows.first else {
             // Retry after delay
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                guard let self = self else { return }
                 self.findAndSetupTabBarController()
             }
             return
@@ -443,7 +446,8 @@ struct MainTabView: View {
         // Find UITabBarController
         guard let tabBarController = self.findTabBarController(in: window.rootViewController) else {
             // Retry after delay if not found
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                guard let self = self else { return }
                 self.findAndSetupTabBarController()
             }
             return
