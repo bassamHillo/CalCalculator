@@ -69,10 +69,10 @@ struct ContentView: View {
                         saveGeneratedGoals(result.goals)
                         
                         // Save userName if available
+                        let settings = UserSettings.shared
                         if let userName = result.answers["name_input"] as? [String: Any],
                            let nameValue = userName["value"] as? String,
                            !nameValue.isEmpty {
-                            let settings = UserSettings.shared
                             settings.userName = nameValue
                             // Also save to UserProfileRepository so it shows in Profile view
                             UserProfileRepository.shared.setFirstName(nameValue)
@@ -80,7 +80,6 @@ struct ContentView: View {
                         }
                         
                         // Mark onboarding as completed and save the completion date
-                        let settings = UserSettings.shared
                         settings.completeOnboarding()
                         // Set the onboarding completion date from the result
                         if settings.onboardingCompletedDate == nil {
