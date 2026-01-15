@@ -82,13 +82,15 @@ final class SubscriptionManager: ObservableObject {
             print("📦 [SubscriptionManager] Loading products for IDs: \(productIDs)")
             print("📦 [SubscriptionManager] Bundle ID: \(Bundle.main.bundleIdentifier ?? "unknown")")
             
-            // Sync with App Store first (important for TestFlight/Production)
+            // Sync with App Store first (with timeout to prevent hanging)
             print("📦 [SubscriptionManager] Syncing with App Store...")
             do {
-                try await AppStore.sync()
+                try await withTimeout(seconds: 5) {
+                    try await AppStore.sync()
+                }
                 print("📦 [SubscriptionManager] App Store sync completed")
             } catch {
-                print("⚠️ [SubscriptionManager] App Store sync failed (continuing anyway): \(error)")
+                print("⚠️ [SubscriptionManager] App Store sync failed or timed out (continuing anyway): \(error)")
             }
             
             print("📦 [SubscriptionManager] Requesting products from StoreKit...")
@@ -295,4 +297,27 @@ final class SubscriptionManager: ObservableObject {
         try? await AppStore.sync()
         await checkSubscriptionStatus()
     }
+}
+
+// MARK: - Timeout Helper
+
+private func withTimeout<T>(seconds: Double, operation: @escaping () async throws -> T) async throws -> T {
+    try await withThrowingTaskGroup(of: T.self) { group in
+        group.addTask {
+            try await operation()
+        }
+        
+        group.addTask {
+            try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+            throw TimeoutError()
+        }
+        
+        let result = try await group.next()!
+        group.cancelAll()
+        return result
+    }
+}
+
+private struct TimeoutError: Error {
+    var localizedDescription: String { "Operation timed out" }
 }

@@ -10,6 +10,7 @@
 		CEB315012F01500600986732 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CEB315002F01500600986732 /* WidgetKit.framework */; };
 		CEB315032F01500600986732 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CEB315022F01500600986732 /* SwiftUI.framework */; };
 		CEB315142F01500700986732 /* CaloriesCalculatorWidgetsExtensionExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = CEB314FE2F01500600986732 /* CaloriesCalculatorWidgetsExtensionExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		CEE479EA2F190440001482F9 /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CEE479E92F190440001482F9 /* StoreKit.framework */; };
 		FF8901234567123456789013 /* SDK in Frameworks */ = {isa = PBXBuildFile; productRef = FF8901234567123456789012 /* SDK */; };
 /* End PBXBuildFile section */
 
@@ -50,6 +51,7 @@
 		CEB314FE2F01500600986732 /* CaloriesCalculatorWidgetsExtensionExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = CaloriesCalculatorWidgetsExtensionExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		CEB315002F01500600986732 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		CEB315022F01500600986732 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		CEE479E92F190440001482F9 /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -89,6 +91,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				FF8901234567123456789013 /* SDK in Frameworks */,
+				CEE479EA2F190440001482F9 /* StoreKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -135,6 +138,7 @@
 		CEB314FF2F01500600986732 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				CEE479E92F190440001482F9 /* StoreKit.framework */,
 				CEB315002F01500600986732 /* WidgetKit.framework */,
 				CEB315022F01500600986732 /* SwiftUI.framework */,
 			);
