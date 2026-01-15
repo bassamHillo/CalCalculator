@@ -216,22 +216,10 @@ struct playgroundApp: App {
                     // Debug: Log diet plans on app startup
                     await logDietPlansOnStartup()
                     
-                    // QA Version: In Release builds, automatically enable subscription override
-                    #if !DEBUG
-                    let settings = UserSettings.shared
-                    if !settings.debugOverrideSubscription {
-                        // First time in Release - enable override and set as subscribed
-                        settings.debugOverrideSubscription = true
-                        settings.debugIsSubscribed = true
-                        print("🔧 [QA] Release build: Auto-enabled subscription override (user starts as Pro)")
-                    }
-                    #endif
-                    
                     // Check subscription status from StoreKit
                     await SubscriptionManager.shared.checkSubscriptionStatus()
                     
-                    // Initialize subscription status on app launch (respects debug override)
-                    // This ensures debug flag works immediately
+                    // Initialize subscription status on app launch (respects debug override in DEBUG only)
                     updateSubscriptionStatus()
                 }
                 // NOTE: Subscription status is updated from SubscriptionManager (native StoreKit)
@@ -305,9 +293,11 @@ struct playgroundApp: App {
     /// Also syncs the subscription status to the widget via shared UserDefaults
     /// Stores the value in UserDefaults so it persists across app launches
     private func updateSubscriptionStatus() {
-        let settings = UserSettings.shared
         let newStatus: Bool
         
+        #if DEBUG
+        // Debug override only available in DEBUG builds
+        let settings = UserSettings.shared
         if settings.debugOverrideSubscription {
             // Debug override takes priority - use debug flag value
             newStatus = settings.debugIsSubscribed
@@ -315,6 +305,16 @@ struct playgroundApp: App {
             // Use SubscriptionManager value (native StoreKit)
             newStatus = SubscriptionManager.shared.subscriptionStatus
         }
+        #else
+        // In Release builds, ALWAYS use real StoreKit subscription status
+        // Reset any debug overrides that might have been set
+        let settings = UserSettings.shared
+        if settings.debugOverrideSubscription {
+            settings.debugOverrideSubscription = false
+            settings.debugIsSubscribed = false
+        }
+        newStatus = SubscriptionManager.shared.subscriptionStatus
+        #endif
         
         // Update state
         subscriptionStatus = newStatus
