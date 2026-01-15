@@ -54,7 +54,25 @@ final class SubscriptionManager: ObservableObject {
         
         do {
             print("📦 [SubscriptionManager] Loading products for IDs: \(productIDs)")
+            print("📦 [SubscriptionManager] Requesting products from StoreKit...")
+            
             let storeProducts = try await Product.products(for: productIDs)
+            
+            print("📦 [SubscriptionManager] StoreKit returned \(storeProducts.count) products")
+            
+            // Check if no products returned (configuration issue)
+            if storeProducts.isEmpty {
+                print("⚠️ [SubscriptionManager] No products returned! Check App Store Connect configuration:")
+                print("   - Product IDs must match exactly")
+                print("   - Products must be in 'Ready to Submit' status")
+                print("   - Paid Apps Agreement must be signed")
+                
+                await MainActor.run {
+                    self.loadError = "Subscription plans are currently unavailable. Please try again later."
+                    self.isLoading = false
+                }
+                return
+            }
             
             await MainActor.run {
                 self.products = storeProducts.sorted { product1, product2 in
@@ -66,16 +84,37 @@ final class SubscriptionManager: ObservableObject {
                 self.loadError = nil
                 self.isLoading = false
             }
-            print("✅ [SubscriptionManager] Loaded \(storeProducts.count) products")
+            print("✅ [SubscriptionManager] Loaded \(storeProducts.count) products successfully")
             
             // Log each product for debugging
             for product in storeProducts {
                 print("   📱 Product: \(product.id) - \(product.displayName) - \(product.displayPrice)")
             }
         } catch {
-            print("❌ [SubscriptionManager] Failed to load products: \(error.localizedDescription)")
+            print("❌ [SubscriptionManager] Failed to load products: \(error)")
+            print("❌ [SubscriptionManager] Error details: \(error.localizedDescription)")
+            
+            // Provide more specific error message
+            let errorMessage: String
+            if let storeKitError = error as? StoreKitError {
+                switch storeKitError {
+                case .networkError:
+                    errorMessage = "Network error. Please check your internet connection."
+                case .systemError:
+                    errorMessage = "System error. Please restart the app."
+                case .userCancelled:
+                    errorMessage = "Request cancelled."
+                case .notAvailableInStorefront:
+                    errorMessage = "Subscriptions not available in your region."
+                default:
+                    errorMessage = "Unable to load subscription plans. Please try again."
+                }
+            } else {
+                errorMessage = "Unable to load subscription plans. Please check your internet connection."
+            }
+            
             await MainActor.run {
-                self.loadError = "Unable to load subscription plans. Please check your internet connection and try again."
+                self.loadError = errorMessage
                 self.isLoading = false
             }
         }
