@@ -162,8 +162,11 @@ struct OnboardingWebViewRepresentable: UIViewRepresentable, Equatable {
             guard message.name == "onboarding" else { return }
             guard let body = message.body as? [String: Any] else { return }
             
+            // Sanitize the body to prevent NaN/Infinity JSON serialization crash
+            let sanitizedBody = sanitizeDictionaryForJSON(body)
+            
             // Security: Validate payload size (max 1MB to prevent memory exhaustion)
-            if let jsonData = try? JSONSerialization.data(withJSONObject: body, options: []),
+            if let jsonData = try? JSONSerialization.data(withJSONObject: sanitizedBody, options: []),
                jsonData.count > 1_048_576 { // 1MB limit
                 #if DEBUG
                 print("⚠️ [OnboardingWebView] Payload too large: \(jsonData.count) bytes")
@@ -375,11 +378,12 @@ struct OnboardingWebViewRepresentable: UIViewRepresentable, Equatable {
                     #endif
                     
                     // Send success response back to JavaScript
+                    // Use sanitized values to prevent NaN JSON serialization crash
                     let goalsData: [String: Any] = [
                         "calories": goals.calories,
-                        "proteinG": goals.proteinG,
-                        "carbsG": goals.carbsG,
-                        "fatG": goals.fatG
+                        "proteinG": sanitizeForJSON(goals.proteinG),
+                        "carbsG": sanitizeForJSON(goals.carbsG),
+                        "fatG": sanitizeForJSON(goals.fatG)
                     ]
                     
                     let response: [String: Any] = [
@@ -409,6 +413,38 @@ struct OnboardingWebViewRepresentable: UIViewRepresentable, Equatable {
                     }
                 }
             }
+        }
+        
+        /// Sanitize a Double value for JSON serialization (handles NaN and Infinity)
+        private func sanitizeForJSON(_ value: Double) -> Double {
+            if value.isNaN || value.isInfinite {
+                return 0.0
+            }
+            return value
+        }
+        
+        /// Recursively sanitize a dictionary for JSON serialization (handles NaN and Infinity)
+        private func sanitizeDictionaryForJSON(_ dict: [String: Any]) -> [String: Any] {
+            var result: [String: Any] = [:]
+            for (key, value) in dict {
+                result[key] = sanitizeValueForJSON(value)
+            }
+            return result
+        }
+        
+        /// Sanitize any value for JSON serialization
+        private func sanitizeValueForJSON(_ value: Any) -> Any {
+            if let doubleValue = value as? Double {
+                if doubleValue.isNaN || doubleValue.isInfinite {
+                    return 0.0
+                }
+                return doubleValue
+            } else if let dict = value as? [String: Any] {
+                return sanitizeDictionaryForJSON(dict)
+            } else if let array = value as? [Any] {
+                return array.map { sanitizeValueForJSON($0) }
+            }
+            return value
         }
         
         /// Legacy method: Post goals to JavaScript using CustomEvent (for backward compatibility)
