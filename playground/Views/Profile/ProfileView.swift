@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import SDK
 
 struct ProfileView: View {
     
@@ -14,8 +13,8 @@ struct ProfileView: View {
     
     // Use @State with @Observable - SwiftUI will automatically track changes to viewModel properties
     @State private var viewModel = ProfileViewModel()
-    @Environment(TheSDK.self) private var sdk
     @Environment(\.localization) private var localization
+    @Environment(\.isSubscribed) private var isSubscribed
     @ObservedObject private var localizationManager = LocalizationManager.shared
     // Observe UserSettings directly for reactive updates
     @Bindable private var settings = UserSettings.shared
@@ -340,9 +339,9 @@ struct ProfileView: View {
                             .font(.body)
                             .foregroundColor(.primary)
                         Spacer()
-                        Text(sdk.isSubscribed ? localizationManager.localizedString(for: AppStrings.Profile.premium) : localizationManager.localizedString(for: AppStrings.Profile.free))
+                        Text(isSubscribed ? localizationManager.localizedString(for: AppStrings.Profile.premium) : localizationManager.localizedString(for: AppStrings.Profile.free))
                             .font(.body)
-                            .foregroundColor(sdk.isSubscribed ? .green : .gray)
+                            .foregroundColor(isSubscribed ? .green : .gray)
                     }
                     .padding(.vertical, 12)
                     .padding(.horizontal, 16)

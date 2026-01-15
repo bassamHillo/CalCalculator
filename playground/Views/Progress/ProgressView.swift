@@ -7,7 +7,6 @@
 
 import SwiftUI
 import Charts
-import SDK
 
 struct ProgressDashboardView: View {
     // CRITICAL: We need @Bindable for bindings ($viewModel.showWeightProgressSheet, etc.)
@@ -16,7 +15,6 @@ struct ProgressDashboardView: View {
     
     @Environment(\.isSubscribed) private var isSubscribed
     @Environment(\.modelContext) private var modelContext
-    @Environment(TheSDK.self) private var sdk
     @ObservedObject private var localizationManager = LocalizationManager.shared
     
     // CRITICAL: Don't observe UserSettings directly - access it directly instead

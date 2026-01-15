@@ -7,7 +7,6 @@
 
 import SwiftUI
 import SwiftData
-import SDK
 
 enum QuickLogType: String, CaseIterable {
     case food = "food"
@@ -39,7 +38,6 @@ struct QuickLogView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Environment(\.isSubscribed) private var isSubscribed
-    @Environment(TheSDK.self) private var sdk
     @ObservedObject private var localizationManager = LocalizationManager.shared
 
     @State private var selectedType: QuickLogType = .food

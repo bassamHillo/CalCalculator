@@ -6,7 +6,6 @@
 
 import SwiftUI
 import SwiftData
-import SDK
 
 struct DietQuickSetupView: View {
     @Environment(\.dismiss) private var dismiss

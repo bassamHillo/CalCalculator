@@ -8,13 +8,11 @@
 import SwiftUI
 import SwiftData
 import PDFKit
-import SDK
 
 struct DataExportView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Environment(\.isSubscribed) private var isSubscribed
-    @Environment(TheSDK.self) private var sdk
     @ObservedObject private var localizationManager = LocalizationManager.shared
     
     // User settings for weight units

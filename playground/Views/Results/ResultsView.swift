@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import SDK
 
 struct ResultsView: View {
     @Bindable var viewModel: ScanViewModel
@@ -16,10 +15,8 @@ struct ResultsView: View {
     @State private var showingFixResult = false
     @State private var foodHintText = ""
     @State private var showPaywall = false
-    @State private var showDeclineConfirmation = false
     @Environment(\.dismiss) private var dismiss
     @Environment(\.isSubscribed) private var isSubscribed
-    @Environment(TheSDK.self) private var sdk
     @ObservedObject private var localizationManager = LocalizationManager.shared
 
     /// Callback to notify parent when meal is saved
