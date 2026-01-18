@@ -1072,8 +1072,11 @@
     </svg>
 
     <!-- JS injected exactly like splash_blue.html -->
+    <!-- TEMPORARY FIX: Race condition workaround for local onboarding -->
+    <!-- TODO: Remove when onboarding is migrated to SDK (like paywall) -->
     <script>
       // Legacy globals and start stub to avoid race before onboarding.js loads
+      // This is a temporary fix until onboarding is served by the SDK
       (function () {
         window.SESSION_ID = window.SESSION_ID || "";
         window.CID = window.CID || "";

@@ -2517,8 +2517,9 @@ function showGoalsError(message, apiUrl) {
     }
   };
 
-  // Legacy global exports to support older native bridge calls
+  // TEMPORARY FIX: Legacy global exports to support older native bridge calls
   // Some native code still calls start(...) directly or reads SESSION_ID globally.
+  // TODO: Remove when onboarding is migrated to SDK (like paywall) - SDK will handle this
   window.start = window.OnboardingWeb.start;
   window.SESSION_ID = SESSION_ID;
   window.USERID = USERID;
@@ -2534,7 +2535,8 @@ function showGoalsError(message, apiUrl) {
     __handleEvent__,
   };
 
-  // If native called start() before onboarding.js loaded, replay it now
+  // TEMPORARY FIX: If native called start() before onboarding.js loaded, replay it now
+  // TODO: Remove when onboarding is migrated to SDK - SDK will handle race conditions
   if (window.__pendingOnboardingStartArgs) {
     try {
       window.OnboardingWeb.start.apply(null, window.__pendingOnboardingStartArgs);
