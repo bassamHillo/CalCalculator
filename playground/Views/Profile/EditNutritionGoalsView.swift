@@ -121,6 +121,19 @@ struct EditNutritionGoalsView: View {
                 tempFat = viewModel.fatGoal
             }
         }
+        // Refresh temp values when goals are auto-generated
+        .onChange(of: viewModel.calorieGoal) { _, newValue in
+            tempCalories = newValue
+        }
+        .onChange(of: viewModel.proteinGoal) { _, newValue in
+            tempProtein = newValue
+        }
+        .onChange(of: viewModel.carbsGoal) { _, newValue in
+            tempCarbs = newValue
+        }
+        .onChange(of: viewModel.fatGoal) { _, newValue in
+            tempFat = newValue
+        }
     }
     
     // MARK: - Goal Status Header
@@ -219,15 +232,19 @@ struct EditNutritionGoalsView: View {
                     await viewModel.autoGenerateMacros()
                 }
             } label: {
-                HStack {
+                HStack(spacing: 8) {
                     if viewModel.isGeneratingMacros {
                         ProgressView()
                             .progressViewStyle(CircularProgressViewStyle(tint: .white))
                             .scaleEffect(0.8)
+                    } else if viewModel.macroGenerationSuccess {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.white)
                     } else {
                         Image(systemName: "sparkles")
                     }
-                    Text(viewModel.isGeneratingMacros ? "Generating..." : "Auto-Generate Based on Goals")
+                    
+                    Text(buttonText)
                 }
                 .font(.headline)
                 .foregroundColor(.white)
@@ -235,27 +252,72 @@ struct EditNutritionGoalsView: View {
                 .padding(.vertical, 14)
                 .background(
                     LinearGradient(
-                        colors: viewModel.isGeneratingMacros ? [.gray, .gray] : [.blue, .purple],
+                        colors: buttonGradientColors,
                         startPoint: .leading,
                         endPoint: .trailing
                     )
                 )
                 .cornerRadius(12)
+                .animation(.easeInOut(duration: 0.3), value: viewModel.isGeneratingMacros)
+                .animation(.easeInOut(duration: 0.3), value: viewModel.macroGenerationSuccess)
             }
             .disabled(viewModel.isGeneratingMacros)
             
-            if let error = viewModel.macroGenerationError {
-                Text(String(format: localizationManager.localizedString(for: AppStrings.Common.errorColon), error))
-                    .font(.caption)
+            // Status text below button
+            Group {
+                if let error = viewModel.macroGenerationError {
+                    HStack(spacing: 4) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.caption)
+                        Text(error)
+                            .font(.caption)
+                    }
                     .foregroundColor(.red)
                     .multilineTextAlignment(.center)
-            } else {
-                Text(localizationManager.localizedString(for: AppStrings.Profile.calculatesOptimalMacros))
-                    .id("optimal-macros-\(localizationManager.currentLanguage)")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
+                    .onTapGesture {
+                        viewModel.clearMacroGenerationError()
+                    }
+                } else if viewModel.macroGenerationSuccess {
+                    HStack(spacing: 4) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.caption)
+                        Text("Macros updated successfully!")
+                            .font(.caption)
+                    }
+                    .foregroundColor(.green)
+                    .transition(.opacity.combined(with: .scale))
+                } else {
+                    Text(localizationManager.localizedString(for: AppStrings.Profile.calculatesOptimalMacros))
+                        .id("optimal-macros-\(localizationManager.currentLanguage)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                }
             }
+            .animation(.easeInOut(duration: 0.3), value: viewModel.macroGenerationError)
+            .animation(.easeInOut(duration: 0.3), value: viewModel.macroGenerationSuccess)
+        }
+    }
+    
+    // MARK: - Button Helpers
+    
+    private var buttonText: String {
+        if viewModel.isGeneratingMacros {
+            return "Generating..."
+        } else if viewModel.macroGenerationSuccess {
+            return "Generated!"
+        } else {
+            return "Auto-Generate Based on Goals"
+        }
+    }
+    
+    private var buttonGradientColors: [Color] {
+        if viewModel.isGeneratingMacros {
+            return [.gray, .gray]
+        } else if viewModel.macroGenerationSuccess {
+            return [.green, .green.opacity(0.8)]
+        } else {
+            return [.blue, .purple]
         }
     }
     
@@ -420,11 +482,6 @@ struct EditNutritionGoalsView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button(localizationManager.localizedString(for: AppStrings.Common.save)) {
                         viewModel.calorieGoal = tempCalories
-                        if viewModel.autoAdjustMacros {
-                            Task {
-                                await viewModel.autoGenerateMacros()
-                            }
-                        }
                         isEditingCalories = false
                     }
                     .id("save-calories-\(localizationManager.currentLanguage)")
