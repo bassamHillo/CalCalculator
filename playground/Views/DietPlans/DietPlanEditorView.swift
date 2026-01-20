@@ -6,7 +6,6 @@
 
 import SwiftUI
 import SwiftData
-import SDK
 
 /// Lightweight struct to hold meal data without SwiftData auto-insertion
 struct ScheduledMealData: Identifiable {
@@ -48,7 +47,6 @@ struct DietPlanEditorView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Environment(\.isSubscribed) private var isSubscribed
-    @Environment(TheSDK.self) private var sdk
     @Query(sort: \DietPlan.createdAt) private var allDietPlans: [DietPlan]
     @ObservedObject private var localizationManager = LocalizationManager.shared
     
@@ -66,7 +64,6 @@ struct DietPlanEditorView: View {
     @State private var showNoMealsAlert = false
     @State private var showDeleteMealConfirmation = false
     @State private var mealDataToDelete: ScheduledMealData?
-    @State private var showingPaywall = false
     @State private var isSaving = false
     @FocusState private var isNameFocused: Bool
     @FocusState private var isCalorieGoalFocused: Bool
@@ -170,9 +167,6 @@ struct DietPlanEditorView: View {
                     }
                 }
             )
-        }
-        .fullScreenCover(isPresented: $showingPaywall) {
-            paywallView
         }
         .alert(localizationManager.localizedString(for: AppStrings.DietPlan.mealsRequired), isPresented: $showNoMealsAlert) {
             Button(localizationManager.localizedString(for: AppStrings.Common.ok), role: .cancel) {}
@@ -477,13 +471,7 @@ struct DietPlanEditorView: View {
             return
         }
         
-        // Check premium subscription before saving
-        guard isSubscribed else {
-            showingPaywall = true
-            HapticManager.shared.notification(.warning)
-            return
-        }
-        
+        // All features are free
         isSaving = true
         defer { isSaving = false }
         
@@ -550,21 +538,6 @@ struct DietPlanEditorView: View {
             }
         }
         HapticManager.shared.notification(.success)
-    }
-    
-    // MARK: - Paywall View
-    
-    private var paywallView: some View {
-        SDKView(
-            model: sdk,
-            page: .splash,
-            show: paywallBinding(
-                showPaywall: $showingPaywall,
-                sdk: sdk
-            ),
-            backgroundColor: .white,
-            ignoreSafeArea: true
-        )
     }
 }
 

@@ -7,7 +7,6 @@
 
 import SwiftUI
 import SwiftData
-import SDK
 
 enum QuickLogType: String, CaseIterable {
     case food = "food"
@@ -39,13 +38,11 @@ struct QuickLogView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Environment(\.isSubscribed) private var isSubscribed
-    @Environment(TheSDK.self) private var sdk
     @ObservedObject private var localizationManager = LocalizationManager.shared
 
     @State private var selectedType: QuickLogType = .food
     @State private var viewModel: LogExperienceViewModel
     @State private var repository: MealRepository
-    @State private var showPaywall = false
 
     // Food quick log state
     @State private var foodDescription: String = ""
@@ -134,15 +131,6 @@ struct QuickLogView: View {
                 Button(localizationManager.localizedString(for: AppStrings.Common.ok)) { }
             } message: {
                 Text(errorMessage)
-            }
-            .fullScreenCover(isPresented: $showPaywall) {
-                SDKView(
-                    model: sdk,
-                    page: .splash,
-                    show: paywallBinding(showPaywall: $showPaywall, sdk: sdk),
-                    backgroundColor: .white,
-                    ignoreSafeArea: true
-                )
             }
         }
     }
@@ -455,17 +443,8 @@ struct QuickLogView: View {
                 showSuccess = true
             }
         } else {
-            // Check free exercise save limit for non-subscribed users
+            // All features are free - save exercise
             let limitManager = ExerciseSaveLimitManager.shared
-            
-            if !isSubscribed {
-                // Check if user can save an exercise
-                guard limitManager.canSaveExercise(isSubscribed: false) else {
-                    // No free exercise saves left - show paywall
-                    showPaywall = true
-                    return
-                }
-            }
             
             // Save exercise using repository pattern with proper error handling
             do {

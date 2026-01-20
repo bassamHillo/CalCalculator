@@ -5,7 +5,6 @@
 //  CalAI Clone - Main home screen
 //
 
-import SDK
 import SwiftUI
 import SwiftData
 import UserNotifications
@@ -19,7 +18,6 @@ struct HomeView: View {
     var onSwitchToMyDiet: () -> Void
 
     @Environment(\.isSubscribed) private var isSubscribed
-    @Environment(TheSDK.self) private var sdk
     @Environment(\.locale) private var locale
     @ObservedObject private var localizationManager = LocalizationManager.shared
     
@@ -35,7 +33,6 @@ struct HomeView: View {
     @State private var confettiCounter = 0
     @State private var showBadgeAlert = false
     @State private var showingCreateDiet = false
-    @State private var showingPaywall = false
     @State private var showingDietWelcome = false
     @State private var showDietPlansSheet = false
     @Environment(\.modelContext) private var modelContext
@@ -225,15 +222,6 @@ struct HomeView: View {
                     // If no plan, show list to create one
                     DietPlansListView()
                 }
-            }
-            .fullScreenCover(isPresented: $showingPaywall) {
-                SDKView(
-                    model: sdk,
-                    page: .splash,
-                    show: paywallBinding(showPaywall: $showingPaywall, sdk: sdk),
-                    backgroundColor: .white,
-                    ignoreSafeArea: true
-                )
             }
         
         let withOverlays = withSheets
@@ -482,8 +470,6 @@ struct HomeView: View {
                         // Active plan exists - switch to MyDiet tab
                         onSwitchToMyDiet()
                     }
-                } else {
-                    showingPaywall = true
                 }
             }
         )
@@ -607,8 +593,6 @@ struct HomeView: View {
                         // Active plan exists - switch to MyDiet tab
                         onSwitchToMyDiet()
                     }
-                } else {
-                    showingPaywall = true
                 }
             }
             .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
@@ -619,9 +603,6 @@ struct HomeView: View {
                     selectedDietPlan = plan
                     showingEditDietPlan = true
                 }
-            }
-            .onReceive(NotificationCenter.default.publisher(for: .showPaywall)) { _ in
-                showingPaywall = true
             }
     }
 

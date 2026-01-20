@@ -6,13 +6,11 @@
 
 import SwiftUI
 import SwiftData
-import SDK
 
 struct DietQuickSetupView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Environment(\.isSubscribed) private var isSubscribed
-    @Environment(TheSDK.self) private var sdk
     @ObservedObject private var localizationManager = LocalizationManager.shared
     
     @State private var currentStep = 0
@@ -21,7 +19,6 @@ struct DietQuickSetupView: View {
     @State private var mealsData: [ScheduledMealData] = [] // Use data struct instead of @Model
     @State private var showingMealEditor = false
     @State private var editingMealData: ScheduledMealData?
-    @State private var showingPaywall = false
     @State private var isSaving = false
     
     private var dietPlanRepository: DietPlanRepository {
@@ -98,9 +95,6 @@ struct DietQuickSetupView: View {
                         showingMealEditor = false
                     }
                 )
-            }
-            .fullScreenCover(isPresented: $showingPaywall) {
-                paywallView
             }
         }
     }
@@ -577,13 +571,7 @@ struct DietQuickSetupView: View {
         // Prevent double-taps from triggering multiple saves
         guard !isSaving else { return }
         
-        // Check premium subscription before saving
-        guard isSubscribed else {
-            showingPaywall = true
-            HapticManager.shared.notification(.warning)
-            return
-        }
-        
+        // All features are free
         isSaving = true
         defer { isSaving = false }
         
@@ -620,21 +608,6 @@ struct DietQuickSetupView: View {
             // Show error to user if needed
             HapticManager.shared.notification(.error)
         }
-    }
-    
-    // MARK: - Paywall View
-    
-    private var paywallView: some View {
-        SDKView(
-            model: sdk,
-            page: .splash,
-            show: paywallBinding(
-                showPaywall: $showingPaywall,
-                sdk: sdk
-            ),
-            backgroundColor: .white,
-            ignoreSafeArea: true
-        )
     }
 }
 

@@ -10,7 +10,6 @@
 import Charts
 import SwiftUI
 import SwiftData
-import SDK
 
 // MARK: - MyDietView
 
@@ -24,7 +23,6 @@ struct MyDietView: View {
     
     @Environment(\.modelContext) private var modelContext
     @Environment(\.isSubscribed) private var isSubscribed
-    @Environment(TheSDK.self) private var sdk
     
     // MARK: - State
     
@@ -35,7 +33,6 @@ struct MyDietView: View {
     @State private var showingInsights = false
     @State private var showingPlansList = false
     @State private var showingPlanSwitcher = false
-    @State private var showingPaywall = false
     @State private var selectedMealForAction: ScheduledMeal?
     
     @ObservedObject private var localizationManager = LocalizationManager.shared
@@ -143,9 +140,6 @@ struct MyDietView: View {
                     await viewModel.loadAdherenceData()
                 }
             }
-        }
-        .fullScreenCover(isPresented: $showingPaywall) {
-            paywallView
         }
         .onChange(of: viewModel.selectedDate) { _, _ in
             Task {
@@ -298,12 +292,7 @@ struct MyDietView: View {
     // MARK: - Activate Plan
     
     private func activatePlan(_ plan: DietPlan) {
-        guard isSubscribed else {
-            showingPaywall = true
-            HapticManager.shared.notification(.warning)
-            return
-        }
-        
+        // All features are free
         do {
             // Use repository to activate plan (handles deactivating others)
             try dietPlanRepository.activatePlan(plan)
@@ -872,21 +861,6 @@ struct MyDietView: View {
             .background(Color(.secondarySystemGroupedBackground))
             .cornerRadius(12)
         }
-    }
-    
-    // MARK: - Paywall View
-    
-    private var paywallView: some View {
-        SDKView(
-            model: sdk,
-            page: .splash,
-            show: paywallBinding(
-                showPaywall: $showingPaywall,
-                sdk: sdk
-            ),
-            backgroundColor: .white,
-            ignoreSafeArea: true
-        )
     }
 }
 

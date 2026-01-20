@@ -7,7 +7,6 @@
 
 import SwiftUI
 import PhotosUI
-import SDK
 
 struct ScanView: View {
     @Bindable var viewModel: ScanViewModel
@@ -15,9 +14,7 @@ struct ScanView: View {
     @ObservedObject private var localizationManager = LocalizationManager.shared
     
     @Environment(\.isSubscribed) private var isSubscribed
-    @Environment(TheSDK.self) private var sdk
     
-    @State private var showPaywall = false
     @State private var previousViewState: ViewState? // Store previous view state before opening settings
     
     enum ViewState {
@@ -65,15 +62,6 @@ struct ScanView: View {
                     errorAlertActions
                 } message: {
                     errorAlertMessage
-                }
-                .fullScreenCover(isPresented: $showPaywall) {
-                    SDKView(
-                        model: sdk,
-                        page: .splash,
-                        show: paywallBinding(showPaywall: $showPaywall, sdk: sdk),
-                        backgroundColor: .white,
-                        ignoreSafeArea: true
-                    )
                 }
         }
     }
@@ -275,38 +263,9 @@ struct ScanView: View {
     }
     
     private func analyzeImage() {
-        // Check free analysis limit for non-subscribed users
-        let limitManager = AnalysisLimitManager.shared
+        // All features are free - no limit check needed
         guard let image = viewModel.selectedImage else { return }
         
-        if !isSubscribed {
-            // Check if user can perform analysis
-            guard limitManager.canPerformAnalysis(isSubscribed: false) else {
-                // No free analyses left - show paywall
-                showPaywall = true
-                return
-            }
-            
-            // Record analysis BEFORE starting to prevent race condition
-            // This ensures only one free analysis can be in progress at a time
-            guard limitManager.recordAnalysis() else {
-                // Limit was reached between check and record (shouldn't happen, but handle gracefully)
-                showPaywall = true
-                return
-            }
-            
-            // Start analysis
-            viewModel.isAnalyzing = true
-            viewModel.analysisProgress = 0.1
-            Task {
-                // Re-check subscription status before analyzing (in case user subscribed)
-                // If user subscribed during the check, they get unlimited analyses
-                await viewModel.analyzeImage(image)
-            }
-            return
-        }
-        
-        // Subscribed users - proceed normally
         viewModel.isAnalyzing = true
         viewModel.analysisProgress = 0.1
         Task {

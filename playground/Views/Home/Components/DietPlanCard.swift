@@ -117,11 +117,8 @@ struct DietPlanCard: View {
             
             // Action button
             Button {
-                if isSubscribed {
-                    showingPlansList = true
-                } else {
-                    NotificationCenter.default.post(name: .showPaywall, object: nil)
-                }
+                // All features are free
+                showingPlansList = true
             } label: {
                 HStack(spacing: 8) {
                     if !isSubscribed {

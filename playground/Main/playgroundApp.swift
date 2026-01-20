@@ -6,7 +6,6 @@
 //
 
 import Combine
-import SDK
 import SwiftData
 import SwiftUI
 import UIKit
@@ -19,10 +18,8 @@ struct playgroundApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     let modelContainer: ModelContainer
     @State private var appearanceMode: AppearanceMode
-    @State var sdk: TheSDK
     // TEMPORARY: All features are free - always subscribed (no paywall)
     @State private var subscriptionStatus: Bool = true
-    @State private var previousSubscriptionStatus: Bool = false
     @State private var currentLocale: Locale = LocalizationManager.shared.currentLocale
     @State private var currentLayoutDirection: LayoutDirection = LocalizationManager.shared.layoutDirection
 
@@ -152,68 +149,16 @@ struct playgroundApp: App {
 
         // UserDefaults read is fast, so this is fine to do synchronously
         _appearanceMode = State(initialValue: UserProfileRepository.shared.getAppearanceMode())
-        sdk = .init(
-            config: .init(
-                baseURL: Config.baseURL,
-                logOptions: .all,
-                apnsHandler: { event in
-                    switch event {
-                    case .didReceive(let notification, let details):
-                        // Handle remote notification received
-                        print("📬 [SDK] Received remote notification: \(notification)")
-                        
-                        // Handle deep links when app is opened from notification
-                        if details == .appOpened {
-                            if let urlString = notification["webviewUrl"] as? String,
-                                let url = URL(string: urlString)
-                            {
-                                print("📱 [SDK] Deep link received: \(url)")
-                                // TODO: Navigate to deep link URL
-                            }
-                        }
-                        
-                        // Handle other notification payloads
-                        // Example: Update app state, refresh data, etc.
-                        
-                    case .didFailToRegisterForNotifications(let error):
-                        // Registration failure (handled in AppDelegate)
-                        print("❌ [SDK] Failed to register for notifications: \(error)")
-                    case .didRegisterForNotifications(let token):
-                        print("✅ [SDK] Registered for notifications: \(token)")
-                        
-                    @unknown default:
-                        // Handle any other APNS events
-                        print("📱 [SDK] APNS event: \(event)")
-                        break
-                    }
-                }))
-        
-        // Suppress known system-level warnings that are harmless but noisy
-        // These warnings come from iOS frameworks (WKWebView, Network) and third-party SDKs
-        suppressSystemWarnings()
-    }
-    
-    /// Suppress known system-level warnings that are harmless
-    /// These warnings come from iOS frameworks (WKWebView, Network) and third-party SDKs
-    private func suppressSystemWarnings() {
-        // Note: System-level warnings from WKWebView and Network frameworks
-        // cannot be directly suppressed in Swift. These warnings are:
-        // 1. "Update NavigationRequestObserver tried to update multiple times per frame" - from SDK's WKWebView (paywall)
-        // 2. "nw_connection_copy_connected_local_endpoint_block_invoke" - informational network messages
-        // Both are harmless and don't affect functionality.
-        // They appear in debug logs but don't impact app performance or user experience.
     }
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .modelContainer(modelContainer)
-                .environment(sdk)  // Inject SDK using @Observable
                 .preferredColorScheme(appearanceMode.colorScheme)
                 .environment(\.localization, LocalizationManager.shared)
                 .environment(\.layoutDirection, currentLayoutDirection)
                 .environment(\.locale, currentLocale)
-                // Removed .id() to prevent view hierarchy recreation - views update via @ObservedObject
                 .onReceive(NotificationCenter.default.publisher(for: .appearanceModeChanged)) {
                     notification in
                     if let mode = notification.object as? AppearanceMode {
@@ -242,9 +187,6 @@ struct playgroundApp: App {
                             
                             // Ensure environment values are updated and notify all observers
                             LocalizationManager.shared.objectWillChange.send()
-                            
-                            // NOTE: Do NOT post another notification here - it causes infinite loop!
-                            // The notification was already posted by LocalizationManager
                         }
                     }
                 }
@@ -256,49 +198,8 @@ struct playgroundApp: App {
                     // Initialize RateUsManager to listen for successful actions
                     _ = RateUsManager.shared
                     
-                    // QA Version: In Release builds, automatically enable subscription override
-                    #if !DEBUG
-                    let settings = UserSettings.shared
-                    if !settings.debugOverrideSubscription {
-                        // First time in Release - enable override and set as subscribed
-                        settings.debugOverrideSubscription = true
-                        settings.debugIsSubscribed = true
-                        print("🔧 [QA] Release build: Auto-enabled subscription override (user starts as Pro)")
-                    }
-                    #endif
-                    
-                    // Initialize subscription status on app launch (respects debug override)
-                    // This ensures debug flag works immediately
+                    // Initialize subscription status on app launch
                     updateSubscriptionStatus()
-                }
-                // NOTE: Subscription status is ONLY updated when HTML paywall closes
-                // No automatic checks on app launch or onChange listeners
-                .onChange(of: UserSettings.shared.debugOverrideSubscription) { oldValue, newValue in
-                    // Debug override changed - update reactive state (DEVELOPER ONLY)
-                    updateSubscriptionStatus()
-                    print("🔧 Debug override subscription: \(newValue ? "enabled" : "disabled")")
-                }
-                .onChange(of: UserSettings.shared.debugIsSubscribed) { oldValue, newValue in
-                    // Debug subscription value changed - update reactive state (DEVELOPER ONLY)
-                    updateSubscriptionStatus()
-                    previousSubscriptionStatus = newValue
-                    print("🔧 Debug isSubscribed: \(newValue)")
-                }
-                .onReceive(NotificationCenter.default.publisher(for: .subscriptionStatusUpdated)) { _ in
-                    // Subscription status updated from paywall dismiss - update reactive state
-                    updateSubscriptionStatus()
-                    let wasSubscribed = previousSubscriptionStatus
-                    previousSubscriptionStatus = subscriptionStatus
-                    
-                    // If user just subscribed, reset analysis, meal save, and exercise save counts
-                    if !wasSubscribed && subscriptionStatus {
-                        AnalysisLimitManager.shared.resetAnalysisCount()
-                        MealSaveLimitManager.shared.resetMealSaveCount()
-                        ExerciseSaveLimitManager.shared.resetExerciseSaveCount()
-                        print("📱 Analysis, meal save, and exercise save counts reset due to subscription")
-                    }
-                    
-                    print("📱 Subscription status updated from paywall: \(subscriptionStatus)")
                 }
                 .onReceive(
                     NotificationCenter.default.publisher(
@@ -324,9 +225,6 @@ struct playgroundApp: App {
                     NotificationCenter.default.publisher(
                         for: UIApplication.didBecomeActiveNotification)
                 ) { _ in
-                    // NOTE: Subscription status is ONLY updated when HTML paywall closes
-                    // No automatic checks when app becomes active
-                    
                     // Check if widget updated weight and notify ProgressView
                     let appGroupIdentifier = "group.CalCalculatorAiPlaygournd.shared"
                     if let sharedDefaults = UserDefaults(suiteName: appGroupIdentifier),
@@ -340,7 +238,6 @@ struct playgroundApp: App {
 
     /// Update reactive subscription status
     /// TEMPORARY: Always returns true - all features are free (no paywall)
-    /// Also syncs the subscription status to the widget via shared UserDefaults
     private func updateSubscriptionStatus() {
         // TEMPORARY: All features are free - always subscribed
         let newStatus = true
@@ -412,5 +309,4 @@ extension Notification.Name {
     static let foodLogged = Notification.Name("foodLogged")
     static let subscriptionStatusUpdated = Notification.Name("subscriptionStatusUpdated")
     static let homeTabTapped = Notification.Name("homeTabTapped")
-    static let showPaywall = Notification.Name("showPaywall")
 }
