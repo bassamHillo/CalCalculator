@@ -12,7 +12,6 @@ struct DietPlansListView: View {
     @Query(sort: \DietPlan.createdAt, order: .reverse) private var allPlans: [DietPlan]
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.isSubscribed) private var isSubscribed
     @ObservedObject private var localizationManager = LocalizationManager.shared
     
     @State private var showingQuickSetup = false

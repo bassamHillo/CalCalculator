@@ -17,7 +17,6 @@ struct HomeView: View {
     var onMealSaved: () -> Void
     var onSwitchToMyDiet: () -> Void
 
-    @Environment(\.isSubscribed) private var isSubscribed
     @Environment(\.locale) private var locale
     @ObservedObject private var localizationManager = LocalizationManager.shared
     
@@ -462,14 +461,13 @@ struct HomeView: View {
                 showLogHistorySheet = true
             },
             onViewDiet: {
-                if isSubscribed {
-                    if activeDietPlans.isEmpty {
-                        // No active plan - show create plan screen
-                        showDietPlansSheet = true
-                    } else {
-                        // Active plan exists - switch to MyDiet tab
-                        onSwitchToMyDiet()
-                    }
+                // App is free - always allow access
+                if activeDietPlans.isEmpty {
+                    // No active plan - show create plan screen
+                    showDietPlansSheet = true
+                } else {
+                    // Active plan exists - switch to MyDiet tab
+                    onSwitchToMyDiet()
                 }
             }
         )
@@ -585,14 +583,13 @@ struct HomeView: View {
             .contentShape(Rectangle())
             .onTapGesture {
                 HapticManager.shared.impact(.light)
-                if isSubscribed {
-                    if activeDietPlans.isEmpty {
-                        // No active plan - show create plan screen
-                        showDietPlansSheet = true
-                    } else {
-                        // Active plan exists - switch to MyDiet tab
-                        onSwitchToMyDiet()
-                    }
+                // App is free - always allow access
+                if activeDietPlans.isEmpty {
+                    // No active plan - show create plan screen
+                    showDietPlansSheet = true
+                } else {
+                    // Active plan exists - switch to MyDiet tab
+                    onSwitchToMyDiet()
                 }
             }
             .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))

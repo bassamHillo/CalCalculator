@@ -13,7 +13,6 @@ struct ProgressDashboardView: View {
     // But we'll prevent unnecessary updates by using stable IDs and not observing UserSettings directly
     @Bindable var viewModel: ProgressViewModel
     
-    @Environment(\.isSubscribed) private var isSubscribed
     @Environment(\.modelContext) private var modelContext
     @ObservedObject private var localizationManager = LocalizationManager.shared
     
@@ -46,7 +45,7 @@ struct ProgressDashboardView: View {
                                     startWeight: viewModel.weightHistory.first?.weight ?? (viewModel.useMetricUnits ? UserSettings.shared.currentWeight : UserSettings.shared.currentWeight * 2.20462),
                                     goalWeight: viewModel.displayTargetWeight,
                                     daysUntilCheck: viewModel.daysUntilNextWeightCheck,
-                                    isSubscribed: isSubscribed,
+                                    isSubscribed: true,
                                     onWeightSave: { newWeight in
                                         Task {
                                             await viewModel.updateWeight(newWeight)
@@ -86,7 +85,7 @@ struct ProgressDashboardView: View {
                                     DailyCaloriesCard(
                                         averageCalories: viewModel.averageCalories,
                                         calorieGoal: UserSettings.shared.calorieGoal,
-                                        isSubscribed: isSubscribed,
+                                        isSubscribed: true,
                                         onViewDetails: {
                                             // All features are free
                                             viewModel.showCaloriesSheet = true
@@ -114,7 +113,7 @@ struct ProgressDashboardView: View {
                                         heartRate: viewModel.heartRate,
                                         distance: viewModel.distance,
                                         sleepHours: viewModel.sleepHours,
-                                        isSubscribed: isSubscribed
+                                        isSubscribed: true
                                     )
                                 }
                             }
@@ -149,11 +148,9 @@ struct ProgressDashboardView: View {
                     sharedDefaults.set(false, forKey: "widget.weightUpdatedFromWidget")
                     sharedDefaults.removeObject(forKey: "widget.pendingWeightUpdate")
                     
-                    // Update weight if subscribed
-                    if isSubscribed {
-                        Task {
-                            await viewModel.updateWeight(newWeight)
-                        }
+                    // App is free - always update weight
+                    Task {
+                        await viewModel.updateWeight(newWeight)
                     }
                 }
                 
@@ -187,10 +184,8 @@ struct ProgressDashboardView: View {
                         sharedDefaults.set(false, forKey: "widget.weightUpdatedFromWidget")
                         sharedDefaults.removeObject(forKey: "widget.pendingWeightUpdate")
                         
-                        // Update weight if subscribed
-                        if isSubscribed {
-                            await viewModel.updateWeight(newWeight)
-                        }
+                        // App is free - always update weight
+                        await viewModel.updateWeight(newWeight)
                     }
                 }
             }
@@ -259,11 +254,9 @@ struct ProgressDashboardView: View {
             sharedDefaults.set(false, forKey: "widget.weightUpdatedFromWidget")
             sharedDefaults.removeObject(forKey: "widget.pendingWeightUpdate")
             
-            // Update weight if subscribed
-            if isSubscribed {
-                Task {
-                    await viewModel.updateWeight(newWeight)
-                }
+            // App is free - always update weight
+            Task {
+                await viewModel.updateWeight(newWeight)
             }
         }
         

@@ -22,7 +22,6 @@ struct MyDietView: View {
     // MARK: - Environment
     
     @Environment(\.modelContext) private var modelContext
-    @Environment(\.isSubscribed) private var isSubscribed
     
     // MARK: - State
     
