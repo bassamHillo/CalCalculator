@@ -118,7 +118,6 @@ struct TemplatePreviewView: View {
     
     @State private var customizing = false
     @State private var showingPaywall = false
-    @State private var showDeclineConfirmation = false
     @State private var isSaving = false
     
     private var dietPlanRepository: DietPlanRepository {
@@ -195,10 +194,6 @@ struct TemplatePreviewView: View {
         .fullScreenCover(isPresented: $showingPaywall) {
             paywallView
         }
-        .paywallDismissalOverlay(
-            showPaywall: $showingPaywall,
-            showDeclineConfirmation: $showDeclineConfirmation
-        )
     }
     
     private var paywallView: some View {
@@ -207,8 +202,7 @@ struct TemplatePreviewView: View {
             page: .splash,
             show: paywallBinding(
                 showPaywall: $showingPaywall,
-                sdk: sdk,
-                showDeclineConfirmation: $showDeclineConfirmation
+                sdk: sdk
             ),
             backgroundColor: .white,
             ignoreSafeArea: true

@@ -46,7 +46,6 @@ struct QuickLogView: View {
     @State private var viewModel: LogExperienceViewModel
     @State private var repository: MealRepository
     @State private var showPaywall = false
-    @State private var showDeclineConfirmation = false
 
     // Food quick log state
     @State private var foodDescription: String = ""
@@ -140,12 +139,11 @@ struct QuickLogView: View {
                 SDKView(
                     model: sdk,
                     page: .splash,
-                    show: paywallBinding(showPaywall: $showPaywall, sdk: sdk, showDeclineConfirmation: $showDeclineConfirmation),
+                    show: paywallBinding(showPaywall: $showPaywall, sdk: sdk),
                     backgroundColor: .white,
                     ignoreSafeArea: true
                 )
             }
-            .paywallDismissalOverlay(showPaywall: $showPaywall, showDeclineConfirmation: $showDeclineConfirmation)
         }
     }
 

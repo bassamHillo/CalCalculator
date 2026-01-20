@@ -18,7 +18,6 @@ struct ScanView: View {
     @Environment(TheSDK.self) private var sdk
     
     @State private var showPaywall = false
-    @State private var showDeclineConfirmation = false
     @State private var previousViewState: ViewState? // Store previous view state before opening settings
     
     enum ViewState {
@@ -71,12 +70,11 @@ struct ScanView: View {
                     SDKView(
                         model: sdk,
                         page: .splash,
-                        show: paywallBinding(showPaywall: $showPaywall, sdk: sdk, showDeclineConfirmation: $showDeclineConfirmation),
+                        show: paywallBinding(showPaywall: $showPaywall, sdk: sdk),
                         backgroundColor: .white,
                         ignoreSafeArea: true
                     )
                 }
-                .paywallDismissalOverlay(showPaywall: $showPaywall, showDeclineConfirmation: $showDeclineConfirmation)
         }
     }
     

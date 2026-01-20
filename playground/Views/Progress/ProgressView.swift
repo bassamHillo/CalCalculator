@@ -26,7 +26,6 @@ struct ProgressDashboardView: View {
     
     @State private var showWeightInput = false
     @State private var showPaywall = false
-    @State private var showDeclineConfirmation = false
     
     var body: some View {
         // Explicitly reference currentLanguage to ensure SwiftUI tracks the dependency
@@ -264,12 +263,11 @@ struct ProgressDashboardView: View {
                 SDKView(
                     model: sdk,
                     page: .splash,
-                    show: paywallBinding(showPaywall: $showPaywall, sdk: sdk, showDeclineConfirmation: $showDeclineConfirmation),
+                    show: paywallBinding(showPaywall: $showPaywall, sdk: sdk),
                     backgroundColor: .white,
                     ignoreSafeArea: true
                 )
             }
-            .paywallDismissalOverlay(showPaywall: $showPaywall, showDeclineConfirmation: $showDeclineConfirmation)
         }
     }
     

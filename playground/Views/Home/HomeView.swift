@@ -36,7 +36,6 @@ struct HomeView: View {
     @State private var showBadgeAlert = false
     @State private var showingCreateDiet = false
     @State private var showingPaywall = false
-    @State private var showDeclineConfirmation = false
     @State private var showingDietWelcome = false
     @State private var showDietPlansSheet = false
     @Environment(\.modelContext) private var modelContext
@@ -98,20 +97,9 @@ struct HomeView: View {
                 // Only requests if authorization status is .notDetermined (first time user sees homepage)
                 await requestNotificationPermissionIfNeeded()
                 
-                // QA: Check real subscription status from SDK for monitoring purposes
-                // This is only active in non-DEBUG builds (TestFlight/App Store)
-                #if !DEBUG
-                Task { @MainActor in
-                    do {
-                        _ = try await sdk.updateIsSubscribed()
-                        let realStatus = sdk.isSubscribed
-                        print("🔍 [QA] Real SDK subscription status: \(realStatus ? "Subscribed" : "Not Subscribed")")
-                        // Note: We don't update the debug override - this is just for QA monitoring
-                    } catch {
-                        print("⚠️ [QA] Failed to check real SDK subscription status: \(error)")
-                    }
-                }
-                #endif
+                // NOTE: QA subscription check removed due to Swift 6 concurrency requirements
+                // The SDK's updateIsSubscribed is @concurrent and causes data race warnings
+                // when called from @MainActor context with @Environment SDK reference
             }
             .onDisappear {
                 AppLogger.forClass("HomeView").warning("HomeView disappeared!")
@@ -242,7 +230,7 @@ struct HomeView: View {
                 SDKView(
                     model: sdk,
                     page: .splash,
-                    show: paywallBinding(showPaywall: $showingPaywall, sdk: sdk, showDeclineConfirmation: $showDeclineConfirmation),
+                    show: paywallBinding(showPaywall: $showingPaywall, sdk: sdk),
                     backgroundColor: .white,
                     ignoreSafeArea: true
                 )
@@ -264,7 +252,6 @@ struct HomeView: View {
                     }
                 }
             }
-            .paywallDismissalOverlay(showPaywall: $showingPaywall, showDeclineConfirmation: $showDeclineConfirmation)
             .overlay {
                 if badgeManager.showBadgeAlert, let badge = badgeManager.newlyEarnedBadge {
                     BadgeAlertView(badge: badge) {

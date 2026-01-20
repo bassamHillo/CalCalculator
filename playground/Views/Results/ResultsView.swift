@@ -16,7 +16,6 @@ struct ResultsView: View {
     @State private var showingFixResult = false
     @State private var foodHintText = ""
     @State private var showPaywall = false
-    @State private var showDeclineConfirmation = false
     @Environment(\.dismiss) private var dismiss
     @Environment(\.isSubscribed) private var isSubscribed
     @Environment(TheSDK.self) private var sdk
@@ -64,12 +63,11 @@ struct ResultsView: View {
                     SDKView(
                         model: sdk,
                         page: .splash,
-                        show: paywallBinding(showPaywall: $showPaywall, sdk: sdk, showDeclineConfirmation: $showDeclineConfirmation),
+                        show: paywallBinding(showPaywall: $showPaywall, sdk: sdk),
                         backgroundColor: .white,
                         ignoreSafeArea: true
                     )
                 }
-                .paywallDismissalOverlay(showPaywall: $showPaywall, showDeclineConfirmation: $showDeclineConfirmation)
         }
     }
 

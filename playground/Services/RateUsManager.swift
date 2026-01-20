@@ -65,7 +65,9 @@ final class RateUsManager {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.handleSuccessfulAction()
+            Task { @MainActor in
+                self?.handleSuccessfulAction()
+            }
         }
         cancellables.append(foodObserver)
         
@@ -75,7 +77,9 @@ final class RateUsManager {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.handleSuccessfulAction()
+            Task { @MainActor in
+                self?.handleSuccessfulAction()
+            }
         }
         cancellables.append(exerciseObserver)
         
@@ -85,7 +89,9 @@ final class RateUsManager {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.handleSuccessfulAction()
+            Task { @MainActor in
+                self?.handleSuccessfulAction()
+            }
         }
         cancellables.append(weightObserver)
     }

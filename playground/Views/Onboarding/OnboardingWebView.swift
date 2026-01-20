@@ -181,11 +181,14 @@ struct OnboardingWebViewRepresentable: UIViewRepresentable, Equatable {
         
         // MARK: - WKNavigationDelegate
         
-        nonisolated func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+        nonisolated func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping @MainActor @Sendable (WKNavigationActionPolicy) -> Void) {
             // CRITICAL: decisionHandler MUST be called synchronously, not asynchronously
             // Calling it asynchronously causes navigation failures and the "Update NavigationRequestObserver" warning
             // Allow all navigation within the onboarding flow
-            decisionHandler(.allow)
+            // Use MainActor.assumeIsolated since we know we're on main thread for navigation delegate
+            MainActor.assumeIsolated {
+                decisionHandler(.allow)
+            }
         }
         
         nonisolated func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {

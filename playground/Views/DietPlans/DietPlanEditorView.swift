@@ -67,7 +67,6 @@ struct DietPlanEditorView: View {
     @State private var showDeleteMealConfirmation = false
     @State private var mealDataToDelete: ScheduledMealData?
     @State private var showingPaywall = false
-    @State private var showDeclineConfirmation = false
     @State private var isSaving = false
     @FocusState private var isNameFocused: Bool
     @FocusState private var isCalorieGoalFocused: Bool
@@ -175,10 +174,6 @@ struct DietPlanEditorView: View {
         .fullScreenCover(isPresented: $showingPaywall) {
             paywallView
         }
-        .paywallDismissalOverlay(
-            showPaywall: $showingPaywall,
-            showDeclineConfirmation: $showDeclineConfirmation
-        )
         .alert(localizationManager.localizedString(for: AppStrings.DietPlan.mealsRequired), isPresented: $showNoMealsAlert) {
             Button(localizationManager.localizedString(for: AppStrings.Common.ok), role: .cancel) {}
         } message: {
@@ -565,8 +560,7 @@ struct DietPlanEditorView: View {
             page: .splash,
             show: paywallBinding(
                 showPaywall: $showingPaywall,
-                sdk: sdk,
-                showDeclineConfirmation: $showDeclineConfirmation
+                sdk: sdk
             ),
             backgroundColor: .white,
             ignoreSafeArea: true

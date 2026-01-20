@@ -36,7 +36,6 @@ struct MyDietView: View {
     @State private var showingPlansList = false
     @State private var showingPlanSwitcher = false
     @State private var showingPaywall = false
-    @State private var showDeclineConfirmation = false
     @State private var selectedMealForAction: ScheduledMeal?
     
     @ObservedObject private var localizationManager = LocalizationManager.shared
@@ -148,10 +147,6 @@ struct MyDietView: View {
         .fullScreenCover(isPresented: $showingPaywall) {
             paywallView
         }
-        .paywallDismissalOverlay(
-            showPaywall: $showingPaywall,
-            showDeclineConfirmation: $showDeclineConfirmation
-        )
         .onChange(of: viewModel.selectedDate) { _, _ in
             Task {
                 await viewModel.loadAdherenceData()
@@ -887,8 +882,7 @@ struct MyDietView: View {
             page: .splash,
             show: paywallBinding(
                 showPaywall: $showingPaywall,
-                sdk: sdk,
-                showDeclineConfirmation: $showDeclineConfirmation
+                sdk: sdk
             ),
             backgroundColor: .white,
             ignoreSafeArea: true

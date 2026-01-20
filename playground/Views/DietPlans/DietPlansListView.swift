@@ -24,7 +24,6 @@ struct DietPlansListView: View {
     @State private var showingDeleteConfirmation = false
     @State private var planToDelete: DietPlan?
     @State private var showingPaywall = false
-    @State private var showDeclineConfirmation = false
     @State private var navigationPath = NavigationPath()
     
     private var dietPlanRepository: DietPlanRepository {
@@ -165,10 +164,6 @@ struct DietPlansListView: View {
             .fullScreenCover(isPresented: $showingPaywall) {
                 paywallView
             }
-            .paywallDismissalOverlay(
-                showPaywall: $showingPaywall,
-                showDeclineConfirmation: $showDeclineConfirmation
-            )
         }
     }
     
@@ -490,8 +485,7 @@ struct DietPlansListView: View {
             page: .splash,
             show: paywallBinding(
                 showPaywall: $showingPaywall,
-                sdk: sdk,
-                showDeclineConfirmation: $showDeclineConfirmation
+                sdk: sdk
             ),
             backgroundColor: .white,
             ignoreSafeArea: true

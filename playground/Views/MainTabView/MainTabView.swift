@@ -43,7 +43,6 @@ struct MainTabView: View {
     // Diet creation state (for History tab's create diet prompt)
     @State private var showingCreateDiet = false
     @State private var showingPaywall = false
-    @State private var showDeclineConfirmation = false
     @Environment(TheSDK.self) private var sdk
 
     @State var homeViewModel: HomeViewModel
@@ -388,10 +387,6 @@ struct MainTabView: View {
         .fullScreenCover(isPresented: $showingPaywall) {
             paywallView
         }
-        .paywallDismissalOverlay(
-            showPaywall: $showingPaywall,
-            showDeclineConfirmation: $showDeclineConfirmation
-        )
         // No need for onChange - SwiftUI automatically re-evaluates views when
         // @ObservedObject properties change. Since localizationManager.currentLanguage
         // is @Published, all views using localizationManager will update automatically.
@@ -412,8 +407,7 @@ struct MainTabView: View {
             page: .splash,
             show: paywallBinding(
                 showPaywall: $showingPaywall,
-                sdk: sdk,
-                showDeclineConfirmation: $showDeclineConfirmation
+                sdk: sdk
             ),
             backgroundColor: .white,
             ignoreSafeArea: true

@@ -83,7 +83,6 @@ struct PremiumLockedContent<Content: View>: View {
     @Environment(\.isSubscribed) private var isSubscribed
     @Environment(TheSDK.self) private var sdk
     @State private var showPaywall = false
-    @State private var showDeclineConfirmation = false
     @ObservedObject private var localizationManager = LocalizationManager.shared
     
     let content: Content
@@ -155,12 +154,11 @@ struct PremiumLockedContent<Content: View>: View {
             SDKView(
                 model: sdk,
                 page: .splash,
-                show: paywallBinding(showPaywall: $showPaywall, sdk: sdk, showDeclineConfirmation: $showDeclineConfirmation),
+                show: paywallBinding(showPaywall: $showPaywall, sdk: sdk),
                 backgroundColor: .white,
                 ignoreSafeArea: true
             )
         }
-        .paywallDismissalOverlay(showPaywall: $showPaywall, showDeclineConfirmation: $showDeclineConfirmation)
     }
 }
 
