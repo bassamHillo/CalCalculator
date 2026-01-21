@@ -46,6 +46,7 @@ struct ScheduledMealData: Identifiable {
 struct DietPlanEditorView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.isSubscribed) private var isSubscribed
     @Query(sort: \DietPlan.createdAt) private var allDietPlans: [DietPlan]
     @ObservedObject private var localizationManager = LocalizationManager.shared
     

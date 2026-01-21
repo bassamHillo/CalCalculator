@@ -16,6 +16,7 @@ struct DietPlanCard: View {
     @Query private var allPlans: [DietPlan]
     @Query(filter: #Predicate<DietPlan> { $0.isActive == true }) private var activePlans: [DietPlan]
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.isSubscribed) private var isSubscribed
     @ObservedObject private var localizationManager = LocalizationManager.shared
     
     @State private var todaysMeals: [ScheduledMeal] = []
@@ -86,11 +87,15 @@ struct DietPlanCard: View {
                 }
                 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(localizationManager.localizedString(for: AppStrings.History.createYourDietPlan))
+                    Text(isSubscribed 
+                         ? localizationManager.localizedString(for: AppStrings.History.createYourDietPlan) 
+                         : localizationManager.localizedString(for: AppStrings.History.unlockDietPlans))
                         .font(.headline)
                         .foregroundColor(.primary)
                     
-                    Text(localizationManager.localizedString(for: AppStrings.History.scheduleRepetitiveMeals))
+                    Text(isSubscribed
+                         ? localizationManager.localizedString(for: AppStrings.History.scheduleRepetitiveMeals)
+                         : localizationManager.localizedString(for: AppStrings.History.subscribeToCreateDietPlans))
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .lineLimit(2)
@@ -116,7 +121,13 @@ struct DietPlanCard: View {
                 showingPlansList = true
             } label: {
                 HStack(spacing: 8) {
-                    Text(localizationManager.localizedString(for: AppStrings.History.createDietPlan))
+                    if !isSubscribed {
+                        Image(systemName: "crown.fill")
+                            .font(.subheadline)
+                    }
+                    Text(isSubscribed 
+                         ? localizationManager.localizedString(for: AppStrings.History.createDietPlan) 
+                         : localizationManager.localizedString(for: AppStrings.History.subscribeCreate))
                         .font(.subheadline)
                         .fontWeight(.semibold)
                 }
@@ -125,7 +136,7 @@ struct DietPlanCard: View {
                 .padding(.vertical, 12)
                 .background(
                     LinearGradient(
-                        colors: [.blue, .cyan],
+                        colors: isSubscribed ? [.blue, .cyan] : [.orange, .yellow.opacity(0.8)],
                         startPoint: .leading,
                         endPoint: .trailing
                     )

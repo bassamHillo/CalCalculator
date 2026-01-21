@@ -15,6 +15,7 @@ struct BurnedCaloriesView: View {
     let notes: String?
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.isSubscribed) private var isSubscribed
     @State private var editedCalories: Int
     @State private var isEditing = false
     @State private var isSaving = false
@@ -514,6 +515,8 @@ struct BurnedCaloriesView: View {
         guard !isSaving else { return }
         
         // All features are free - no limit check needed
+        let limitManager = ExerciseSaveLimitManager.shared
+        
         isSaving = true
         defer { isSaving = false }
         
@@ -603,7 +606,10 @@ struct BurnedCaloriesView: View {
                 }
             }
             
-            // App is free - no limit tracking needed
+            // Record exercise save for non-subscribed users
+            if !isSubscribed {
+                _ = limitManager.recordExerciseSave()
+            }
             
             // Sync widget data after saving exercise
             let mealRepository = MealRepository(context: modelContext)

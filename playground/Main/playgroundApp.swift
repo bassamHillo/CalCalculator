@@ -18,6 +18,8 @@ struct playgroundApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     let modelContainer: ModelContainer
     @State private var appearanceMode: AppearanceMode
+    // TEMPORARY: All features are free - always subscribed (no paywall)
+    @State private var subscriptionStatus: Bool = true
     @State private var currentLocale: Locale = LocalizationManager.shared.currentLocale
     @State private var currentLayoutDirection: LayoutDirection = LocalizationManager.shared.layoutDirection
 
@@ -188,12 +190,16 @@ struct playgroundApp: App {
                         }
                     }
                 }
+                .environment(\.isSubscribed, subscriptionStatus)  // Inject reactive subscription status
                 .task {
                     // Debug: Log diet plans on app startup
                     await logDietPlansOnStartup()
                     
                     // Initialize RateUsManager to listen for successful actions
                     _ = RateUsManager.shared
+                    
+                    // Initialize subscription status on app launch
+                    updateSubscriptionStatus()
                 }
                 .onReceive(
                     NotificationCenter.default.publisher(
@@ -228,6 +234,39 @@ struct playgroundApp: App {
                     }
                 }
         }
+    }
+
+    /// Update reactive subscription status
+    /// TEMPORARY: Always returns true - all features are free (no paywall)
+    private func updateSubscriptionStatus() {
+        // TEMPORARY: All features are free - always subscribed
+        let newStatus = true
+        
+        // Update state
+        subscriptionStatus = newStatus
+        
+        // Store in UserDefaults so it persists and can be read on app launch
+        UserDefaults.standard.set(newStatus, forKey: "subscriptionStatus")
+
+        // Sync subscription status to widget via shared UserDefaults
+        syncSubscriptionStatusToWidget(newStatus)
+    }
+
+    /// Syncs subscription status to the widget using App Groups shared UserDefaults
+    private func syncSubscriptionStatusToWidget(_ isSubscribed: Bool) {
+        let appGroupIdentifier = "group.CalCalculatorAiPlaygournd.shared"
+        let isSubscribedKey = "widget.isSubscribed"
+
+        guard let sharedDefaults = UserDefaults(suiteName: appGroupIdentifier) else {
+            print("⚠️ Failed to access shared UserDefaults for widget subscription sync")
+            return
+        }
+
+        sharedDefaults.set(isSubscribed, forKey: isSubscribedKey)
+        print("📱 Widget subscription status synced: \(isSubscribed)")
+
+        // Reload widget timelines to reflect the change
+        WidgetCenter.shared.reloadAllTimelines()
     }
     
     /// Logs diet plans on app startup for debugging persistence issues
@@ -268,5 +307,6 @@ extension Notification.Name {
     static let widgetWeightUpdated = Notification.Name("widgetWeightUpdated")
     static let dietPlanChanged = Notification.Name("dietPlanChanged")
     static let foodLogged = Notification.Name("foodLogged")
+    static let subscriptionStatusUpdated = Notification.Name("subscriptionStatusUpdated")
     static let homeTabTapped = Notification.Name("homeTabTapped")
 }

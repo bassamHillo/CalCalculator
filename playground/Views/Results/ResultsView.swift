@@ -15,6 +15,7 @@ struct ResultsView: View {
     @State private var showingFixResult = false
     @State private var foodHintText = ""
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.isSubscribed) private var isSubscribed
     @ObservedObject private var localizationManager = LocalizationManager.shared
 
     /// Callback to notify parent when meal is saved
@@ -243,13 +244,18 @@ struct ResultsView: View {
 
     private func saveMeal() {
         // All features are free - no limit check needed
+        let limitManager = MealSaveLimitManager.shared
+        
         resultsVM.updateMealName(mealNameText)
         viewModel.pendingMeal = resultsVM.meal
 
         Task {
             let success = await viewModel.savePendingMeal()
             if success {
-                // App is free - no limit tracking needed
+                // Record meal save for non-subscribed users
+                if !isSubscribed {
+                    _ = limitManager.recordMealSave()
+                }
                 onMealSaved?()
                 dismiss()
             }

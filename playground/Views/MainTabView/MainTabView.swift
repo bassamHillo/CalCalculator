@@ -54,6 +54,7 @@ struct MainTabView: View {
     @State var settingsViewModel: SettingsViewModel
     @State var myDietViewModel: MyDietViewModel
     
+    @Environment(\.isSubscribed) private var isSubscribed
     @Query(filter: #Predicate<DietPlan> { $0.isActive == true }) private var activeDietPlans: [DietPlan]
     // CRITICAL: Store hasActiveDiet as @State to prevent MainTabView body from recomputing
     // when @Query or @Environment changes. We update it manually in onChange modifiers.
@@ -61,7 +62,7 @@ struct MainTabView: View {
     
     /// Update hasActiveDiet based on current state
     private func updateHasActiveDiet() {
-        let newValue = !activeDietPlans.isEmpty
+        let newValue = !activeDietPlans.isEmpty && isSubscribed
         if hasActiveDiet != newValue {
             AppLogger.forClass("MainTabView").info("🔍 [updateHasActiveDiet] hasActiveDiet changed: (hasActiveDiet) -> (newValue)")
             hasActiveDiet = newValue
@@ -137,7 +138,7 @@ struct MainTabView: View {
         // CRITICAL: Compute hasActiveDiet directly from @Query and @Environment in body
         // This ensures it's correct from the first body computation, preventing the false->true change
         // that causes TabView recreation. By computing it here, we avoid @State updates.
-        let hasActiveDiet = !activeDietPlans.isEmpty
+        let hasActiveDiet = !activeDietPlans.isEmpty && isSubscribed
         
         // CRITICAL: DO NOT reference progressViewModel in body computation at all!
         // Even capturing it in a let constant causes SwiftUI to track changes to it.
@@ -159,7 +160,7 @@ struct MainTabView: View {
         // TabView will update selectedTabRaw directly, and onChange will handle persistence
         // This is more reliable than a custom binding which might not be called
         // CRITICAL: Log what dependencies are being accessed in body
-        AppLogger.forClass("MainTabView").info("🔍 [body] Dependencies: selectedTabRaw=(selectedTabRaw), hasActiveDiet=(hasActiveDiet), activeDietPlans.count=(activeDietPlans.count)")
+        AppLogger.forClass("MainTabView").info("🔍 [body] Dependencies: selectedTabRaw=(selectedTabRaw), hasActiveDiet=(hasActiveDiet), activeDietPlans.count=(activeDietPlans.count), isSubscribed=(isSubscribed)")
         
         // CRITICAL: DO NOT sync computed hasActiveDiet to @State during body computation
         // This prevents cascading body recomputations. The computed value is used directly for TabView structure.
@@ -174,7 +175,7 @@ struct MainTabView: View {
             // CRITICAL: Use StableTabViewWrapper to isolate TabView from body recomputations
             // This prevents TabView from being recreated when MainTabView body recomputes
             // CRITICAL: Use a truly stable ID that doesn't change when dependencies change
-            // The wrapper will handle hasActiveDiet changes internally without recreation
+            // The wrapper will handle hasActiveDiet and isSubscribed changes internally without recreation
             StableTabViewWrapper(
                 selectedTabRaw: $selectedTabRaw,
                 storedTab: $storedTab,
@@ -186,6 +187,7 @@ struct MainTabView: View {
                 myDietViewModel: myDietViewModel,
                 scrollHomeToTopTrigger: $scrollHomeToTopTrigger,
                 hasActiveDiet: hasActiveDiet,
+                isSubscribed: isSubscribed,
                 localizationManager: localizationManager,
                 onMealSaved: {
                     Task {
@@ -202,7 +204,7 @@ struct MainTabView: View {
                 handleCreateDiet: handleCreateDiet
             )
             // CRITICAL: Use a stable ID that never changes - this prevents unnecessary recreation
-            // The wrapper will update its content when hasActiveDiet changes without being recreated
+            // The wrapper will update its content when hasActiveDiet/isSubscribed change without being recreated
             .id("stable-tab-view-wrapper-permanent")
             
             // Offline banner
@@ -294,7 +296,23 @@ struct MainTabView: View {
             // CRITICAL: Update @State hasActiveDiet when activeDietPlans changes
             // This allows onChange(of: hasActiveDiet) to handle tab redirection
             // Use async update to prevent triggering during body recomputation
-            let newHasActiveDiet = !activeDietPlans.isEmpty
+            let newHasActiveDiet = !activeDietPlans.isEmpty && isSubscribed
+            if self.hasActiveDiet != newHasActiveDiet {
+                Task { @MainActor in
+                    // Small delay to let body recomputation complete
+                    try? await Task.sleep(nanoseconds: 50_000_000) // 0.05 seconds
+                    if self.hasActiveDiet != newHasActiveDiet {
+                        self.hasActiveDiet = newHasActiveDiet
+                    }
+                }
+            }
+        }
+        .onChange(of: isSubscribed) { oldValue, newValue in
+            AppLogger.forClass("MainTabView").info("🔍 [onChange] isSubscribed changed: \(oldValue) -> \(newValue)")
+            // CRITICAL: Update @State hasActiveDiet when isSubscribed changes
+            // This allows onChange(of: hasActiveDiet) to handle tab redirection
+            // Use async update to prevent triggering during body recomputation
+            let newHasActiveDiet = !activeDietPlans.isEmpty && isSubscribed
             if self.hasActiveDiet != newHasActiveDiet {
                 Task { @MainActor in
                     // Small delay to let body recomputation complete
@@ -403,8 +421,8 @@ struct MainTabView: View {
         }
         
         // Set up delegate to detect home tab re-taps and track tab changes
-        // CRITICAL: Always use the computed hasActiveDiet value from query state
-        let currentHasActiveDiet = !activeDietPlans.isEmpty
+        // CRITICAL: Always use the computed hasActiveDiet value from query/subscription state
+        let currentHasActiveDiet = !activeDietPlans.isEmpty && isSubscribed
         if let existingDelegate = objc_getAssociatedObject(tabBarController, "mainTabBarDelegate") as? MainTabBarDelegate {
             existingDelegate.onHomeTabTapped = {
                 DispatchQueue.main.async {
@@ -488,6 +506,7 @@ private struct StableTabViewWrapper: View {
     let myDietViewModel: MyDietViewModel
     let scrollHomeToTopTrigger: Binding<UUID>
     let hasActiveDiet: Bool
+    let isSubscribed: Bool
     let localizationManager: LocalizationManager
     let onMealSaved: () -> Void
     let handleCreateDiet: () -> Void
@@ -603,7 +622,8 @@ private struct StableTabViewWrapper: View {
             
             HistoryView(
                 viewModel: historyViewModel,
-                repository: repository
+                repository: repository,
+                isSubscribed: isSubscribed
             )
             .tabItem {
                 Label(localizationManager.localizedString(for: AppStrings.History.title), systemImage: "clock.arrow.circlepath")

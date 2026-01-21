@@ -12,6 +12,7 @@ import PDFKit
 struct DataExportView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.isSubscribed) private var isSubscribed
     @ObservedObject private var localizationManager = LocalizationManager.shared
     
     // User settings for weight units

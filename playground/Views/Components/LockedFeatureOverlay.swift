@@ -2,13 +2,15 @@
 //  LockedFeatureOverlay.swift
 //  playground
 //
-//  Reusable component for premium features
-//  NOTE: App is now completely free - all content is shown
+//  Reusable lock overlay for premium features
+//  NOTE: Currently all features are free - no locking applied
 //
 
 import SwiftUI
 
 struct LockedFeatureOverlay: View {
+    @Environment(\.isSubscribed) private var isSubscribed
+    
     let message: String?
     
     init(message: String? = nil) {
@@ -16,13 +18,16 @@ struct LockedFeatureOverlay: View {
     }
     
     var body: some View {
-        // App is free - no lock overlay shown
+        // All features are free - no lock overlay shown
         EmptyView()
     }
 }
 
-/// Shows content - app is completely free
+/// Shows content with empty data for non-subscribers, or full content for subscribers
+/// NOTE: Currently all features are free - content is always shown
 struct PremiumLockedContent<Content: View>: View {
+    @Environment(\.isSubscribed) private var isSubscribed
+    
     let content: Content
     let isProgressPage: Bool
     
@@ -32,12 +37,14 @@ struct PremiumLockedContent<Content: View>: View {
     }
     
     var body: some View {
-        // App is free - always show content
+        // All features are free - always show content
         content
     }
 }
 
 struct LockedButton: View {
+    @Environment(\.isSubscribed) private var isSubscribed
+    
     let action: () -> Void
     let label: () -> AnyView
     
@@ -47,7 +54,7 @@ struct LockedButton: View {
     }
     
     var body: some View {
-        // App is free - always execute action
+        // All features are free - always execute action
         Button {
             action()
         } label: {

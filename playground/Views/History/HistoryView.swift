@@ -13,12 +13,14 @@ import Charts
 struct HistoryView: View {
     @Bindable var viewModel: HistoryViewModel
     let repository: MealRepository
+    let isSubscribed: Bool
     
     var body: some View {
         NavigationStack {
             HistoryViewContent(
                 viewModel: viewModel,
-                repository: repository
+                repository: repository,
+                isSubscribed: isSubscribed
             )
         }
     }
@@ -30,6 +32,7 @@ struct HistoryViewContent: View {
 
     @Bindable var viewModel: HistoryViewModel
     let repository: MealRepository
+    let isSubscribed: Bool
     @ObservedObject private var localizationManager = LocalizationManager.shared
 
     @State private var selectedDate: SelectedDate?

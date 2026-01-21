@@ -13,6 +13,7 @@ struct ScanView: View {
     @State private var selectedItem: PhotosPickerItem?
     @ObservedObject private var localizationManager = LocalizationManager.shared
     
+    @Environment(\.isSubscribed) private var isSubscribed
     
     @State private var previousViewState: ViewState? // Store previous view state before opening settings
     

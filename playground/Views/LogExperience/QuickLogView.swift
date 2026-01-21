@@ -37,6 +37,7 @@ enum QuickLogType: String, CaseIterable {
 struct QuickLogView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.isSubscribed) private var isSubscribed
     @ObservedObject private var localizationManager = LocalizationManager.shared
 
     @State private var selectedType: QuickLogType = .food
@@ -442,7 +443,10 @@ struct QuickLogView: View {
                 showSuccess = true
             }
         } else {
-            // All features are free - save exercise using repository pattern with proper error handling
+            // All features are free - save exercise
+            let limitManager = ExerciseSaveLimitManager.shared
+            
+            // Save exercise using repository pattern with proper error handling
             do {
                 // If calories is 0, try to calculate from API
                 let caloriesValue = Int(exerciseCalories) ?? 0
@@ -479,7 +483,10 @@ struct QuickLogView: View {
                 // Use repository for consistent saving
                 try repository.saveExercise(exercise)
                 
-                // App is free - no limit tracking needed
+                // Record exercise save for non-subscribed users
+                if !isSubscribed {
+                    _ = limitManager.recordExerciseSave()
+                }
                 
                 // Also save to HealthKit if available and authorized
                 // This ensures our exercise data overwrites HealthKit data (our data is the source of truth)
